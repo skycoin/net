@@ -13,7 +13,7 @@ type Message struct {
 	Body []byte
 }
 
-func New(header []byte) *Message {
+func NewByHeader(header []byte) *Message {
 	m := &Message{}
 	m.Type = uint8(header[0])
 	m.Seq = binary.BigEndian.Uint32(header[MSG_SEQ_BEGIN:MSG_SEQ_END])
@@ -22,6 +22,10 @@ func New(header []byte) *Message {
 	m.Body = make([]byte, m.Len)
 
 	return m
+}
+
+func New(t uint8, seq uint32, bytes []byte) *Message {
+	return &Message{Type:t, Seq:seq, Len:uint32(len(bytes)), Body:bytes}
 }
 
 func (msg *Message) String() string {

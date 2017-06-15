@@ -4,7 +4,6 @@ import (
 	"net"
 	"github.com/skycoin/net/conn"
 	"errors"
-	"github.com/skycoin/net/msg"
 	"log"
 )
 
@@ -12,8 +11,8 @@ var ErrInvalidConnectionType = errors.New("invalid connection type")
 
 type Client struct {
 	conn conn.Connection
-	in   chan *msg.Message
-	out  chan *msg.Message
+	In   chan []byte
+	Out  chan []byte
 }
 
 func New() *Client {
@@ -29,9 +28,13 @@ func (client *Client) Connect(network, address string) error {
 	case *net.TCPConn:
 		cn := conn.NewTCPConn(c)
 		client.conn = cn
-		client.in = cn.In
-		client.out = cn.Out
+		client.In = cn.In
+		client.Out = cn.Out
 	case *net.UDPConn:
+		cn := conn.NewUDPClientConn(c)
+		client.conn = cn
+		client.In = cn.In
+		client.Out = cn.Out
 	default:
 		return ErrInvalidConnectionType
 	}
@@ -42,18 +45,18 @@ func (client *Client) Loop() (err error) {
 	go client.conn.ReadLoop()
 	for {
 		select {
-		case m, ok := <-client.in:
+		case m, ok := <-client.In:
 			if !ok {
 				log.Println("conn closed")
 				return
 			}
-			log.Printf("msg in %v", m)
-		case m, ok := <-client.out:
+			log.Printf("msg In %x", m)
+		case m, ok := <-client.Out:
 			if !ok {
 				log.Println("conn closed")
 				return
 			}
-			log.Printf("msg out %v", m)
+			log.Printf("msg Out %x", m)
 			err = client.conn.Write(m)
 			if err != nil {
 				log.Printf("write msg is failed %v", err)

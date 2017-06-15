@@ -7,7 +7,14 @@ import (
 
 func main() {
 	s := server.New()
-	log.Println("listening")
+	s.Init()
+	go func() {
+		log.Println("listening udp")
+		if err := s.ListenUDP(); err != nil {
+			panic(err)
+		}
+	}()
+	log.Println("listening tcp")
 	if err := s.ListenTCP(); err != nil {
 		panic(err)
 	}
