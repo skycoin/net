@@ -2,7 +2,7 @@ package main
 
 import (
 	"github.com/skycoin/net/client"
-	"time"
+	"log"
 )
 
 func main() {
@@ -17,5 +17,14 @@ func main() {
 	c.Out <- []byte("hello1world")
 	c.Out <- []byte("hello2world")
 	c.Out <- []byte("hello3world")
-	time.Sleep(time.Second * 2)
+
+	for {
+		select {
+		case m, ok := <-c.In:
+			if !ok {
+				log.Println("conn closed")
+			}
+			log.Printf("msg In %x", m)
+		}
+	}
 }

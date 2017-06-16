@@ -7,6 +7,7 @@ import (
 	"io"
 	"encoding/binary"
 	"time"
+	"log"
 )
 
 const (
@@ -20,15 +21,19 @@ type TCPConn struct {
 
 	seq     uint32
 	pending map[uint32]*msg.Message
+
+	closed bool
 }
 
 func NewTCPConn(c *net.TCPConn) *TCPConn {
-	return &TCPConn{tcpConn: c, In: make(chan []byte), Out: make(chan []byte), pending:make(map[uint32]*msg.Message)}
+	return &TCPConn{tcpConn: c, In: make(chan []byte), Out: make(chan []byte), pending: make(map[uint32]*msg.Message)}
 }
 
 func (c *TCPConn) ReadLoop() error {
 	defer func() {
+		c.closed = true
 		close(c.In)
+		close(c.Out)
 	}()
 	header := make([]byte, msg.MSG_HEADER_SIZE)
 	reader := bufio.NewReader(c.tcpConn)
@@ -38,20 +43,24 @@ func (c *TCPConn) ReadLoop() error {
 		if err != nil {
 			return err
 		}
-		seq := binary.BigEndian.Uint32(header[msg.MSG_TYPE_END:msg.MSG_SEQ_END])
 		switch t[msg.MSG_TYPE_BEGIN] {
 		case msg.TYPE_ACK:
+			reader.Discard(msg.MSG_TYPE_SIZE)
 			_, err = io.ReadAtLeast(reader, header, msg.MSG_SEQ_END)
 			if err != nil {
 				return err
 			}
+			seq := binary.BigEndian.Uint32(header[msg.MSG_TYPE_END:msg.MSG_SEQ_END])
 			delete(c.pending, seq)
 		case msg.TYPE_PING:
-			err = c.writeBytes([]byte{msg.TYPE_PING})
+			reader.Discard(msg.MSG_TYPE_SIZE)
+			err = c.writeBytes([]byte{msg.TYPE_PONG})
 			if err != nil {
 				return err
 			}
-		default:
+		case msg.TYPE_PONG:
+			reader.Discard(msg.MSG_TYPE_SIZE)
+		case msg.TYPE_NORMAL:
 			_, err = io.ReadAtLeast(reader, header, msg.MSG_HEADER_SIZE)
 			if err != nil {
 				return err
@@ -63,6 +72,7 @@ func (c *TCPConn) ReadLoop() error {
 				return err
 			}
 
+			seq := binary.BigEndian.Uint32(header[msg.MSG_TYPE_END:msg.MSG_SEQ_END])
 			c.ack(seq)
 			c.In <- m.Body
 		}
@@ -70,6 +80,28 @@ func (c *TCPConn) ReadLoop() error {
 		c.tcpConn.SetReadDeadline(getTCPReadDeadline())
 	}
 	return nil
+}
+
+func (c *TCPConn) WriteLoop() error {
+	for {
+		select {
+		case m, ok := <-c.Out:
+			if !ok {
+				log.Println("conn closed")
+				return nil
+			}
+			log.Printf("msg Out %x", m)
+			err := c.Write(m)
+			if err != nil {
+				log.Printf("write msg is failed %v", err)
+				return err
+			}
+		}
+	}
+}
+
+func (c *TCPConn) IsClosed() bool {
+	return c.closed
 }
 
 func getTCPReadDeadline() time.Time {
@@ -98,4 +130,14 @@ func (c *TCPConn) ack(seq uint32) error {
 	resp[msg.MSG_TYPE_BEGIN] = msg.TYPE_ACK
 	binary.BigEndian.PutUint32(resp[msg.MSG_SEQ_BEGIN:], seq)
 	return c.writeBytes(resp)
+}
+
+func (c *TCPConn) Ping() error {
+	b := make([]byte, msg.MSG_TYPE_SIZE)
+	b[msg.MSG_TYPE_BEGIN] = msg.TYPE_PING
+	return c.writeBytes(b)
+}
+
+func (c *TCPConn) GetChanOut() chan<- []byte {
+	return c.Out
 }

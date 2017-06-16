@@ -16,12 +16,7 @@ type Server struct {
 }
 
 func New() *Server {
-	return &Server{TCPAddress: ":8080", UDPAddress:":8081"}
-}
-
-func (server *Server) Init() {
-	DefaultConnectionFactory.TCPClientHandler = handleTCP
-	DefaultConnectionFactory.UDPClientHandler = handleUDP
+	return &Server{TCPAddress: ":8080", UDPAddress: ":8081"}
 }
 
 func (server *Server) ListenTCP() error {
@@ -40,30 +35,7 @@ func (server *Server) ListenTCP() error {
 		}
 		connection := DefaultConnectionFactory.CreateTCPConn(c)
 		go connection.ReadLoop()
-	}
-}
-
-func handleTCP(connection *conn.TCPConn) {
-	for {
-		select {
-		case m, ok := <-connection.In:
-			if !ok {
-				log.Println("conn closed")
-				return
-			}
-			log.Printf("msg in %x", m)
-		case m, ok := <-connection.Out:
-			if !ok {
-				log.Println("conn closed")
-				return
-			}
-			log.Printf("msg out %x", m)
-			err := connection.Write(m)
-			if err != nil {
-				log.Printf("write msg is failed %v", err)
-				return
-			}
-		}
+		go connection.WriteLoop()
 	}
 }
 
@@ -80,26 +52,3 @@ func (server *Server) ListenUDP() error {
 	return udpc.ReadLoop()
 }
 
-func handleUDP(connection *conn.UDPConn) {
-	for {
-		select {
-		case m, ok := <-connection.In:
-			if !ok {
-				log.Println("udp conn closed")
-				return
-			}
-			log.Printf("msg in %x", m)
-		case m, ok := <-connection.Out:
-			if !ok {
-				log.Println("udp conn closed")
-				return
-			}
-			log.Printf("msg out %x", m)
-			err := connection.Write(m)
-			if err != nil {
-				log.Printf("write msg is failed %v", err)
-				return
-			}
-		}
-	}
-}

@@ -23,4 +23,5 @@ const (
 	TYPE_NORMAL = 0x01
 	TYPE_ACK    = 0x80
 	TYPE_PING   = 0x81
+	TYPE_PONG   = 0x82
 )

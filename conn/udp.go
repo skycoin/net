@@ -6,6 +6,7 @@ import (
 	"net"
 	"log"
 	"time"
+	"sync"
 )
 
 const (
@@ -21,7 +22,9 @@ type UDPConn struct {
 	seq     uint32
 	pending map[uint32]*msg.Message
 
-	lastTime int64
+	lastTime    int64
+	closed      bool
+	fieldsMutex *sync.RWMutex
 }
 
 type UDPServerConn struct {
@@ -30,17 +33,13 @@ type UDPServerConn struct {
 }
 
 func NewUDPConn(c *net.UDPConn, addr *net.UDPAddr) *UDPConn {
-	return &UDPConn{udpConn: c, addr: addr, lastTime:time.Now().Unix(),
-		In: make(chan []byte), Out: make(chan []byte), pending: make(map[uint32]*msg.Message)}
+	return &UDPConn{udpConn: c, addr: addr, lastTime: time.Now().Unix(), fieldsMutex: new(sync.RWMutex), In: make(chan []byte), Out: make(chan []byte), pending: make(map[uint32]*msg.Message)}
 }
 
 func NewUDPServerConn(c *net.UDPConn, factory *ConnectionFactory) *UDPServerConn {
 	sc := &UDPServerConn{}
 	sc.factory = factory
 	sc.udpConn = c
-	sc.In = make(chan []byte)
-	sc.Out = make(chan []byte)
-	sc.pending = make(map[uint32]*msg.Message)
 	return sc
 }
 
@@ -62,16 +61,17 @@ func (c *UDPServerConn) ReadLoop() error {
 		maxBuf = maxBuf[:n]
 		cc := c.factory.GetOrCreateUDPConn(c.udpConn, addr)
 
-		seq := binary.BigEndian.Uint32(maxBuf[msg.MSG_SEQ_BEGIN:msg.MSG_SEQ_END])
 		switch maxBuf[msg.MSG_TYPE_BEGIN] {
 		case msg.TYPE_ACK:
+			seq := binary.BigEndian.Uint32(maxBuf[msg.MSG_SEQ_BEGIN:msg.MSG_SEQ_END])
 			delete(c.pending, seq)
 		case msg.TYPE_PING:
-			err = c.writeBytes([]byte{msg.TYPE_PING})
+			err = c.writeBytes([]byte{msg.TYPE_PONG})
 			if err != nil {
 				return err
 			}
-		default:
+		case msg.TYPE_NORMAL:
+			seq := binary.BigEndian.Uint32(maxBuf[msg.MSG_SEQ_BEGIN:msg.MSG_SEQ_END])
 			err = cc.ack(seq)
 			if err != nil {
 				return err
@@ -79,9 +79,29 @@ func (c *UDPServerConn) ReadLoop() error {
 			cc.In <- maxBuf[msg.MSG_HEADER_END:]
 		}
 
+		cc.fieldsMutex.Lock()
 		cc.lastTime = time.Now().Unix()
+		cc.fieldsMutex.Unlock()
 	}
 	return nil
+}
+
+func (c *UDPConn) WriteLoop() error {
+	for {
+		select {
+		case m, ok := <-c.Out:
+			if !ok {
+				log.Println("udp conn closed")
+				return nil
+			}
+			log.Printf("msg out %x", m)
+			err := c.Write(m)
+			if err != nil {
+				log.Printf("write msg is failed %v", err)
+				return err
+			}
+		}
+	}
 }
 
 func (c *UDPConn) Write(bytes []byte) error {
@@ -103,14 +123,39 @@ func (c *UDPConn) ack(seq uint32) error {
 	return c.writeBytes(resp)
 }
 
+func (c *UDPConn) GetChanOut() chan<- []byte {
+	return c.Out
+}
+
+func (c *UDPConn) IsClosed() bool {
+	c.fieldsMutex.RLock()
+	defer c.fieldsMutex.RUnlock()
+	return c.closed
+}
+
+func (c *UDPConn) GetLastTime() int64 {
+	c.fieldsMutex.RLock()
+	defer c.fieldsMutex.RUnlock()
+	return c.lastTime
+}
+
 func (c *UDPConn) close() {
 	defer func() {
 		if err := recover(); err != nil {
 			log.Println("closing closed udpconn")
 		}
 	}()
+	c.fieldsMutex.Lock()
+	c.closed = true
+	c.fieldsMutex.Unlock()
 	close(c.In)
 	close(c.Out)
+}
+
+func (c *UDPConn) Ping() error {
+	b := make([]byte, msg.MSG_TYPE_SIZE)
+	b[msg.MSG_TYPE_BEGIN] = msg.TYPE_PING
+	return c.writeBytes(b)
 }
 
 type UDPClientConn struct {
@@ -135,16 +180,12 @@ func (c *UDPClientConn) ReadLoop() error {
 		}
 		maxBuf = maxBuf[:n]
 
-		seq := binary.BigEndian.Uint32(maxBuf[msg.MSG_SEQ_BEGIN:msg.MSG_SEQ_END])
 		switch maxBuf[msg.MSG_TYPE_BEGIN] {
 		case msg.TYPE_ACK:
+			seq := binary.BigEndian.Uint32(maxBuf[msg.MSG_SEQ_BEGIN:msg.MSG_SEQ_END])
 			delete(c.pending, seq)
-		case msg.TYPE_PING:
-			err = c.writeBytes([]byte{msg.TYPE_PING})
-			if err != nil {
-				return err
-			}
-		default:
+		case msg.TYPE_NORMAL:
+			seq := binary.BigEndian.Uint32(maxBuf[msg.MSG_SEQ_BEGIN:msg.MSG_SEQ_END])
 			err = c.ack(seq)
 			if err != nil {
 				return err
@@ -153,6 +194,24 @@ func (c *UDPClientConn) ReadLoop() error {
 		}
 	}
 	return nil
+}
+
+func (c *UDPClientConn) WriteLoop() error {
+	for {
+		select {
+		case m, ok := <-c.Out:
+			if !ok {
+				log.Println("udp conn closed")
+				return nil
+			}
+			log.Printf("msg out %x", m)
+			err := c.Write(m)
+			if err != nil {
+				log.Printf("write msg is failed %v", err)
+				return err
+			}
+		}
+	}
 }
 
 func (c *UDPClientConn) Write(bytes []byte) error {

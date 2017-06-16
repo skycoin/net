@@ -49,6 +49,7 @@ func (factory *ConnectionFactory) GetOrCreateUDPConn(c *net.UDPConn, addr *net.U
 	factory.udpConnsMutex.Unlock()
 
 	go factory.UDPClientHandler(udpConn)
+	go udpConn.WriteLoop()
 	return udpConn
 }
 
@@ -63,7 +64,7 @@ func (factory *ConnectionFactory) GC() {
 			closed := []string{}
 			factory.udpConnsMutex.RLock()
 			for k, udp := range factory.udpConns {
-				if nowUnix-udp.lastTime >= UDP_GC_PERIOD {
+				if nowUnix-udp.GetLastTime() >= UDP_GC_PERIOD {
 					udp.close()
 					closed = append(closed, k)
 				}
