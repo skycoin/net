@@ -24,6 +24,7 @@ type UDPConn struct {
 
 	lastTime    int64
 	closed      bool
+	pubkey      string
 	fieldsMutex *sync.RWMutex
 }
 
@@ -84,6 +85,10 @@ func (c *UDPServerConn) ReadLoop() error {
 		cc.fieldsMutex.Unlock()
 	}
 	return nil
+}
+
+func (c *UDPConn) ReadLoop() error {
+	panic("unimplemented")
 }
 
 func (c *UDPConn) WriteLoop() error {

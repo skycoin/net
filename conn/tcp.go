@@ -8,6 +8,7 @@ import (
 	"encoding/binary"
 	"time"
 	"log"
+	"sync"
 )
 
 const (
@@ -23,17 +24,17 @@ type TCPConn struct {
 	pending map[uint32]*msg.Message
 
 	closed bool
+	pubkey string
+	fieldsMutex *sync.RWMutex
 }
 
 func NewTCPConn(c *net.TCPConn) *TCPConn {
-	return &TCPConn{tcpConn: c, In: make(chan []byte), Out: make(chan []byte), pending: make(map[uint32]*msg.Message)}
+	return &TCPConn{tcpConn: c, In: make(chan []byte), Out: make(chan []byte), pending: make(map[uint32]*msg.Message), fieldsMutex:new(sync.RWMutex)}
 }
 
 func (c *TCPConn) ReadLoop() error {
 	defer func() {
-		c.closed = true
-		close(c.In)
-		close(c.Out)
+		c.close()
 	}()
 	header := make([]byte, msg.MSG_HEADER_SIZE)
 	reader := bufio.NewReader(c.tcpConn)
@@ -101,6 +102,8 @@ func (c *TCPConn) WriteLoop() error {
 }
 
 func (c *TCPConn) IsClosed() bool {
+	c.fieldsMutex.RLock()
+	defer c.fieldsMutex.RUnlock()
 	return c.closed
 }
 
@@ -140,4 +143,16 @@ func (c *TCPConn) Ping() error {
 
 func (c *TCPConn) GetChanOut() chan<- []byte {
 	return c.Out
+}
+func (c *TCPConn) close() {
+	defer func() {
+		if err := recover(); err != nil {
+			log.Println("closing closed udpconn")
+		}
+	}()
+	c.fieldsMutex.Lock()
+	c.closed = true
+	c.fieldsMutex.Unlock()
+	close(c.In)
+	close(c.Out)
 }

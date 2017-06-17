@@ -35,7 +35,6 @@ func (server *Server) ListenTCP() error {
 		}
 		connection := DefaultConnectionFactory.CreateTCPConn(c)
 		go connection.ReadLoop()
-		go connection.WriteLoop()
 	}
 }
 
