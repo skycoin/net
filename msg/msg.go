@@ -7,10 +7,11 @@ import (
 )
 
 type Message struct {
-	Type uint8
-	Seq  uint32
-	Len  uint32
-	Body []byte
+	Type      uint8
+	Seq       uint32
+	Len       uint32
+	Body      []byte
+	BodySlice [][]byte
 }
 
 func NewByHeader(header []byte) *Message {
@@ -25,7 +26,7 @@ func NewByHeader(header []byte) *Message {
 }
 
 func New(t uint8, seq uint32, bytes []byte) *Message {
-	return &Message{Type:t, Seq:seq, Len:uint32(len(bytes)), Body:bytes}
+	return &Message{Type: t, Seq: seq, Len: uint32(len(bytes)), Body: bytes}
 }
 
 func (msg *Message) String() string {
@@ -42,5 +43,13 @@ func (msg *Message) Bytes() []byte {
 	binary.BigEndian.PutUint32(result[MSG_SEQ_BEGIN:MSG_SEQ_END], msg.Seq)
 	binary.BigEndian.PutUint32(result[MSG_LEN_BEGIN:MSG_LEN_END], msg.Len)
 	copy(result[MSG_HEADER_END:], msg.Body)
+	return result
+}
+
+func (msg *Message) HeaderBytes() []byte {
+	result := make([]byte, MSG_HEADER_SIZE)
+	result[0] = byte(msg.Type)
+	binary.BigEndian.PutUint32(result[MSG_SEQ_BEGIN:MSG_SEQ_END], msg.Seq)
+	binary.BigEndian.PutUint32(result[MSG_LEN_BEGIN:MSG_LEN_END], msg.Len)
 	return result
 }

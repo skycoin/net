@@ -4,6 +4,7 @@ import (
 	"net"
 	"github.com/skycoin/net/conn"
 	"errors"
+	"github.com/skycoin/skycoin/src/cipher"
 )
 
 var ErrInvalidConnectionType = errors.New("invalid connection type")
@@ -12,7 +13,7 @@ type Client struct {
 	conn conn.Connection
 
 	In   <-chan []byte
-	Out  chan<- []byte
+	Out  chan<- interface{}
 }
 
 func New() *Client {
@@ -27,7 +28,7 @@ func (client *Client) Connect(network, address string) error {
 
 	switch c := c.(type) {
 	case *net.TCPConn:
-		cn := conn.NewTCPConn(c)
+		cn := conn.NewTCPConn(c, nil)
 		client.conn = cn
 		client.In = cn.In
 		client.Out = cn.Out
@@ -40,6 +41,10 @@ func (client *Client) Connect(network, address string) error {
 		return ErrInvalidConnectionType
 	}
 	return nil
+}
+
+func (client *Client) Reg(key cipher.PubKey) error {
+	return client.conn.SendReg(key)
 }
 
 func (client *Client) Loop() error {

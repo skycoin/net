@@ -2,7 +2,6 @@ package server
 
 import (
 	"net"
-	"log"
 	"github.com/skycoin/net/conn"
 )
 

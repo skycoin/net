@@ -28,11 +28,11 @@ func NewFactory() *ConnectionFactory {
 }
 
 func (factory *ConnectionFactory) CreateTCPConn(c *net.TCPConn) *TCPConn {
-	cc := NewTCPConn(c)
+	cc := NewTCPConn(c, factory)
 	go factory.TCPClientHandler(cc)
 	go func() {
 		cc.WriteLoop()
-		factory.UnRegister(cc.pubkey, cc)
+		factory.UnRegister(cc.pubkey.Hex(), cc)
 	}()
 	return cc
 }
@@ -59,7 +59,7 @@ func (factory *ConnectionFactory) GetOrCreateUDPConn(c *net.UDPConn, addr *net.U
 	go factory.UDPClientHandler(udpConn)
 	go func() {
 		udpConn.WriteLoop()
-		factory.UnRegister(udpConn.pubkey, udpConn)
+		factory.UnRegister(udpConn.pubkey.Hex(), udpConn)
 	}()
 	return udpConn
 }

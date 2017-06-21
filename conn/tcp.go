@@ -9,6 +9,8 @@ import (
 	"time"
 	"log"
 	"sync"
+	"sync/atomic"
+	"github.com/skycoin/skycoin/src/cipher"
 )
 
 const (
@@ -16,20 +18,21 @@ const (
 )
 
 type TCPConn struct {
+	factory *ConnectionFactory
 	tcpConn *net.TCPConn
 	In      chan []byte
-	Out     chan []byte
+	Out     chan interface{}
 
 	seq     uint32
 	pending map[uint32]*msg.Message
 
 	closed bool
-	pubkey string
+	pubkey cipher.PubKey
 	fieldsMutex *sync.RWMutex
 }
 
-func NewTCPConn(c *net.TCPConn) *TCPConn {
-	return &TCPConn{tcpConn: c, In: make(chan []byte), Out: make(chan []byte), pending: make(map[uint32]*msg.Message), fieldsMutex:new(sync.RWMutex)}
+func NewTCPConn(c *net.TCPConn, factory *ConnectionFactory) *TCPConn {
+	return &TCPConn{tcpConn: c, factory: factory ,In: make(chan []byte), Out: make(chan interface{}), pending: make(map[uint32]*msg.Message), fieldsMutex:new(sync.RWMutex)}
 }
 
 func (c *TCPConn) ReadLoop() error {
@@ -44,7 +47,8 @@ func (c *TCPConn) ReadLoop() error {
 		if err != nil {
 			return err
 		}
-		switch t[msg.MSG_TYPE_BEGIN] {
+		msg_t := t[msg.MSG_TYPE_BEGIN]
+		switch msg_t {
 		case msg.TYPE_ACK:
 			reader.Discard(msg.MSG_TYPE_SIZE)
 			_, err = io.ReadAtLeast(reader, header, msg.MSG_SEQ_END)
@@ -75,7 +79,31 @@ func (c *TCPConn) ReadLoop() error {
 
 			seq := binary.BigEndian.Uint32(header[msg.MSG_TYPE_END:msg.MSG_SEQ_END])
 			c.ack(seq)
+
 			c.In <- m.Body
+		case msg.TYPE_REG:
+			_, err = io.ReadAtLeast(reader, header, msg.MSG_HEADER_SIZE)
+			if err != nil {
+				return err
+			}
+
+			m := msg.NewByHeader(header)
+			_, err = io.ReadAtLeast(reader, m.Body, int(m.Len))
+			if err != nil {
+				return err
+			}
+
+			seq := binary.BigEndian.Uint32(header[msg.MSG_TYPE_END:msg.MSG_SEQ_END])
+			c.ack(seq)
+
+			if m.Len != 33 {
+				continue
+			}
+			key := cipher.NewPubKey(m.Body)
+			c.fieldsMutex.Lock()
+			c.pubkey = key
+			c.fieldsMutex.Unlock()
+			c.factory.Register(key.Hex(), c)
 		}
 
 		c.tcpConn.SetReadDeadline(getTCPReadDeadline())
@@ -84,18 +112,39 @@ func (c *TCPConn) ReadLoop() error {
 }
 
 func (c *TCPConn) WriteLoop() error {
+	ticker := time.NewTicker(time.Second * TICK_PERIOD)
+	defer func() {
+		ticker.Stop()
+	}()
 	for {
 		select {
-		case m, ok := <-c.Out:
+		case <-ticker.C:
+			err := c.ping()
+			if err != nil {
+				return err
+			}
+		case ob, ok := <-c.Out:
 			if !ok {
 				log.Println("conn closed")
 				return nil
 			}
-			log.Printf("msg Out %x", m)
-			err := c.Write(m)
-			if err != nil {
-				log.Printf("write msg is failed %v", err)
-				return err
+			switch m := ob.(type) {
+			case []byte:
+				log.Printf("msg Out %x", m)
+				err := c.Write(m)
+				if err != nil {
+					log.Printf("write msg is failed %v", err)
+					return err
+				}
+			case [][]byte:
+				log.Printf("msg Out %x", m)
+				err := c.WriteSlice(m)
+				if err != nil {
+					log.Printf("write msg is failed %v", err)
+					return err
+				}
+			default:
+				log.Printf("WriteLoop writting %#v failed unsupported type", ob)
 			}
 		}
 	}
@@ -112,9 +161,39 @@ func getTCPReadDeadline() time.Time {
 }
 
 func (c *TCPConn) Write(bytes []byte) error {
-	c.seq++
-	m := msg.New(msg.TYPE_NORMAL, c.seq, bytes)
-	c.pending[c.seq] = m
+	new := atomic.AddUint32(&c.seq, 1)
+	m := msg.New(msg.TYPE_NORMAL, new, bytes)
+	c.pending[new] = m
+	return c.writeBytes(m.Bytes())
+}
+
+func (c *TCPConn) WriteSlice(bytes [][]byte) error {
+	new := atomic.AddUint32(&c.seq, 1)
+	m := msg.New(msg.TYPE_NORMAL, new, nil)
+	for _, s := range bytes {
+		m.Len += uint32(len(s))
+	}
+	m.BodySlice = bytes
+	c.pending[new] = m
+	err := c.writeBytes(m.HeaderBytes())
+	if err != nil {
+		return err
+	}
+
+	for _, m := range bytes {
+		err := c.writeBytes(m)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (c *TCPConn) SendReg(key cipher.PubKey) error {
+	new := atomic.AddUint32(&c.seq, 1)
+	m := msg.New(msg.TYPE_REG, new, key[:])
+	c.pending[new] = m
 	return c.writeBytes(m.Bytes())
 }
 
@@ -135,15 +214,16 @@ func (c *TCPConn) ack(seq uint32) error {
 	return c.writeBytes(resp)
 }
 
-func (c *TCPConn) Ping() error {
+func (c *TCPConn) ping() error {
 	b := make([]byte, msg.MSG_TYPE_SIZE)
 	b[msg.MSG_TYPE_BEGIN] = msg.TYPE_PING
 	return c.writeBytes(b)
 }
 
-func (c *TCPConn) GetChanOut() chan<- []byte {
+func (c *TCPConn) GetChanOut() chan<- interface{} {
 	return c.Out
 }
+
 func (c *TCPConn) close() {
 	defer func() {
 		if err := recover(); err != nil {
@@ -155,4 +235,11 @@ func (c *TCPConn) close() {
 	c.fieldsMutex.Unlock()
 	close(c.In)
 	close(c.Out)
+	c.factory.UnRegister(c.pubkey.Hex(), c)
+}
+
+func (c *TCPConn) GetPublicKey() cipher.PubKey {
+	c.fieldsMutex.RLock()
+	defer c.fieldsMutex.RUnlock()
+	return c.pubkey
 }
