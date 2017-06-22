@@ -28,7 +28,7 @@ func (client *Client) Connect(network, address string) error {
 
 	switch c := c.(type) {
 	case *net.TCPConn:
-		cn := conn.NewTCPConn(c, nil)
+		cn := conn.NewClientTCPConn(c)
 		client.conn = cn
 		client.In = cn.In
 		client.Out = cn.Out

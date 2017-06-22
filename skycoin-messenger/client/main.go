@@ -7,11 +7,11 @@ import (
 )
 
 func main() {
-	log.SetFlags(log.Lshortfile)
+	log.SetFlags(log.LstdFlags|log.Lshortfile)
 	go client2()
 	c := client.New()
-	//err := c.Connect("tcp", ":8080")
-	err := c.Connect("udp", ":8081")
+	err := c.Connect("tcp", ":8080")
+	//err := c.Connect("udp", ":8081")
 	if err != nil {
 		panic(err)
 	}
@@ -35,8 +35,8 @@ func main() {
 
 func client2() {
 	c := client.New()
-	//err := c.Connect("tcp", ":8080")
-	err := c.Connect("udp", ":8081")
+	err := c.Connect("tcp", ":8080")
+	//err := c.Connect("udp", ":8081")
 	if err != nil {
 		panic(err)
 	}

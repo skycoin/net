@@ -72,7 +72,8 @@ func (c *UDPServerConn) ReadLoop() error {
 			seq := binary.BigEndian.Uint32(maxBuf[msg.MSG_SEQ_BEGIN:msg.MSG_SEQ_END])
 			delete(c.pending, seq)
 		case msg.TYPE_PING:
-			err = c.writeBytes([]byte{msg.TYPE_PONG})
+			log.Println("recv ping")
+			err = cc.writeBytes([]byte{msg.TYPE_PONG})
 			if err != nil {
 				return err
 			}
@@ -111,22 +112,9 @@ func (c *UDPConn) WriteSlice(bytes [][]byte) error {
 	panic("UDPConn unimplemented WriteSlice")
 }
 
-const (
-	TICK_PERIOD = 60
-)
-
 func (c *UDPConn) WriteLoop() error {
-	ticker := time.NewTicker(time.Second * TICK_PERIOD)
-	defer func() {
-		ticker.Stop()
-	}()
 	for {
 		select {
-		case <-ticker.C:
-			err := c.ping()
-			if err != nil {
-				return err
-			}
 		case m, ok := <-c.Out:
 			if !ok {
 				log.Println("udp conn closed")
@@ -204,11 +192,6 @@ func (c *UDPConn) close() {
 	c.factory.UnRegister(c.pubkey.Hex(), c)
 }
 
-func (c *UDPConn) ping() error {
-	b := make([]byte, msg.MSG_TYPE_SIZE)
-	b[msg.MSG_TYPE_BEGIN] = msg.TYPE_PING
-	return c.writeBytes(b)
-}
 
 type UDPClientConn struct {
 	UDPConn
@@ -233,6 +216,7 @@ func (c *UDPClientConn) ReadLoop() error {
 		maxBuf = maxBuf[:n]
 
 		switch maxBuf[msg.MSG_TYPE_BEGIN] {
+		case msg.TYPE_PONG:
 		case msg.TYPE_ACK:
 			seq := binary.BigEndian.Uint32(maxBuf[msg.MSG_SEQ_BEGIN:msg.MSG_SEQ_END])
 			delete(c.pending, seq)
@@ -248,9 +232,31 @@ func (c *UDPClientConn) ReadLoop() error {
 	return nil
 }
 
+const (
+	TICK_PERIOD = 60
+)
+
+func (c *UDPClientConn) ping() error {
+	b := make([]byte, msg.MSG_TYPE_SIZE)
+	b[msg.MSG_TYPE_BEGIN] = msg.TYPE_PING
+	return c.writeBytes(b)
+}
+
+
 func (c *UDPClientConn) WriteLoop() error {
+	ticker := time.NewTicker(time.Second * TICK_PERIOD)
+	defer func() {
+		ticker.Stop()
+	}()
+
 	for {
 		select {
+		case <-ticker.C:
+			log.Println("ping out")
+			err := c.ping()
+			if err != nil {
+				return err
+			}
 		case m, ok := <-c.Out:
 			if !ok {
 				log.Println("udp conn closed")
@@ -265,7 +271,6 @@ func (c *UDPClientConn) WriteLoop() error {
 					return err
 				}
 			case [][]byte:
-				log.Printf("msg Out %x", m)
 				err := c.WriteSlice(d)
 				if err != nil {
 					log.Printf("write msg is failed %v", err)

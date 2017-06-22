@@ -31,8 +31,16 @@ type TCPConn struct {
 	fieldsMutex *sync.RWMutex
 }
 
+type ClientTCPConn struct {
+	TCPConn
+}
+
 func NewTCPConn(c *net.TCPConn, factory *ConnectionFactory) *TCPConn {
 	return &TCPConn{tcpConn: c, factory: factory ,In: make(chan []byte), Out: make(chan interface{}), pending: make(map[uint32]*msg.Message), fieldsMutex:new(sync.RWMutex)}
+}
+
+func NewClientTCPConn(c *net.TCPConn) *ClientTCPConn {
+	return &ClientTCPConn{TCPConn{tcpConn: c,In: make(chan []byte), Out: make(chan interface{}), pending: make(map[uint32]*msg.Message), fieldsMutex:new(sync.RWMutex)}}
 }
 
 func (c *TCPConn) ReadLoop() error {
@@ -63,8 +71,10 @@ func (c *TCPConn) ReadLoop() error {
 			if err != nil {
 				return err
 			}
+			log.Println("recv ping")
 		case msg.TYPE_PONG:
 			reader.Discard(msg.MSG_TYPE_SIZE)
+			log.Println("recv pong")
 		case msg.TYPE_NORMAL:
 			_, err = io.ReadAtLeast(reader, header, msg.MSG_HEADER_SIZE)
 			if err != nil {
@@ -112,6 +122,36 @@ func (c *TCPConn) ReadLoop() error {
 }
 
 func (c *TCPConn) WriteLoop() error {
+	for {
+		select {
+		case ob, ok := <-c.Out:
+			if !ok {
+				log.Println("conn closed")
+				return nil
+			}
+			switch m := ob.(type) {
+			case []byte:
+				log.Printf("msg Out %x", m)
+				err := c.Write(m)
+				if err != nil {
+					log.Printf("write msg is failed %v", err)
+					return err
+				}
+			case [][]byte:
+				log.Printf("msg Out %x", m)
+				err := c.WriteSlice(m)
+				if err != nil {
+					log.Printf("write msg is failed %v", err)
+					return err
+				}
+			default:
+				log.Printf("WriteLoop writting %#v failed unsupported type", ob)
+			}
+		}
+	}
+}
+
+func (c *ClientTCPConn) WriteLoop() error {
 	ticker := time.NewTicker(time.Second * TICK_PERIOD)
 	defer func() {
 		ticker.Stop()
@@ -119,6 +159,7 @@ func (c *TCPConn) WriteLoop() error {
 	for {
 		select {
 		case <-ticker.C:
+			log.Println("ping out")
 			err := c.ping()
 			if err != nil {
 				return err

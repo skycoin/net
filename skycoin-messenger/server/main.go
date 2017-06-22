@@ -8,6 +8,7 @@ import (
 )
 
 func main() {
+	log.SetFlags(log.LstdFlags|log.Lshortfile)
 	s := server.New()
 	server.DefaultConnectionFactory.TCPClientHandler = handleTCP
 	server.DefaultConnectionFactory.UDPClientHandler = handleUDP
