@@ -33,7 +33,7 @@ func (client *Client) Connect(network, address string) error {
 		client.In = cn.In
 		client.Out = cn.Out
 	case *net.UDPConn:
-		cn := conn.NewUDPClientConn(c)
+		cn := conn.NewClientUDPConn(c)
 		client.conn = cn
 		client.In = cn.In
 		client.Out = cn.Out

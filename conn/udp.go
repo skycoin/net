@@ -32,7 +32,7 @@ type UDPConn struct {
 	fieldsMutex *sync.RWMutex
 }
 
-type UDPServerConn struct {
+type ServerUDPConn struct {
 	UDPConn
 	factory *ConnectionFactory
 }
@@ -41,14 +41,14 @@ func NewUDPConn(c *net.UDPConn, addr *net.UDPAddr) *UDPConn {
 	return &UDPConn{udpConn: c, addr: addr, lastTime: time.Now().Unix(), fieldsMutex: new(sync.RWMutex), In: make(chan []byte), Out: make(chan interface{}), pending: make(map[uint32]*msg.Message)}
 }
 
-func NewUDPServerConn(c *net.UDPConn, factory *ConnectionFactory) *UDPServerConn {
-	sc := &UDPServerConn{}
+func NewServerUDPConn(c *net.UDPConn, factory *ConnectionFactory) *ServerUDPConn {
+	sc := &ServerUDPConn{}
 	sc.factory = factory
 	sc.udpConn = c
 	return sc
 }
 
-func (c *UDPServerConn) ReadLoop() error {
+func (c *ServerUDPConn) ReadLoop() error {
 	for {
 		maxBuf := make([]byte, MAX_UDP_PACKAGE_SIZE)
 		n, addr, err := c.udpConn.ReadFromUDP(maxBuf)
@@ -193,12 +193,12 @@ func (c *UDPConn) close() {
 }
 
 
-type UDPClientConn struct {
+type ClientUDPConn struct {
 	UDPConn
 }
 
-func NewUDPClientConn(c *net.UDPConn) *UDPClientConn {
-	cc := &UDPClientConn{}
+func NewClientUDPConn(c *net.UDPConn) *ClientUDPConn {
+	cc := &ClientUDPConn{}
 	cc.udpConn = c
 	cc.In = make(chan []byte)
 	cc.Out = make(chan interface{})
@@ -206,7 +206,7 @@ func NewUDPClientConn(c *net.UDPConn) *UDPClientConn {
 	return cc
 }
 
-func (c *UDPClientConn) ReadLoop() error {
+func (c *ClientUDPConn) ReadLoop() error {
 	for {
 		maxBuf := make([]byte, MAX_UDP_PACKAGE_SIZE)
 		n, err := c.udpConn.Read(maxBuf)
@@ -236,14 +236,14 @@ const (
 	TICK_PERIOD = 60
 )
 
-func (c *UDPClientConn) ping() error {
+func (c *ClientUDPConn) ping() error {
 	b := make([]byte, msg.MSG_TYPE_SIZE)
 	b[msg.MSG_TYPE_BEGIN] = msg.TYPE_PING
 	return c.writeBytes(b)
 }
 
 
-func (c *UDPClientConn) WriteLoop() error {
+func (c *ClientUDPConn) WriteLoop() error {
 	ticker := time.NewTicker(time.Second * TICK_PERIOD)
 	defer func() {
 		ticker.Stop()
@@ -283,14 +283,14 @@ func (c *UDPClientConn) WriteLoop() error {
 	}
 }
 
-func (c *UDPClientConn) Write(bytes []byte) error {
+func (c *ClientUDPConn) Write(bytes []byte) error {
 	new := atomic.AddUint32(&c.seq, 1)
 	m := msg.New(msg.TYPE_NORMAL, new, bytes)
 	c.pending[new] = m
 	return c.writeBytes(m.Bytes())
 }
 
-func (c *UDPClientConn) WriteSlice(src [][]byte) error {
+func (c *ClientUDPConn) WriteSlice(src [][]byte) error {
 	new := atomic.AddUint32(&c.seq, 1)
 	r := &bytes.Buffer{}
 	for _, b := range src {
@@ -301,19 +301,19 @@ func (c *UDPClientConn) WriteSlice(src [][]byte) error {
 	return c.writeBytes(m.Bytes())
 }
 
-func (c *UDPClientConn) writeBytes(bytes []byte) error {
+func (c *ClientUDPConn) writeBytes(bytes []byte) error {
 	_, err := c.udpConn.Write(bytes)
 	return err
 }
 
-func (c *UDPClientConn) ack(seq uint32) error {
+func (c *ClientUDPConn) ack(seq uint32) error {
 	resp := make([]byte, msg.MSG_SEQ_END)
 	resp[msg.MSG_TYPE_BEGIN] = msg.TYPE_ACK
 	binary.BigEndian.PutUint32(resp[msg.MSG_SEQ_BEGIN:], seq)
 	return c.writeBytes(resp)
 }
 
-func (c *UDPClientConn) SendReg(key cipher.PubKey) error {
+func (c *ClientUDPConn) SendReg(key cipher.PubKey) error {
 	new := atomic.AddUint32(&c.seq, 1)
 	m := msg.New(msg.TYPE_REG, new, key[:])
 	c.pending[new] = m

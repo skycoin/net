@@ -46,7 +46,7 @@ func (server *Server) ListenUDP() error {
 	if err != nil {
 		return err
 	}
-	udpc := conn.NewUDPServerConn(udp, DefaultConnectionFactory)
+	udpc := conn.NewServerUDPConn(udp, DefaultConnectionFactory)
 	return udpc.ReadLoop()
 }
 
