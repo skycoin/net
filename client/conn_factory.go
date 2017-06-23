@@ -22,3 +22,15 @@ func NewClientConnectionFactory(client *Client) *ClientConnectionFactory {
 func (factory *ClientConnectionFactory) GetConn(key cipher.PubKey) *ClientConnection {
 	return &ClientConnection{key: key, client: factory.client}
 }
+
+type ClientDirectConnectionFactory struct {
+	ClientConnectionFactory
+}
+
+func NewClientDirectConnectionFactory(client *Client) *ClientDirectConnectionFactory {
+	return &ClientDirectConnectionFactory{ClientConnectionFactory{client: client}}
+}
+
+func (factory *ClientDirectConnectionFactory) GetConn(key cipher.PubKey) *ClientConnection {
+	return &ClientConnection{key: key, client: factory.client}
+}

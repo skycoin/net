@@ -58,13 +58,13 @@ func (c *TCPConn) ReadLoop() error {
 		msg_t := t[msg.MSG_TYPE_BEGIN]
 		switch msg_t {
 		case msg.TYPE_ACK:
-			reader.Discard(msg.MSG_TYPE_SIZE)
 			_, err = io.ReadAtLeast(reader, header, msg.MSG_SEQ_END)
 			if err != nil {
 				return err
 			}
-			seq := binary.BigEndian.Uint32(header[msg.MSG_TYPE_END:msg.MSG_SEQ_END])
+			seq := binary.BigEndian.Uint32(header[msg.MSG_SEQ_BEGIN:msg.MSG_SEQ_END])
 			delete(c.pending, seq)
+			log.Printf("acked %d, pending:%d, %v", seq, len(c.pending), c.pending)
 		case msg.TYPE_PING:
 			reader.Discard(msg.MSG_TYPE_SIZE)
 			err = c.writeBytes([]byte{msg.TYPE_PONG})
