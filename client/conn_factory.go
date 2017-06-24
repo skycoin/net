@@ -9,17 +9,21 @@ import (
 )
 
 type ClientConnection struct {
-	key    cipher.PubKey
+	Key    cipher.PubKey
 	client *Client
 	In     chan []byte
 	Out    chan []byte
+}
+
+func NewClientConnection(key cipher.PubKey, client *Client) *ClientConnection {
+	return &ClientConnection{Key: key, client: client, In: make(chan []byte), Out: make(chan []byte)}
 }
 
 func (c *ClientConnection) WriteLoop() error {
 	for {
 		select {
 		case d := <-c.Out:
-			err := c.client.conn.WriteSlice(c.key[:], d)
+			err := c.client.conn.WriteSlice(c.Key[:], d)
 			if err != nil {
 				return err
 			}
@@ -27,9 +31,12 @@ func (c *ClientConnection) WriteLoop() error {
 	}
 }
 
+type IncomingCallbackType func(conn *ClientConnection, data []byte) bool
+
 type ClientConnectionFactory struct {
-	client      *Client
-	fieldsMutex *sync.RWMutex
+	client           *Client
+	incomingCallback IncomingCallbackType
+	fieldsMutex      *sync.RWMutex
 
 	connections      map[string]*ClientConnection
 	connectionsMutex *sync.RWMutex
@@ -75,6 +82,12 @@ func (factory *ClientConnectionFactory) Connect(network, address string, key cip
 	return nil
 }
 
+func (factory *ClientConnectionFactory) SetIncomingCallback(fn IncomingCallbackType) {
+	factory.fieldsMutex.Lock()
+	defer factory.fieldsMutex.Unlock()
+	factory.incomingCallback = fn
+}
+
 func (factory *ClientConnectionFactory) close() {
 	factory.connectionsMutex.Lock()
 	for _, v := range factory.connections {
@@ -107,21 +120,30 @@ func (factory *ClientConnectionFactory) dispatch() {
 				log.Printf("data len < 33 %x", d)
 				continue
 			}
-			pubkey := cipher.NewPubKey(d[:msg.MSG_PUBKEY_SIZE])
+			key := cipher.NewPubKey(d[:msg.MSG_PUBKEY_SIZE])
 			factory.connectionsMutex.RLock()
-			conn, ok := factory.connections[pubkey.Hex()]
+			conn, ok := factory.connections[key.Hex()]
 			factory.connectionsMutex.RUnlock()
+			data := d[msg.MSG_PUBKEY_SIZE:]
 			if !ok {
-				log.Printf("conn not exists %s", pubkey.Hex())
+				log.Printf("conn not exists %s", key.Hex())
+				connection := NewClientConnection(key, factory.client)
+				if factory.incomingCallback != nil && factory.incomingCallback(connection, data) {
+					factory.connectionsMutex.Lock()
+					factory.connections[key.Hex()] = connection
+					factory.connectionsMutex.Unlock()
+
+					go connection.WriteLoop()
+				}
 				continue
 			}
-			conn.In <- d[msg.MSG_PUBKEY_SIZE:]
+			conn.In <- data
 		}
 	}
 }
 
 func (factory *ClientConnectionFactory) Dial(key cipher.PubKey) *ClientConnection {
-	connection := &ClientConnection{key: key, client: factory.client, In: make(chan []byte), Out: make(chan []byte)}
+	connection := NewClientConnection(key, factory.client)
 
 	factory.connectionsMutex.Lock()
 	factory.connections[key.Hex()] = connection
@@ -140,5 +162,5 @@ func NewClientDirectConnectionFactory(client *Client) *ClientDirectConnectionFac
 }
 
 func (factory *ClientDirectConnectionFactory) GetConn(key cipher.PubKey) *ClientConnection {
-	return &ClientConnection{key: key, client: factory.client}
+	return &ClientConnection{Key: key, client: factory.client}
 }
