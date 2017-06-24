@@ -1,9 +1,10 @@
 package msg
 
 const (
-	MSG_TYPE_SIZE = 1
-	MSG_SEQ_SIZE  = 4
-	MSG_LEN_SIZE  = 4
+	MSG_TYPE_SIZE   = 1
+	MSG_SEQ_SIZE    = 4
+	MSG_LEN_SIZE    = 4
+	MSG_PUBKEY_SIZE = 33
 )
 
 const (
@@ -17,6 +18,9 @@ const (
 	MSG_HEADER_END
 
 	MSG_HEADER_SIZE
+
+	MSG_PUBKEY_BEGIN
+	MSG_PUBKEY_END   = MSG_PUBKEY_BEGIN + MSG_PUBKEY_SIZE
 )
 
 const (

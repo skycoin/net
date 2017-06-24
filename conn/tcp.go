@@ -21,7 +21,7 @@ type TCPConn struct {
 	factory *ConnectionFactory
 	tcpConn *net.TCPConn
 	In      chan []byte
-	Out     chan interface{}
+	Out     chan []byte
 
 	seq     uint32
 	pending map[uint32]*msg.Message
@@ -36,11 +36,11 @@ type ClientTCPConn struct {
 }
 
 func NewTCPConn(c *net.TCPConn, factory *ConnectionFactory) *TCPConn {
-	return &TCPConn{tcpConn: c, factory: factory ,In: make(chan []byte), Out: make(chan interface{}), pending: make(map[uint32]*msg.Message), fieldsMutex:new(sync.RWMutex)}
+	return &TCPConn{tcpConn: c, factory: factory ,In: make(chan []byte), Out: make(chan []byte), pending: make(map[uint32]*msg.Message), fieldsMutex:new(sync.RWMutex)}
 }
 
 func NewClientTCPConn(c *net.TCPConn) *ClientTCPConn {
-	return &ClientTCPConn{TCPConn{tcpConn: c,In: make(chan []byte), Out: make(chan interface{}), pending: make(map[uint32]*msg.Message), fieldsMutex:new(sync.RWMutex)}}
+	return &ClientTCPConn{TCPConn{tcpConn: c,In: make(chan []byte), Out: make(chan []byte), pending: make(map[uint32]*msg.Message), fieldsMutex:new(sync.RWMutex)}}
 }
 
 func (c *TCPConn) ReadLoop() error {
@@ -124,28 +124,16 @@ func (c *TCPConn) ReadLoop() error {
 func (c *TCPConn) WriteLoop() error {
 	for {
 		select {
-		case ob, ok := <-c.Out:
+		case m, ok := <-c.Out:
 			if !ok {
 				log.Println("conn closed")
 				return nil
 			}
-			switch m := ob.(type) {
-			case []byte:
-				log.Printf("msg Out %x", m)
-				err := c.Write(m)
-				if err != nil {
-					log.Printf("write msg is failed %v", err)
-					return err
-				}
-			case [][]byte:
-				log.Printf("msg Out %x", m)
-				err := c.WriteSlice(m)
-				if err != nil {
-					log.Printf("write msg is failed %v", err)
-					return err
-				}
-			default:
-				log.Printf("WriteLoop writting %#v failed unsupported type", ob)
+			log.Printf("msg Out %x", m)
+			err := c.Write(m)
+			if err != nil {
+				log.Printf("write msg is failed %v", err)
+				return err
 			}
 		}
 	}
@@ -164,28 +152,16 @@ func (c *ClientTCPConn) WriteLoop() error {
 			if err != nil {
 				return err
 			}
-		case ob, ok := <-c.Out:
+		case m, ok := <-c.Out:
 			if !ok {
 				log.Println("conn closed")
 				return nil
 			}
-			switch m := ob.(type) {
-			case []byte:
-				log.Printf("msg Out %x", m)
-				err := c.Write(m)
-				if err != nil {
-					log.Printf("write msg is failed %v", err)
-					return err
-				}
-			case [][]byte:
-				log.Printf("msg Out %x", m)
-				err := c.WriteSlice(m)
-				if err != nil {
-					log.Printf("write msg is failed %v", err)
-					return err
-				}
-			default:
-				log.Printf("WriteLoop writting %#v failed unsupported type", ob)
+			log.Printf("msg Out %x", m)
+			err := c.Write(m)
+			if err != nil {
+				log.Printf("write msg is failed %v", err)
+				return err
 			}
 		}
 	}
@@ -208,7 +184,7 @@ func (c *TCPConn) Write(bytes []byte) error {
 	return c.writeBytes(m.Bytes())
 }
 
-func (c *TCPConn) WriteSlice(bytes [][]byte) error {
+func (c *TCPConn) WriteSlice(bytes ...[]byte) error {
 	new := atomic.AddUint32(&c.seq, 1)
 	m := msg.New(msg.TYPE_NORMAL, new, nil)
 	for _, s := range bytes {
@@ -261,8 +237,12 @@ func (c *TCPConn) ping() error {
 	return c.writeBytes(b)
 }
 
-func (c *TCPConn) GetChanOut() chan<- interface{} {
+func (c *TCPConn) GetChanOut() chan<- []byte {
 	return c.Out
+}
+
+func (c *TCPConn) GetChanIn() <-chan []byte {
+	return c.In
 }
 
 func (c *TCPConn) close() {

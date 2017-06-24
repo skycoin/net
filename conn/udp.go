@@ -21,7 +21,7 @@ type UDPConn struct {
 	udpConn *net.UDPConn
 	addr    *net.UDPAddr
 	In      chan []byte
-	Out     chan interface{}
+	Out     chan []byte
 
 	seq     uint32
 	pending map[uint32]*msg.Message
@@ -38,7 +38,7 @@ type ServerUDPConn struct {
 }
 
 func NewUDPConn(c *net.UDPConn, addr *net.UDPAddr) *UDPConn {
-	return &UDPConn{udpConn: c, addr: addr, lastTime: time.Now().Unix(), fieldsMutex: new(sync.RWMutex), In: make(chan []byte), Out: make(chan interface{}), pending: make(map[uint32]*msg.Message)}
+	return &UDPConn{udpConn: c, addr: addr, lastTime: time.Now().Unix(), fieldsMutex: new(sync.RWMutex), In: make(chan []byte), Out: make(chan []byte), pending: make(map[uint32]*msg.Message)}
 }
 
 func NewServerUDPConn(c *net.UDPConn, factory *ConnectionFactory) *ServerUDPConn {
@@ -108,7 +108,7 @@ func (c *UDPConn) ReadLoop() error {
 	panic("UDPConn unimplemented ReadLoop")
 }
 
-func (c *UDPConn) WriteSlice(bytes [][]byte) error {
+func (c *UDPConn) WriteSlice(bytes ...[]byte) error {
 	panic("UDPConn unimplemented WriteSlice")
 }
 
@@ -121,13 +121,10 @@ func (c *UDPConn) WriteLoop() error {
 				return nil
 			}
 			log.Printf("msg out %x", m)
-			switch d := m.(type) {
-			case []byte:
-				err := c.Write(d)
-				if err != nil {
-					log.Printf("write msg is failed %v", err)
-					return err
-				}
+			err := c.Write(m)
+			if err != nil {
+				log.Printf("write msg is failed %v", err)
+				return err
 			}
 		}
 	}
@@ -158,8 +155,12 @@ func (c *UDPConn) ack(seq uint32) error {
 	return c.writeBytes(resp)
 }
 
-func (c *UDPConn) GetChanOut() chan<- interface{} {
+func (c *UDPConn) GetChanOut() chan<- []byte {
 	return c.Out
+}
+
+func (c *UDPConn) GetChanIn() <-chan []byte {
+	return c.In
 }
 
 func (c *UDPConn) IsClosed() bool {
@@ -201,7 +202,7 @@ func NewClientUDPConn(c *net.UDPConn) *ClientUDPConn {
 	cc := &ClientUDPConn{}
 	cc.udpConn = c
 	cc.In = make(chan []byte)
-	cc.Out = make(chan interface{})
+	cc.Out = make(chan []byte)
 	cc.pending = make(map[uint32]*msg.Message)
 	return cc
 }
@@ -263,21 +264,10 @@ func (c *ClientUDPConn) WriteLoop() error {
 				return nil
 			}
 			log.Printf("msg out %x", m)
-			switch d := m.(type) {
-			case []byte:
-				err := c.Write(d)
-				if err != nil {
-					log.Printf("write msg is failed %v", err)
-					return err
-				}
-			case [][]byte:
-				err := c.WriteSlice(d)
-				if err != nil {
-					log.Printf("write msg is failed %v", err)
-					return err
-				}
-			default:
-				log.Printf("WriteLoop writting %#v failed unsupported type", d)
+			err := c.Write(m)
+			if err != nil {
+				log.Printf("write msg is failed %v", err)
+				return err
 			}
 		}
 	}
@@ -290,7 +280,7 @@ func (c *ClientUDPConn) Write(bytes []byte) error {
 	return c.writeBytes(m.Bytes())
 }
 
-func (c *ClientUDPConn) WriteSlice(src [][]byte) error {
+func (c *ClientUDPConn) WriteSlice(src ...[]byte) error {
 	new := atomic.AddUint32(&c.seq, 1)
 	r := &bytes.Buffer{}
 	for _, b := range src {

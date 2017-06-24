@@ -12,10 +12,11 @@ var (
 type Server struct {
 	TCPAddress string
 	UDPAddress string
+	factory *conn.ConnectionFactory
 }
 
 func New() *Server {
-	return &Server{TCPAddress: ":8080", UDPAddress: ":8081"}
+	return &Server{TCPAddress: ":8080", UDPAddress: ":8081", factory:DefaultConnectionFactory}
 }
 
 func (server *Server) ListenTCP() error {
@@ -32,7 +33,7 @@ func (server *Server) ListenTCP() error {
 		if err != nil {
 			return err
 		}
-		connection := DefaultConnectionFactory.CreateTCPConn(c)
+		connection := server.factory.CreateTCPConn(c)
 		go connection.ReadLoop()
 	}
 }
@@ -46,7 +47,7 @@ func (server *Server) ListenUDP() error {
 	if err != nil {
 		return err
 	}
-	udpc := conn.NewServerUDPConn(udp, DefaultConnectionFactory)
+	udpc := conn.NewServerUDPConn(udp, server.factory)
 	return udpc.ReadLoop()
 }
 

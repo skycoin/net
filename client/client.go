@@ -11,9 +11,6 @@ var ErrInvalidConnectionType = errors.New("invalid connection type")
 
 type Client struct {
 	conn conn.Connection
-
-	In   <-chan []byte
-	Out  chan<- interface{}
 }
 
 func New() *Client {
@@ -30,13 +27,9 @@ func (client *Client) Connect(network, address string) error {
 	case *net.TCPConn:
 		cn := conn.NewClientTCPConn(c)
 		client.conn = cn
-		client.In = cn.In
-		client.Out = cn.Out
 	case *net.UDPConn:
 		cn := conn.NewClientUDPConn(c)
 		client.conn = cn
-		client.In = cn.In
-		client.Out = cn.Out
 	default:
 		return ErrInvalidConnectionType
 	}
@@ -48,8 +41,8 @@ func (client *Client) Reg(key cipher.PubKey) error {
 }
 
 func (client *Client) Loop() error {
-	go client.conn.ReadLoop()
-	return client.conn.WriteLoop()
+	go client.conn.WriteLoop()
+	return client.conn.ReadLoop()
 }
 
 func (client *Client) IsClosed() bool {

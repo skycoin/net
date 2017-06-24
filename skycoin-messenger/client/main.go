@@ -8,22 +8,17 @@ import (
 
 func main() {
 	log.SetFlags(log.LstdFlags|log.Lshortfile)
-	go client2()
-	c := client.New()
-	err := c.Connect("tcp", ":8080")
-	//err := c.Connect("udp", ":8081")
-	if err != nil {
-		panic(err)
-	}
-	go c.Loop()
 
-	c.Reg(cipher.PubKey([33]byte{0xf1}))
-	factory := client.NewClientConnectionFactory(c)
-	conn := factory.GetConn(cipher.PubKey([33]byte{0xf2}))
-	conn.Write([]byte("Hello 0xf2"))
+	go client2()
+
+	factory := client.NewClientConnectionFactory()
+	factory.Connect("tcp", ":8080", cipher.PubKey([33]byte{0xf1}))
+	conn := factory.Dial(cipher.PubKey([33]byte{0xf2}))
+	conn.Out <- []byte("Hello 0xf2")
+
 	for {
 		select {
-		case m, ok := <-c.In:
+		case m, ok := <-conn.In:
 			if !ok {
 				log.Println("conn closed")
 				return
@@ -34,21 +29,14 @@ func main() {
 }
 
 func client2() {
-	c := client.New()
-	err := c.Connect("tcp", ":8080")
-	//err := c.Connect("udp", ":8081")
-	if err != nil {
-		panic(err)
-	}
-	go c.Loop()
+	factory := client.NewClientConnectionFactory()
+	factory.Connect("tcp", ":8080", cipher.PubKey([33]byte{0xf2}))
+	conn := factory.Dial(cipher.PubKey([33]byte{0xf1}))
+	conn.Out <- []byte("Hello 0xf1")
 
-	c.Reg(cipher.PubKey([33]byte{0xf2}))
-	factory := client.NewClientConnectionFactory(c)
-	conn := factory.GetConn(cipher.PubKey([33]byte{0xf2}))
-	conn.Write([]byte("Hello 0xf2"))
 	for {
 		select {
-		case m, ok := <-c.In:
+		case m, ok := <-conn.In:
 			if !ok {
 				log.Println("conn closed")
 				return
