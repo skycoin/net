@@ -20,6 +20,18 @@ for {
 }
 ```
 
+```
+factory := client.NewClientConnectionFactory()
+factory.SetIncomingCallback(func(conn *client.ClientConnection, data []byte) bool {
+   log.Printf("msg from %s In %s", conn.Key.Hex(), data)
+   
+   // return true for save this conn in factory so can use conn.Out for resp something
+   // otherwise conn.Out can not be used, because no receiver goroutine exists
+   return true
+})
+factory.Connect("udp", ":8081", cipher.PubKey([33]byte{0xf2}))
+```
+
 ## Server Example
 
 ```
