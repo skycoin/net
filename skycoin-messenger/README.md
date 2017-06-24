@@ -3,33 +3,14 @@
 ## TCP/UDP Client Example
 
 ```
-client := client.New()
-//create a tcp client
-err := c.Connect("tcp", ":8080")
-//create a udp client
-//err := c.Connect("udp", ":8081")
+factory := client.NewClientConnectionFactory()
+factory.Connect("tcp", ":8080", cipher.PubKey([33]byte{0xf1}))
+conn := factory.Dial(cipher.PubKey([33]byte{0xf2}))
+conn.Out <- []byte("Hello 0xf2")
 
-if err != nil {
-   panic(err)
-}
-
-//read and write from socket
-go c.Loop()
-
-//send a reg msg about pubkey to server
-c.Reg(cipher.PubKey([33]byte{0xf1}))
-
-//require a conn by pubkey
-factory := client.NewClientConnectionFactory(c)
-conn := factory.GetConn(cipher.PubKey([33]byte{0xf2}))
-
-//write msg to pubkey 0xf2
-conn.Write([]byte("Hello 0xf2"))
-
-//msg in
 for {
    select {
-   case m, ok := <-c.In:
+   case m, ok := <-conn.In:
       if !ok {
          log.Println("conn closed")
          return
