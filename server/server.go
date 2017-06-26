@@ -3,6 +3,8 @@ package server
 import (
 	"net"
 	"github.com/skycoin/net/conn"
+	"log"
+	"github.com/skycoin/skycoin/src/cipher"
 )
 
 var (
@@ -12,11 +14,14 @@ var (
 type Server struct {
 	TCPAddress string
 	UDPAddress string
-	factory *conn.ConnectionFactory
+	Factory    *conn.ConnectionFactory
 }
 
-func New() *Server {
-	return &Server{TCPAddress: ":8080", UDPAddress: ":8081", factory:DefaultConnectionFactory}
+func New(tcpAddress, udpAddress string) *Server {
+	s := &Server{TCPAddress: tcpAddress, UDPAddress: udpAddress, Factory: DefaultConnectionFactory}
+	DefaultConnectionFactory.TCPClientHandler = s.handleTCP
+	DefaultConnectionFactory.UDPClientHandler = s.handleUDP
+	return s
 }
 
 func (server *Server) ListenTCP() error {
@@ -33,7 +38,7 @@ func (server *Server) ListenTCP() error {
 		if err != nil {
 			return err
 		}
-		connection := server.factory.CreateTCPConn(c)
+		connection := server.Factory.CreateTCPConn(c)
 		go connection.ReadLoop()
 	}
 }
@@ -47,7 +52,50 @@ func (server *Server) ListenUDP() error {
 	if err != nil {
 		return err
 	}
-	udpc := conn.NewServerUDPConn(udp, server.factory)
+	udpc := conn.NewServerUDPConn(udp, server.Factory)
 	return udpc.ReadLoop()
 }
 
+func (server *Server) handleTCP(connection *conn.TCPConn) {
+	for {
+		select {
+		case m, ok := <-connection.In:
+			if !ok {
+				log.Println("conn closed")
+				return
+			}
+			log.Printf("msg in %x", m)
+			key := cipher.NewPubKey(m[:33])
+			c := server.Factory.GetConn(key.Hex())
+			if c == nil {
+				log.Printf("pubkey not found in factory %x", m)
+				continue
+			}
+			publicKey := connection.GetPublicKey()
+			copy(m[:33], publicKey[:])
+			c.Write(m)
+		}
+	}
+}
+
+func (server *Server) handleUDP(connection *conn.UDPConn) {
+	for {
+		select {
+		case m, ok := <-connection.In:
+			if !ok {
+				log.Println("udp conn closed")
+				return
+			}
+			log.Printf("msg in %x", m)
+			key := cipher.NewPubKey(m[:33])
+			c := server.Factory.GetConn(key.Hex())
+			if c == nil {
+				log.Printf("pubkey not found in factory %x", m)
+				continue
+			}
+			publicKey := connection.GetPublicKey()
+			copy(m[:33], publicKey[:])
+			c.Write(m)
+		}
+	}
+}

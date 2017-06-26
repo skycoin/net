@@ -31,6 +31,10 @@ func (c *ClientConnection) WriteLoop() error {
 	}
 }
 
+// func(conn *ClientConnection, data []byte) bool
+//
+// return true for save this conn in factory so can use conn.Out for resp something
+// otherwise conn.Out can not be used, because no receiver goroutine exists
 type IncomingCallbackType func(conn *ClientConnection, data []byte) bool
 
 type ClientConnectionFactory struct {
