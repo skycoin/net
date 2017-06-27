@@ -1,10 +1,11 @@
-package conn
+package server
 
 import (
 	"net"
 	"time"
 	"sync"
 	"log"
+	"github.com/skycoin/net/conn"
 )
 
 var (
@@ -13,31 +14,30 @@ var (
 
 type ConnectionFactory struct {
 	connMapMutex sync.RWMutex
-	connMap      map[string]Connection
+	connMap      map[string]conn.Connection
 
 	udpConnMapMutex sync.RWMutex
-	udpConnMap      map[string]*UDPConn
+	udpConnMap      map[string]*conn.UDPConn
 
-	TCPClientHandler func(connection *TCPConn)
-	UDPClientHandler func(connection *UDPConn)
+	ConnHandler func(connection conn.Connection)
 }
 
 func NewFactory() *ConnectionFactory {
-	return &ConnectionFactory{connMap: make(map[string]Connection),
-		udpConnMap: make(map[string]*UDPConn)}
+	return &ConnectionFactory{connMap: make(map[string]conn.Connection),
+		udpConnMap: make(map[string]*conn.UDPConn)}
 }
 
-func (factory *ConnectionFactory) CreateTCPConn(c *net.TCPConn) *TCPConn {
-	cc := NewTCPConn(c, factory)
-	go factory.TCPClientHandler(cc)
+func (factory *ConnectionFactory) CreateTCPConn(c *net.TCPConn) conn.Connection {
+	cc := NewServerTCPConn(c, factory)
+	go factory.ConnHandler(cc)
 	go func() {
 		cc.WriteLoop()
-		factory.UnRegister(cc.pubkey.Hex(), cc)
+		factory.UnRegister(cc.GetPublicKey().Hex(), cc)
 	}()
 	return cc
 }
 
-func (factory *ConnectionFactory) GetOrCreateUDPConn(c *net.UDPConn, addr *net.UDPAddr) *UDPConn {
+func (factory *ConnectionFactory) GetOrCreateUDPConn(c *net.UDPConn, addr *net.UDPAddr) *conn.UDPConn {
 	log.Println(addr.String())
 	factory.udpConnMapMutex.RLock()
 	if cc, ok := factory.udpConnMap[addr.String()]; ok {
@@ -51,27 +51,27 @@ func (factory *ConnectionFactory) GetOrCreateUDPConn(c *net.UDPConn, addr *net.U
 		go factory.GC()
 	})
 
-	udpConn := NewUDPConn(c, addr)
+	udpConn := conn.NewUDPConn(c, addr)
 	factory.udpConnMapMutex.Lock()
 	factory.udpConnMap[addr.String()] = udpConn
 	factory.udpConnMapMutex.Unlock()
 
-	go factory.UDPClientHandler(udpConn)
+	go factory.ConnHandler(udpConn)
 	go func() {
 		udpConn.WriteLoop()
-		factory.UnRegister(udpConn.pubkey.Hex(), udpConn)
+		factory.UnRegister(udpConn.GetPublicKey().Hex(), udpConn)
 	}()
 	return udpConn
 }
 
-func (factory *ConnectionFactory) Register(pubkey string, conn Connection) {
+func (factory *ConnectionFactory) Register(pubkey string, conn conn.Connection) {
 	factory.connMapMutex.Lock()
 	defer factory.connMapMutex.Unlock()
 	factory.connMap[pubkey] = conn
 	log.Printf("regsiter %s %v", pubkey, conn)
 }
 
-func (factory *ConnectionFactory) UnRegister(pubkey string, conn Connection) {
+func (factory *ConnectionFactory) UnRegister(pubkey string, conn conn.Connection) {
 	factory.connMapMutex.Lock()
 	defer factory.connMapMutex.Unlock()
 	if c, ok := factory.connMap[pubkey]; ok && c == conn {
@@ -81,7 +81,7 @@ func (factory *ConnectionFactory) UnRegister(pubkey string, conn Connection) {
 	log.Printf("UnRegister %s %v", pubkey, conn)
 }
 
-func (factory *ConnectionFactory) GetConn(pubkey string) Connection {
+func (factory *ConnectionFactory) GetConn(pubkey string) conn.Connection {
 	factory.connMapMutex.RLock()
 	defer factory.connMapMutex.RUnlock()
 	if c, ok := factory.connMap[pubkey]; ok {
@@ -102,7 +102,7 @@ func (factory *ConnectionFactory) GC() {
 			factory.udpConnMapMutex.RLock()
 			for k, udp := range factory.udpConnMap {
 				if nowUnix-udp.GetLastTime() >= UDP_GC_PERIOD {
-					udp.close()
+					udp.Close()
 					closed = append(closed, k)
 				}
 			}

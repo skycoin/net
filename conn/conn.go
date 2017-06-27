@@ -11,4 +11,5 @@ type Connection interface {
 	IsClosed() bool
 
 	SendReg(key cipher.PubKey) error
+	GetPublicKey() cipher.PubKey
 }

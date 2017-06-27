@@ -25,10 +25,10 @@ func (client *Client) Connect(network, address string) error {
 
 	switch c := c.(type) {
 	case *net.TCPConn:
-		cn := conn.NewClientTCPConn(c)
+		cn := NewClientTCPConn(c)
 		client.conn = cn
 	case *net.UDPConn:
-		cn := conn.NewClientUDPConn(c)
+		cn := NewClientUDPConn(c)
 		client.conn = cn
 	default:
 		return ErrInvalidConnectionType

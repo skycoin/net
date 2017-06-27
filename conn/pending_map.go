@@ -6,18 +6,18 @@ import (
 )
 
 type PendingMap struct {
-	pending map[uint32]*msg.Message
+	Pending map[uint32]*msg.Message
 	sync.RWMutex
 }
 
-func (m *PendingMap) addMsgToPendingMap(k uint32, v *msg.Message) {
+func (m *PendingMap) AddMsgToPendingMap(k uint32, v *msg.Message) {
 	m.Lock()
-	m.pending[k] = v
+	m.Pending[k] = v
 	m.Unlock()
 }
 
-func (m *PendingMap) delMsgToPendingMap(k uint32) {
+func (m *PendingMap) DelMsgToPendingMap(k uint32) {
 	m.Lock()
-	delete(m.pending, k)
+	delete(m.Pending, k)
 	m.Unlock()
 }

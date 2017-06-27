@@ -8,19 +8,18 @@ import (
 )
 
 var (
-	DefaultConnectionFactory = conn.NewFactory()
+	DefaultConnectionFactory = NewFactory()
 )
 
 type Server struct {
 	TCPAddress string
 	UDPAddress string
-	Factory    *conn.ConnectionFactory
+	Factory    *ConnectionFactory
 }
 
 func New(tcpAddress, udpAddress string) *Server {
 	s := &Server{TCPAddress: tcpAddress, UDPAddress: udpAddress, Factory: DefaultConnectionFactory}
-	DefaultConnectionFactory.TCPClientHandler = s.handleTCP
-	DefaultConnectionFactory.UDPClientHandler = s.handleUDP
+	DefaultConnectionFactory.ConnHandler = s.connHandler
 	return s
 }
 
@@ -52,14 +51,14 @@ func (server *Server) ListenUDP() error {
 	if err != nil {
 		return err
 	}
-	udpc := conn.NewServerUDPConn(udp, server.Factory)
+	udpc := NewServerUDPConn(udp, server.Factory)
 	return udpc.ReadLoop()
 }
 
-func (server *Server) handleTCP(connection *conn.TCPConn) {
+func (server *Server) connHandler(connection conn.Connection) {
 	for {
 		select {
-		case m, ok := <-connection.In:
+		case m, ok := <-connection.GetChanIn():
 			if !ok {
 				log.Println("conn closed")
 				return
@@ -78,24 +77,3 @@ func (server *Server) handleTCP(connection *conn.TCPConn) {
 	}
 }
 
-func (server *Server) handleUDP(connection *conn.UDPConn) {
-	for {
-		select {
-		case m, ok := <-connection.In:
-			if !ok {
-				log.Println("udp conn closed")
-				return
-			}
-			log.Printf("msg in %x", m)
-			key := cipher.NewPubKey(m[:33])
-			c := server.Factory.GetConn(key.Hex())
-			if c == nil {
-				log.Printf("pubkey not found in factory %x", m)
-				continue
-			}
-			publicKey := connection.GetPublicKey()
-			copy(m[:33], publicKey[:])
-			c.Write(m)
-		}
-	}
-}

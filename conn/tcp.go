@@ -18,8 +18,7 @@ const (
 )
 
 type TCPConn struct {
-	factory *ConnectionFactory
-	tcpConn *net.TCPConn
+	TcpConn *net.TCPConn
 	In      chan []byte
 	Out     chan []byte
 
@@ -31,24 +30,16 @@ type TCPConn struct {
 	fieldsMutex sync.RWMutex
 }
 
-type ClientTCPConn struct {
-	TCPConn
-}
-
-func NewTCPConn(c *net.TCPConn, factory *ConnectionFactory) *TCPConn {
-	return &TCPConn{tcpConn: c, factory: factory, In: make(chan []byte), Out: make(chan []byte), PendingMap:PendingMap{pending:make(map[uint32]*msg.Message)}}
-}
-
-func NewClientTCPConn(c *net.TCPConn) *ClientTCPConn {
-	return &ClientTCPConn{TCPConn{tcpConn: c, In: make(chan []byte), Out: make(chan []byte), PendingMap:PendingMap{pending:make(map[uint32]*msg.Message)}}}
+func NewTCPConn(c *net.TCPConn) *TCPConn {
+	return &TCPConn{TcpConn: c, In: make(chan []byte), Out: make(chan []byte), PendingMap: PendingMap{Pending: make(map[uint32]*msg.Message)}}
 }
 
 func (c *TCPConn) ReadLoop() error {
 	defer func() {
-		c.close()
+		c.Close()
 	}()
 	header := make([]byte, msg.MSG_HEADER_SIZE)
-	reader := bufio.NewReader(c.tcpConn)
+	reader := bufio.NewReader(c.TcpConn)
 
 	for {
 		t, err := reader.Peek(msg.MSG_TYPE_SIZE)
@@ -63,15 +54,15 @@ func (c *TCPConn) ReadLoop() error {
 				return err
 			}
 			seq := binary.BigEndian.Uint32(header[msg.MSG_SEQ_BEGIN:msg.MSG_SEQ_END])
-			c.delMsgToPendingMap(seq)
-			log.Printf("acked %d, pending:%d, %v", seq, len(c.pending), c.pending)
+			c.DelMsgToPendingMap(seq)
+			log.Printf("acked %d, Pending:%d, %v", seq, len(c.Pending), c.Pending)
 		case msg.TYPE_PING:
 			reader.Discard(msg.MSG_TYPE_SIZE)
-			err = c.writeBytes([]byte{msg.TYPE_PONG})
+			err = c.WriteBytes([]byte{msg.TYPE_PONG})
 			if err != nil {
 				return err
 			}
-			log.Println("recv ping")
+			log.Println("recv Ping")
 		case msg.TYPE_PONG:
 			reader.Discard(msg.MSG_TYPE_SIZE)
 			log.Println("recv pong")
@@ -88,35 +79,12 @@ func (c *TCPConn) ReadLoop() error {
 			}
 
 			seq := binary.BigEndian.Uint32(header[msg.MSG_TYPE_END:msg.MSG_SEQ_END])
-			c.ack(seq)
+			c.Ack(seq)
 
 			c.In <- m.Body
-		case msg.TYPE_REG:
-			_, err = io.ReadAtLeast(reader, header, msg.MSG_HEADER_SIZE)
-			if err != nil {
-				return err
-			}
-
-			m := msg.NewByHeader(header)
-			_, err = io.ReadAtLeast(reader, m.Body, int(m.Len))
-			if err != nil {
-				return err
-			}
-
-			seq := binary.BigEndian.Uint32(header[msg.MSG_TYPE_END:msg.MSG_SEQ_END])
-			c.ack(seq)
-
-			if m.Len != 33 {
-				continue
-			}
-			key := cipher.NewPubKey(m.Body)
-			c.fieldsMutex.Lock()
-			c.pubkey = key
-			c.fieldsMutex.Unlock()
-			c.factory.Register(key.Hex(), c)
 		}
 
-		c.tcpConn.SetReadDeadline(getTCPReadDeadline())
+		c.UpdateLastTime()
 	}
 	return nil
 }
@@ -124,34 +92,6 @@ func (c *TCPConn) ReadLoop() error {
 func (c *TCPConn) WriteLoop() error {
 	for {
 		select {
-		case m, ok := <-c.Out:
-			if !ok {
-				log.Println("conn closed")
-				return nil
-			}
-			log.Printf("msg Out %x", m)
-			err := c.Write(m)
-			if err != nil {
-				log.Printf("write msg is failed %v", err)
-				return err
-			}
-		}
-	}
-}
-
-func (c *ClientTCPConn) WriteLoop() error {
-	ticker := time.NewTicker(time.Second * TICK_PERIOD)
-	defer func() {
-		ticker.Stop()
-	}()
-	for {
-		select {
-		case <-ticker.C:
-			log.Println("ping out")
-			err := c.ping()
-			if err != nil {
-				return err
-			}
 		case m, ok := <-c.Out:
 			if !ok {
 				log.Println("conn closed")
@@ -180,8 +120,8 @@ func getTCPReadDeadline() time.Time {
 func (c *TCPConn) Write(bytes []byte) error {
 	new := atomic.AddUint32(&c.seq, 1)
 	m := msg.New(msg.TYPE_NORMAL, new, bytes)
-	c.addMsgToPendingMap(new, m)
-	return c.writeBytes(m.Bytes())
+	c.AddMsgToPendingMap(new, m)
+	return c.WriteBytes(m.Bytes())
 }
 
 func (c *TCPConn) WriteSlice(bytes ...[]byte) error {
@@ -191,14 +131,14 @@ func (c *TCPConn) WriteSlice(bytes ...[]byte) error {
 		m.Len += uint32(len(s))
 	}
 	m.BodySlice = bytes
-	c.addMsgToPendingMap(new, m)
-	err := c.writeBytes(m.HeaderBytes())
+	c.AddMsgToPendingMap(new, m)
+	err := c.WriteBytes(m.HeaderBytes())
 	if err != nil {
 		return err
 	}
 
 	for _, m := range bytes {
-		err := c.writeBytes(m)
+		err := c.WriteBytes(m)
 		if err != nil {
 			return err
 		}
@@ -210,13 +150,13 @@ func (c *TCPConn) WriteSlice(bytes ...[]byte) error {
 func (c *TCPConn) SendReg(key cipher.PubKey) error {
 	new := atomic.AddUint32(&c.seq, 1)
 	m := msg.New(msg.TYPE_REG, new, key[:])
-	c.addMsgToPendingMap(new, m)
-	return c.writeBytes(m.Bytes())
+	c.AddMsgToPendingMap(new, m)
+	return c.WriteBytes(m.Bytes())
 }
 
-func (c *TCPConn) writeBytes(bytes []byte) error {
+func (c *TCPConn) WriteBytes(bytes []byte) error {
 	index := 0
-	for n, err := c.tcpConn.Write(bytes[index:]); index != len(bytes); index += n {
+	for n, err := c.TcpConn.Write(bytes[index:]); index != len(bytes); index += n {
 		if err != nil {
 			return err
 		}
@@ -224,17 +164,17 @@ func (c *TCPConn) writeBytes(bytes []byte) error {
 	return nil
 }
 
-func (c *TCPConn) ack(seq uint32) error {
+func (c *TCPConn) Ack(seq uint32) error {
 	resp := make([]byte, msg.MSG_SEQ_END)
 	resp[msg.MSG_TYPE_BEGIN] = msg.TYPE_ACK
 	binary.BigEndian.PutUint32(resp[msg.MSG_SEQ_BEGIN:], seq)
-	return c.writeBytes(resp)
+	return c.WriteBytes(resp)
 }
 
-func (c *TCPConn) ping() error {
+func (c *TCPConn) Ping() error {
 	b := make([]byte, msg.MSG_TYPE_SIZE)
 	b[msg.MSG_TYPE_BEGIN] = msg.TYPE_PING
-	return c.writeBytes(b)
+	return c.WriteBytes(b)
 }
 
 func (c *TCPConn) GetChanOut() chan<- []byte {
@@ -245,7 +185,7 @@ func (c *TCPConn) GetChanIn() <-chan []byte {
 	return c.In
 }
 
-func (c *TCPConn) close() {
+func (c *TCPConn) Close() {
 	defer func() {
 		if err := recover(); err != nil {
 			log.Println("closing closed udpconn")
@@ -262,4 +202,14 @@ func (c *TCPConn) GetPublicKey() cipher.PubKey {
 	c.fieldsMutex.RLock()
 	defer c.fieldsMutex.RUnlock()
 	return c.pubkey
+}
+
+func (c *TCPConn) SetPublicKey(key cipher.PubKey) {
+	c.fieldsMutex.Lock()
+	c.pubkey = key
+	c.fieldsMutex.Unlock()
+}
+
+func (c *TCPConn) UpdateLastTime() {
+	c.TcpConn.SetReadDeadline(getTCPReadDeadline())
 }

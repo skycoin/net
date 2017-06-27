@@ -9,7 +9,6 @@ import (
 	"sync"
 	"sync/atomic"
 	"github.com/skycoin/skycoin/src/cipher"
-	"bytes"
 )
 
 const (
@@ -17,8 +16,7 @@ const (
 )
 
 type UDPConn struct {
-	factory *ConnectionFactory
-	udpConn *net.UDPConn
+	UdpConn *net.UDPConn
 	addr    *net.UDPAddr
 	In      chan []byte
 	Out     chan []byte
@@ -33,72 +31,8 @@ type UDPConn struct {
 	fieldsMutex sync.RWMutex
 }
 
-type ServerUDPConn struct {
-	UDPConn
-}
-
 func NewUDPConn(c *net.UDPConn, addr *net.UDPAddr) *UDPConn {
-	return &UDPConn{udpConn: c, addr: addr, lastTime: time.Now().Unix(), In: make(chan []byte), Out: make(chan []byte), PendingMap:PendingMap{pending:make(map[uint32]*msg.Message)}}
-}
-
-func NewServerUDPConn(c *net.UDPConn, factory *ConnectionFactory) *ServerUDPConn {
-	return &ServerUDPConn{UDPConn{udpConn:c, factory:factory}}
-}
-
-func (c *ServerUDPConn) ReadLoop() error {
-	for {
-		maxBuf := make([]byte, MAX_UDP_PACKAGE_SIZE)
-		n, addr, err := c.udpConn.ReadFromUDP(maxBuf)
-		if err != nil {
-			if e, ok := err.(net.Error); ok {
-				if e.Timeout() {
-					cc := c.factory.GetOrCreateUDPConn(c.udpConn, addr)
-					log.Println("close in")
-					close(cc.In)
-					continue
-				}
-			}
-			return err
-		}
-		maxBuf = maxBuf[:n]
-		cc := c.factory.GetOrCreateUDPConn(c.udpConn, addr)
-
-		t := maxBuf[msg.MSG_TYPE_BEGIN]
-		switch t {
-		case msg.TYPE_ACK:
-			seq := binary.BigEndian.Uint32(maxBuf[msg.MSG_SEQ_BEGIN:msg.MSG_SEQ_END])
-			c.delMsgToPendingMap(seq)
-		case msg.TYPE_PING:
-			log.Println("recv ping")
-			err = cc.writeBytes([]byte{msg.TYPE_PONG})
-			if err != nil {
-				return err
-			}
-		case msg.TYPE_NORMAL:
-			seq := binary.BigEndian.Uint32(maxBuf[msg.MSG_SEQ_BEGIN:msg.MSG_SEQ_END])
-			err = cc.ack(seq)
-			if err != nil {
-				return err
-			}
-			cc.In <- maxBuf[msg.MSG_HEADER_END:]
-		case msg.TYPE_REG:
-			seq := binary.BigEndian.Uint32(maxBuf[msg.MSG_SEQ_BEGIN:msg.MSG_SEQ_END])
-			err = cc.ack(seq)
-			if err != nil {
-				return err
-			}
-			key := cipher.NewPubKey(maxBuf[msg.MSG_HEADER_END:])
-			cc.fieldsMutex.Lock()
-			cc.pubkey = key
-			cc.fieldsMutex.Unlock()
-			c.factory.Register(key.Hex(), cc)
-		}
-
-		cc.fieldsMutex.Lock()
-		cc.lastTime = time.Now().Unix()
-		cc.fieldsMutex.Unlock()
-	}
-	return nil
+	return &UDPConn{UdpConn: c, addr: addr, lastTime: time.Now().Unix(), In: make(chan []byte), Out: make(chan []byte), PendingMap: PendingMap{Pending: make(map[uint32]*msg.Message)}}
 }
 
 func (c *UDPConn) ReadLoop() error {
@@ -130,8 +64,8 @@ func (c *UDPConn) WriteLoop() error {
 func (c *UDPConn) Write(bytes []byte) error {
 	new := atomic.AddUint32(&c.seq, 1)
 	m := msg.New(msg.TYPE_NORMAL, new, bytes)
-	c.addMsgToPendingMap(new, m)
-	return c.writeBytes(m.Bytes())
+	c.AddMsgToPendingMap(new, m)
+	return c.WriteBytes(m.Bytes())
 }
 
 func (c *UDPConn) GetPublicKey() cipher.PubKey {
@@ -140,16 +74,22 @@ func (c *UDPConn) GetPublicKey() cipher.PubKey {
 	return c.pubkey
 }
 
-func (c *UDPConn) writeBytes(bytes []byte) error {
-	_, err := c.udpConn.WriteToUDP(bytes, c.addr)
+func (c *UDPConn) SetPublicKey(key cipher.PubKey) {
+	c.fieldsMutex.Lock()
+	c.pubkey = key
+	c.fieldsMutex.Unlock()
+}
+
+func (c *UDPConn) WriteBytes(bytes []byte) error {
+	_, err := c.UdpConn.WriteToUDP(bytes, c.addr)
 	return err
 }
 
-func (c *UDPConn) ack(seq uint32) error {
+func (c *UDPConn) Ack(seq uint32) error {
 	resp := make([]byte, msg.MSG_SEQ_END)
 	resp[msg.MSG_TYPE_BEGIN] = msg.TYPE_ACK
 	binary.BigEndian.PutUint32(resp[msg.MSG_SEQ_BEGIN:], seq)
-	return c.writeBytes(resp)
+	return c.WriteBytes(resp)
 }
 
 func (c *UDPConn) GetChanOut() chan<- []byte {
@@ -176,7 +116,13 @@ func (c *UDPConn) GetLastTime() int64 {
 	return c.lastTime
 }
 
-func (c *UDPConn) close() {
+func (c *UDPConn) UpdateLastTime() {
+	c.fieldsMutex.Lock()
+	c.lastTime = time.Now().Unix()
+	c.fieldsMutex.Unlock()
+}
+
+func (c *UDPConn) Close() {
 	defer func() {
 		if err := recover(); err != nil {
 			log.Println("closing closed udpconn")
@@ -189,113 +135,6 @@ func (c *UDPConn) close() {
 	close(c.Out)
 }
 
-type ClientUDPConn struct {
-	UDPConn
+func (c *UDPConn) GetNextSeq() uint32 {
+	return atomic.AddUint32(&c.seq, 1)
 }
-
-func NewClientUDPConn(c *net.UDPConn) *ClientUDPConn {
-	return &ClientUDPConn{UDPConn{udpConn:c, In:make(chan []byte), Out:make(chan []byte), PendingMap:PendingMap{pending:make(map[uint32]*msg.Message)}}}
-}
-
-func (c *ClientUDPConn) ReadLoop() error {
-	for {
-		maxBuf := make([]byte, MAX_UDP_PACKAGE_SIZE)
-		n, err := c.udpConn.Read(maxBuf)
-		if err != nil {
-			return err
-		}
-		maxBuf = maxBuf[:n]
-
-		switch maxBuf[msg.MSG_TYPE_BEGIN] {
-		case msg.TYPE_PONG:
-		case msg.TYPE_ACK:
-			seq := binary.BigEndian.Uint32(maxBuf[msg.MSG_SEQ_BEGIN:msg.MSG_SEQ_END])
-			c.delMsgToPendingMap(seq)
-		case msg.TYPE_NORMAL:
-			seq := binary.BigEndian.Uint32(maxBuf[msg.MSG_SEQ_BEGIN:msg.MSG_SEQ_END])
-			err = c.ack(seq)
-			if err != nil {
-				return err
-			}
-			c.In <- maxBuf[msg.MSG_HEADER_END:]
-		}
-	}
-	return nil
-}
-
-const (
-	TICK_PERIOD = 60
-)
-
-func (c *ClientUDPConn) ping() error {
-	b := make([]byte, msg.MSG_TYPE_SIZE)
-	b[msg.MSG_TYPE_BEGIN] = msg.TYPE_PING
-	return c.writeBytes(b)
-}
-
-func (c *ClientUDPConn) WriteLoop() error {
-	ticker := time.NewTicker(time.Second * TICK_PERIOD)
-	defer func() {
-		ticker.Stop()
-	}()
-
-	for {
-		select {
-		case <-ticker.C:
-			log.Println("ping out")
-			err := c.ping()
-			if err != nil {
-				return err
-			}
-		case m, ok := <-c.Out:
-			if !ok {
-				log.Println("udp conn closed")
-				return nil
-			}
-			log.Printf("msg out %x", m)
-			err := c.Write(m)
-			if err != nil {
-				log.Printf("write msg is failed %v", err)
-				return err
-			}
-		}
-	}
-}
-
-func (c *ClientUDPConn) Write(bytes []byte) error {
-	new := atomic.AddUint32(&c.seq, 1)
-	m := msg.New(msg.TYPE_NORMAL, new, bytes)
-	c.addMsgToPendingMap(new, m)
-	return c.writeBytes(m.Bytes())
-}
-
-func (c *ClientUDPConn) WriteSlice(src ...[]byte) error {
-	new := atomic.AddUint32(&c.seq, 1)
-	r := &bytes.Buffer{}
-	for _, b := range src {
-		r.Write(b)
-	}
-	m := msg.New(msg.TYPE_NORMAL, new, r.Bytes())
-	c.addMsgToPendingMap(new, m)
-	return c.writeBytes(m.Bytes())
-}
-
-func (c *ClientUDPConn) writeBytes(bytes []byte) error {
-	_, err := c.udpConn.Write(bytes)
-	return err
-}
-
-func (c *ClientUDPConn) ack(seq uint32) error {
-	resp := make([]byte, msg.MSG_SEQ_END)
-	resp[msg.MSG_TYPE_BEGIN] = msg.TYPE_ACK
-	binary.BigEndian.PutUint32(resp[msg.MSG_SEQ_BEGIN:], seq)
-	return c.writeBytes(resp)
-}
-
-func (c *ClientUDPConn) SendReg(key cipher.PubKey) error {
-	new := atomic.AddUint32(&c.seq, 1)
-	m := msg.New(msg.TYPE_REG, new, key[:])
-	c.addMsgToPendingMap(new, m)
-	return c.writeBytes(m.Bytes())
-}
-
