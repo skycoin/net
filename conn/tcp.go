@@ -256,7 +256,6 @@ func (c *TCPConn) close() {
 	c.fieldsMutex.Unlock()
 	close(c.In)
 	close(c.Out)
-	c.factory.UnRegister(c.pubkey.Hex(), c)
 }
 
 func (c *TCPConn) GetPublicKey() cipher.PubKey {

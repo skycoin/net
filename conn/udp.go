@@ -187,7 +187,6 @@ func (c *UDPConn) close() {
 	c.fieldsMutex.Unlock()
 	close(c.In)
 	close(c.Out)
-	c.factory.UnRegister(c.pubkey.Hex(), c)
 }
 
 type ClientUDPConn struct {
