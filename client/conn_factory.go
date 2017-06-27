@@ -40,14 +40,14 @@ type IncomingCallbackType func(conn *ClientConnection, data []byte) bool
 type ClientConnectionFactory struct {
 	client           *Client
 	incomingCallback IncomingCallbackType
-	fieldsMutex      *sync.RWMutex
+	fieldsMutex      sync.RWMutex
 
 	connections      map[string]*ClientConnection
-	connectionsMutex *sync.RWMutex
+	connectionsMutex sync.RWMutex
 }
 
 func NewClientConnectionFactory() *ClientConnectionFactory {
-	return &ClientConnectionFactory{fieldsMutex: new(sync.RWMutex), connectionsMutex: new(sync.RWMutex)}
+	return &ClientConnectionFactory{}
 }
 
 var (

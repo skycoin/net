@@ -12,10 +12,10 @@ var (
 )
 
 type ConnectionFactory struct {
-	connMapMutex *sync.RWMutex
+	connMapMutex sync.RWMutex
 	connMap      map[string]Connection
 
-	udpConnMapMutex *sync.RWMutex
+	udpConnMapMutex sync.RWMutex
 	udpConnMap      map[string]*UDPConn
 
 	TCPClientHandler func(connection *TCPConn)
@@ -23,8 +23,8 @@ type ConnectionFactory struct {
 }
 
 func NewFactory() *ConnectionFactory {
-	return &ConnectionFactory{connMapMutex: new(sync.RWMutex), connMap: make(map[string]Connection),
-		udpConnMapMutex:                    new(sync.RWMutex), udpConnMap: make(map[string]*UDPConn)}
+	return &ConnectionFactory{connMap: make(map[string]Connection),
+		udpConnMap: make(map[string]*UDPConn)}
 }
 
 func (factory *ConnectionFactory) CreateTCPConn(c *net.TCPConn) *TCPConn {

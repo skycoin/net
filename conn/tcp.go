@@ -23,12 +23,12 @@ type TCPConn struct {
 	In      chan []byte
 	Out     chan []byte
 
-	seq     uint32
-	pending map[uint32]*msg.Message
+	seq          uint32
+	PendingMap
 
-	closed bool
-	pubkey cipher.PubKey
-	fieldsMutex *sync.RWMutex
+	closed      bool
+	pubkey      cipher.PubKey
+	fieldsMutex sync.RWMutex
 }
 
 type ClientTCPConn struct {
@@ -36,11 +36,11 @@ type ClientTCPConn struct {
 }
 
 func NewTCPConn(c *net.TCPConn, factory *ConnectionFactory) *TCPConn {
-	return &TCPConn{tcpConn: c, factory: factory ,In: make(chan []byte), Out: make(chan []byte), pending: make(map[uint32]*msg.Message), fieldsMutex:new(sync.RWMutex)}
+	return &TCPConn{tcpConn: c, factory: factory, In: make(chan []byte), Out: make(chan []byte), PendingMap:PendingMap{pending:make(map[uint32]*msg.Message)}}
 }
 
 func NewClientTCPConn(c *net.TCPConn) *ClientTCPConn {
-	return &ClientTCPConn{TCPConn{tcpConn: c,In: make(chan []byte), Out: make(chan []byte), pending: make(map[uint32]*msg.Message), fieldsMutex:new(sync.RWMutex)}}
+	return &ClientTCPConn{TCPConn{tcpConn: c, In: make(chan []byte), Out: make(chan []byte), PendingMap:PendingMap{pending:make(map[uint32]*msg.Message)}}}
 }
 
 func (c *TCPConn) ReadLoop() error {
@@ -63,7 +63,7 @@ func (c *TCPConn) ReadLoop() error {
 				return err
 			}
 			seq := binary.BigEndian.Uint32(header[msg.MSG_SEQ_BEGIN:msg.MSG_SEQ_END])
-			delete(c.pending, seq)
+			c.delMsgToPendingMap(seq)
 			log.Printf("acked %d, pending:%d, %v", seq, len(c.pending), c.pending)
 		case msg.TYPE_PING:
 			reader.Discard(msg.MSG_TYPE_SIZE)
@@ -180,7 +180,7 @@ func getTCPReadDeadline() time.Time {
 func (c *TCPConn) Write(bytes []byte) error {
 	new := atomic.AddUint32(&c.seq, 1)
 	m := msg.New(msg.TYPE_NORMAL, new, bytes)
-	c.pending[new] = m
+	c.addMsgToPendingMap(new, m)
 	return c.writeBytes(m.Bytes())
 }
 
@@ -191,7 +191,7 @@ func (c *TCPConn) WriteSlice(bytes ...[]byte) error {
 		m.Len += uint32(len(s))
 	}
 	m.BodySlice = bytes
-	c.pending[new] = m
+	c.addMsgToPendingMap(new, m)
 	err := c.writeBytes(m.HeaderBytes())
 	if err != nil {
 		return err
@@ -210,7 +210,7 @@ func (c *TCPConn) WriteSlice(bytes ...[]byte) error {
 func (c *TCPConn) SendReg(key cipher.PubKey) error {
 	new := atomic.AddUint32(&c.seq, 1)
 	m := msg.New(msg.TYPE_REG, new, key[:])
-	c.pending[new] = m
+	c.addMsgToPendingMap(new, m)
 	return c.writeBytes(m.Bytes())
 }
 

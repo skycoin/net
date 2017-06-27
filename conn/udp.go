@@ -23,29 +23,26 @@ type UDPConn struct {
 	In      chan []byte
 	Out     chan []byte
 
-	seq     uint32
-	pending map[uint32]*msg.Message
+	seq          uint32
+	PendingMap
+
 
 	lastTime    int64
 	closed      bool
 	pubkey      cipher.PubKey
-	fieldsMutex *sync.RWMutex
+	fieldsMutex sync.RWMutex
 }
 
 type ServerUDPConn struct {
 	UDPConn
-	factory *ConnectionFactory
 }
 
 func NewUDPConn(c *net.UDPConn, addr *net.UDPAddr) *UDPConn {
-	return &UDPConn{udpConn: c, addr: addr, lastTime: time.Now().Unix(), fieldsMutex: new(sync.RWMutex), In: make(chan []byte), Out: make(chan []byte), pending: make(map[uint32]*msg.Message)}
+	return &UDPConn{udpConn: c, addr: addr, lastTime: time.Now().Unix(), In: make(chan []byte), Out: make(chan []byte), PendingMap:PendingMap{pending:make(map[uint32]*msg.Message)}}
 }
 
 func NewServerUDPConn(c *net.UDPConn, factory *ConnectionFactory) *ServerUDPConn {
-	sc := &ServerUDPConn{}
-	sc.factory = factory
-	sc.udpConn = c
-	return sc
+	return &ServerUDPConn{UDPConn{udpConn:c, factory:factory}}
 }
 
 func (c *ServerUDPConn) ReadLoop() error {
@@ -70,7 +67,7 @@ func (c *ServerUDPConn) ReadLoop() error {
 		switch t {
 		case msg.TYPE_ACK:
 			seq := binary.BigEndian.Uint32(maxBuf[msg.MSG_SEQ_BEGIN:msg.MSG_SEQ_END])
-			delete(c.pending, seq)
+			c.delMsgToPendingMap(seq)
 		case msg.TYPE_PING:
 			log.Println("recv ping")
 			err = cc.writeBytes([]byte{msg.TYPE_PONG})
@@ -133,7 +130,7 @@ func (c *UDPConn) WriteLoop() error {
 func (c *UDPConn) Write(bytes []byte) error {
 	new := atomic.AddUint32(&c.seq, 1)
 	m := msg.New(msg.TYPE_NORMAL, new, bytes)
-	c.pending[new] = m
+	c.addMsgToPendingMap(new, m)
 	return c.writeBytes(m.Bytes())
 }
 
@@ -193,18 +190,12 @@ func (c *UDPConn) close() {
 	c.factory.UnRegister(c.pubkey.Hex(), c)
 }
 
-
 type ClientUDPConn struct {
 	UDPConn
 }
 
 func NewClientUDPConn(c *net.UDPConn) *ClientUDPConn {
-	cc := &ClientUDPConn{}
-	cc.udpConn = c
-	cc.In = make(chan []byte)
-	cc.Out = make(chan []byte)
-	cc.pending = make(map[uint32]*msg.Message)
-	return cc
+	return &ClientUDPConn{UDPConn{udpConn:c, In:make(chan []byte), Out:make(chan []byte), PendingMap:PendingMap{pending:make(map[uint32]*msg.Message)}}}
 }
 
 func (c *ClientUDPConn) ReadLoop() error {
@@ -220,7 +211,7 @@ func (c *ClientUDPConn) ReadLoop() error {
 		case msg.TYPE_PONG:
 		case msg.TYPE_ACK:
 			seq := binary.BigEndian.Uint32(maxBuf[msg.MSG_SEQ_BEGIN:msg.MSG_SEQ_END])
-			delete(c.pending, seq)
+			c.delMsgToPendingMap(seq)
 		case msg.TYPE_NORMAL:
 			seq := binary.BigEndian.Uint32(maxBuf[msg.MSG_SEQ_BEGIN:msg.MSG_SEQ_END])
 			err = c.ack(seq)
@@ -242,7 +233,6 @@ func (c *ClientUDPConn) ping() error {
 	b[msg.MSG_TYPE_BEGIN] = msg.TYPE_PING
 	return c.writeBytes(b)
 }
-
 
 func (c *ClientUDPConn) WriteLoop() error {
 	ticker := time.NewTicker(time.Second * TICK_PERIOD)
@@ -276,7 +266,7 @@ func (c *ClientUDPConn) WriteLoop() error {
 func (c *ClientUDPConn) Write(bytes []byte) error {
 	new := atomic.AddUint32(&c.seq, 1)
 	m := msg.New(msg.TYPE_NORMAL, new, bytes)
-	c.pending[new] = m
+	c.addMsgToPendingMap(new, m)
 	return c.writeBytes(m.Bytes())
 }
 
@@ -287,7 +277,7 @@ func (c *ClientUDPConn) WriteSlice(src ...[]byte) error {
 		r.Write(b)
 	}
 	m := msg.New(msg.TYPE_NORMAL, new, r.Bytes())
-	c.pending[new] = m
+	c.addMsgToPendingMap(new, m)
 	return c.writeBytes(m.Bytes())
 }
 
@@ -306,6 +296,7 @@ func (c *ClientUDPConn) ack(seq uint32) error {
 func (c *ClientUDPConn) SendReg(key cipher.PubKey) error {
 	new := atomic.AddUint32(&c.seq, 1)
 	m := msg.New(msg.TYPE_REG, new, key[:])
-	c.pending[new] = m
+	c.addMsgToPendingMap(new, m)
 	return c.writeBytes(m.Bytes())
 }
+

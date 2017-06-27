@@ -3,8 +3,6 @@ package main
 import (
 	"github.com/skycoin/net/server"
 	"log"
-	"github.com/skycoin/net/conn"
-	"github.com/skycoin/skycoin/src/cipher"
 )
 
 func main() {
