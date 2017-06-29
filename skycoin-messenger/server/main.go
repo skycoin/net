@@ -6,7 +6,7 @@ import (
 )
 
 func main() {
-	log.SetFlags(log.LstdFlags|log.Lshortfile)
+	log.SetFlags(log.LstdFlags | log.Lshortfile)
 	s := server.New(":8080", ":8081")
 	go func() {
 		log.Println("listening udp")
@@ -19,4 +19,3 @@ func main() {
 		panic(err)
 	}
 }
-

@@ -67,6 +67,10 @@ func (factory *ConnectionFactory) GetOrCreateUDPConn(c *net.UDPConn, addr *net.U
 func (factory *ConnectionFactory) Register(pubkey string, conn conn.Connection) {
 	factory.connMapMutex.Lock()
 	defer factory.connMapMutex.Unlock()
+	if o, ok := factory.connMap[pubkey]; ok && o != conn {
+		log.Printf("regsitered %s %v", pubkey, o)
+		o.Close()
+	}
 	factory.connMap[pubkey] = conn
 	log.Printf("regsiter %s %v", pubkey, conn)
 }

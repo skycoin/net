@@ -6,6 +6,8 @@ import (
 	"sync"
 	"log"
 	"errors"
+	"unsafe"
+	"sync/atomic"
 )
 
 type ClientConnection struct {
@@ -74,7 +76,7 @@ func (factory *ClientConnectionFactory) Connect(network, address string, key cip
 	}
 	go func() {
 		c.Loop()
-		factory.close()
+		factory.Close()
 	}()
 
 	go factory.dispatch()
@@ -92,13 +94,13 @@ func (factory *ClientConnectionFactory) SetIncomingCallback(fn IncomingCallbackT
 	factory.incomingCallback = fn
 }
 
-func (factory *ClientConnectionFactory) close() {
+func (factory *ClientConnectionFactory) Close() {
 	factory.connectionsMutex.Lock()
 	for _, v := range factory.connections {
 		func() {
 			defer func() {
 				if err := recover(); err != nil {
-					log.Printf("ClientConnectionFactory close err %v", err)
+					log.Printf("ClientConnectionFactory Close err %v", err)
 				}
 			}()
 			close(v.In)
@@ -147,8 +149,14 @@ func (factory *ClientConnectionFactory) dispatch() {
 }
 
 func (factory *ClientConnectionFactory) Dial(key cipher.PubKey) *ClientConnection {
-	connection := NewClientConnection(key, factory.client)
+	factory.connectionsMutex.RLock()
+	if o, ok := factory.connections[key.Hex()]; ok {
+		factory.connectionsMutex.RUnlock()
+		return o
+	}
+	factory.connectionsMutex.RUnlock()
 
+	connection := NewClientConnection(key, factory.client)
 	factory.connectionsMutex.Lock()
 	factory.connections[key.Hex()] = connection
 	factory.connectionsMutex.Unlock()
@@ -157,14 +165,3 @@ func (factory *ClientConnectionFactory) Dial(key cipher.PubKey) *ClientConnectio
 	return connection
 }
 
-type ClientDirectConnectionFactory struct {
-	ClientConnectionFactory
-}
-
-func NewClientDirectConnectionFactory(client *Client) *ClientDirectConnectionFactory {
-	return &ClientDirectConnectionFactory{ClientConnectionFactory{client: client}}
-}
-
-func (factory *ClientDirectConnectionFactory) GetConn(key cipher.PubKey) *ClientConnection {
-	return &ClientConnection{Key: key, client: factory.client}
-}

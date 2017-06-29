@@ -8,6 +8,7 @@ type Connection interface {
 	Write(bytes []byte) error
 	WriteSlice(bytes ...[]byte) error
 	GetChanIn() <-chan []byte
+	Close()
 	IsClosed() bool
 
 	SendReg(key cipher.PubKey) error
