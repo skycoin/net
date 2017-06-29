@@ -17,6 +17,7 @@ type OP interface {
 type OPer interface {
 	GetFactory() *client.ClientConnectionFactory
 	SetFactory(factory *client.ClientConnectionFactory)
+	PushLoop(conn *client.ClientConnection, data []byte)
 }
 
 func GetOP(opn int) OP {

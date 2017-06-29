@@ -16,3 +16,12 @@ func String2ByteSlice(s string) []byte {
 	return result
 }
 
+// convert []byte to string without memory copy
+func ByteSlice2String(bs []byte) string {
+	shdr := (*reflect.SliceHeader)(unsafe.Pointer(&bs))
+	var result string
+	hdr := (*reflect.StringHeader)(unsafe.Pointer(&result))
+	hdr.Data = shdr.Data
+	hdr.Len = shdr.Len
+	return result
+}

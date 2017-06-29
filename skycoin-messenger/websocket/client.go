@@ -8,6 +8,7 @@ import (
 	"sync"
 	"github.com/skycoin/net/client"
 	"encoding/json"
+	"github.com/skycoin/net/util"
 )
 
 type Client struct {
@@ -15,7 +16,7 @@ type Client struct {
 	sync.RWMutex
 
 	conn *websocket.Conn
-	send chan []byte
+	push chan interface{}
 }
 
 func (c *Client) GetFactory() *client.ClientConnectionFactory {
@@ -33,13 +34,34 @@ func (c *Client) SetFactory(factory *client.ClientConnectionFactory) {
 	c.Unlock()
 }
 
+func (c *Client) PushLoop(conn *client.ClientConnection, data []byte) {
+	defer func() {
+		if err := recover(); err != nil {
+			log.Printf("PushLoop recovered err %v", err)
+		}
+	}()
+	push := &msg.PushMsg{PublicKey: conn.Key.Hex(), Msg: util.ByteSlice2String(data)}
+	c.push <- push
+	for {
+		select {
+		case m, ok := <-conn.In:
+			if !ok {
+				return
+			}
+			push.Msg = util.ByteSlice2String(m)
+			c.push <- push
+		}
+	}
+}
+
 func (c *Client) readLoop() {
 	defer func() {
 		if err := recover(); err != nil {
 			log.Printf("readLoop recovered err %v", err)
 		}
+		c.SetFactory(nil)
 		c.conn.Close()
-		close(c.send)
+		close(c.push)
 	}()
 	c.conn.SetReadLimit(maxMessageSize)
 	c.conn.SetReadDeadline(time.Now().Add(pongWait))
@@ -78,11 +100,12 @@ func (c *Client) writeLoop() {
 			log.Printf("writeLoop recovered err %v", err)
 		}
 		ticker.Stop()
+		c.SetFactory(nil)
 		c.conn.Close()
 	}()
 	for {
 		select {
-		case message, ok := <-c.send:
+		case message, ok := <-c.push:
 			c.conn.SetWriteDeadline(time.Now().Add(writeWait))
 			if !ok {
 				c.conn.WriteMessage(websocket.CloseMessage, []byte{})
@@ -93,7 +116,21 @@ func (c *Client) writeLoop() {
 			if err != nil {
 				return
 			}
-			w.Write(message)
+			switch m := message.(type) {
+			case msg.PushMsg:
+				_, err := w.Write([]byte{msg.PUSH_MSG})
+				if err != nil {
+					return
+				}
+				jbs, err := json.Marshal(m)
+				if err != nil {
+					return
+				}
+				_, err = w.Write(jbs)
+				if err != nil {
+					return
+				}
+			}
 			if err := w.Close(); err != nil {
 				return
 			}

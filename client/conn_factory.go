@@ -6,8 +6,6 @@ import (
 	"sync"
 	"log"
 	"errors"
-	"unsafe"
-	"sync/atomic"
 )
 
 type ClientConnection struct {
@@ -95,6 +93,14 @@ func (factory *ClientConnectionFactory) SetIncomingCallback(fn IncomingCallbackT
 }
 
 func (factory *ClientConnectionFactory) Close() {
+	factory.fieldsMutex.Lock()
+	if factory.client == nil {
+		factory.fieldsMutex.Unlock()
+		return
+	}
+	factory.client = nil
+	factory.fieldsMutex.Unlock()
+
 	factory.connectionsMutex.Lock()
 	for _, v := range factory.connections {
 		func() {
@@ -108,10 +114,6 @@ func (factory *ClientConnectionFactory) Close() {
 		}()
 	}
 	factory.connectionsMutex.Unlock()
-
-	factory.fieldsMutex.Lock()
-	factory.client = nil
-	factory.fieldsMutex.Unlock()
 }
 
 func (factory *ClientConnectionFactory) dispatch() {

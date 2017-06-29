@@ -30,6 +30,7 @@ func (r *Reg) Execute(c msg.OPer) error {
 	f := client.NewClientConnectionFactory()
 	f.SetIncomingCallback(func(conn *client.ClientConnection, data []byte) bool {
 		log.Printf("msg from %s In %s", conn.Key.Hex(), data)
+		go c.PushLoop(conn, data)
 		return true
 	})
 	c.SetFactory(f)

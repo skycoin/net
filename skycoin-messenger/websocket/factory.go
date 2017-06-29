@@ -3,31 +3,34 @@ package websocket
 import (
 	"github.com/gorilla/websocket"
 	"sync"
+	"time"
+	"log"
 )
 
 type Factory struct {
-	clients map[*Client]bool
+	clients      map[*Client]bool
 	clientsMutex sync.RWMutex
 }
 
 func NewFactory() *Factory {
-	return &Factory{clients:make(map[*Client]bool)}
+	return &Factory{clients: make(map[*Client]bool)}
 }
 
 var (
-	once = &sync.Once{}
+	once           = &sync.Once{}
 	defaultFactory *Factory
 )
 
 func GetFactory() *Factory {
 	once.Do(func() {
 		defaultFactory = NewFactory()
+		go defaultFactory.logStatus()
 	})
 	return defaultFactory
 }
 
 func (factory *Factory) NewClient(conn *websocket.Conn) *Client {
-	client := &Client{conn: conn, send: make(chan []byte)}
+	client := &Client{conn: conn, push: make(chan interface{})}
 	factory.clientsMutex.Lock()
 	factory.clients[client] = true
 	factory.clientsMutex.Unlock()
@@ -38,4 +41,16 @@ func (factory *Factory) NewClient(conn *websocket.Conn) *Client {
 		factory.clientsMutex.Unlock()
 	}()
 	return client
+}
+
+func (factory *Factory) logStatus() {
+	ticker := time.NewTicker(time.Second * 5)
+	for {
+		select {
+		case <-ticker.C:
+			factory.clientsMutex.RLock()
+			log.Printf("websocket factory clients count:%d", len(factory.clients))
+			factory.clientsMutex.RUnlock()
+		}
+	}
 }

@@ -10,3 +10,12 @@ func TestString2ByteSlice(t *testing.T) {
 	}
 	t.Logf("%s", bs)
 }
+
+func TestByteSlice2String(t *testing.T) {
+	bs := []byte("world")
+	s := ByteSlice2String(bs)
+	if s != string(bs) {
+		t.Fail()
+	}
+	t.Logf("%s", s)
+}
