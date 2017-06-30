@@ -17,7 +17,7 @@ type ServerTCPConn struct {
 }
 
 func NewServerTCPConn(c *net.TCPConn, factory *ConnectionFactory) *ServerTCPConn {
-	return &ServerTCPConn{TCPConn:conn.TCPConn{TcpConn: c, In: make(chan []byte), Out: make(chan []byte), PendingMap: conn.PendingMap{Pending: make(map[uint32]*msg.Message)}}, factory:factory}
+	return &ServerTCPConn{TCPConn: conn.TCPConn{TcpConn: c, In: make(chan []byte), Out: make(chan []byte), PendingMap: conn.PendingMap{Pending: make(map[uint32]*msg.Message)}}, factory: factory}
 }
 
 func (c *ServerTCPConn) ReadLoop() error {
@@ -66,7 +66,14 @@ func (c *ServerTCPConn) ReadLoop() error {
 			seq := binary.BigEndian.Uint32(header[msg.MSG_TYPE_END:msg.MSG_SEQ_END])
 			c.Ack(seq)
 
-			c.In <- m.Body
+			func() {
+				defer func() {
+					if err := recover(); err != nil {
+						log.Printf("c.In <- m.Body panic %v, %x", err, m.Body)
+					}
+				}()
+				c.In <- m.Body
+			}()
 		case msg.TYPE_REG:
 			_, err = io.ReadAtLeast(reader, header, msg.MSG_HEADER_SIZE)
 			if err != nil {

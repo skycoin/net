@@ -22,7 +22,10 @@ func NewClientConnection(key cipher.PubKey, client *Client) *ClientConnection {
 func (c *ClientConnection) WriteLoop() error {
 	for {
 		select {
-		case d := <-c.Out:
+		case d, ok := <-c.Out:
+			if !ok {
+				return nil
+			}
 			err := c.client.conn.WriteSlice(c.Key[:], d)
 			if err != nil {
 				return err
@@ -47,7 +50,12 @@ type ClientConnectionFactory struct {
 }
 
 func NewClientConnectionFactory() *ClientConnectionFactory {
-	return &ClientConnectionFactory{}
+	return &ClientConnectionFactory{incomingCallback: defaultIncomingCallback}
+}
+
+func defaultIncomingCallback(conn *ClientConnection, data []byte) bool {
+	log.Printf("msg from %s In %s", conn.Key.Hex(), data)
+	return true
 }
 
 var (
@@ -166,4 +174,3 @@ func (factory *ClientConnectionFactory) Dial(key cipher.PubKey) *ClientConnectio
 	go connection.WriteLoop()
 	return connection
 }
-

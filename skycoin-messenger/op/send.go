@@ -27,6 +27,5 @@ func (s *Send) Execute(c msg.OPer) error {
 	}
 	connection := c.GetFactory().Dial(key)
 	connection.Out <- util.String2ByteSlice(s.Msg)
-
 	return nil
 }

@@ -55,7 +55,9 @@ func (c *TCPConn) ReadLoop() error {
 			}
 			seq := binary.BigEndian.Uint32(header[msg.MSG_SEQ_BEGIN:msg.MSG_SEQ_END])
 			c.DelMsgToPendingMap(seq)
+			c.PendingMap.RLock()
 			log.Printf("acked %d, Pending:%d, %v", seq, len(c.Pending), c.Pending)
+			c.PendingMap.RUnlock()
 		case msg.TYPE_PING:
 			reader.Discard(msg.MSG_TYPE_SIZE)
 			err = c.WriteBytes([]byte{msg.TYPE_PONG})
@@ -192,6 +194,10 @@ func (c *TCPConn) Close() {
 		}
 	}()
 	c.fieldsMutex.Lock()
+	if c.closed {
+		c.fieldsMutex.Unlock()
+		return
+	}
 	c.closed = true
 	c.fieldsMutex.Unlock()
 	close(c.In)
