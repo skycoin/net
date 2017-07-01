@@ -1,15 +1,18 @@
-import { Injectable } from '@angular/core';
+import {Injectable} from '@angular/core';
+
+export enum OP { REG, SEND, ACK}
+;
 
 @Injectable()
 export class SocketService {
   private ws: WebSocket = null;
   private url = '';
+  private ackDict = new Dictionary<number, any>();
+  private seqId = 0;
+
   constructor() {
   }
 
-  /**
-   * Register
-   */
   start() {
     this.ws = new WebSocket(this.url);
     this.ws.binaryType = 'arraybuffer';
@@ -25,16 +28,46 @@ export class SocketService {
     }
   }
 
-  send(op?: number, json?: string) {
-    const buf: Uint8Array = new Uint8Array(13);
-    let uintjson: Uint8Array;
-    if (json) {
-      uintjson = this.stringToUint8(json);
-    }
-    buf[0] = 0xff & (op >> 8);
-    buf[1] = 0xff & op;
+  private getSeq(buf: Uint8Array): number {
+    return (buf[1] << 24) | (buf[2] << 16) | (buf[3] << 8) | (buf[4]);
   }
 
+  private send(op: number, json?: string) {
+    this.ackDict.setValue(++this.seqId, { op: op, json: json });
+    this.sendWithSeq(op, this.seqId, json);
+  }
+
+  private sendWithSeq(op, seq: number, json?: string) {
+    let buf: Uint8Array;
+    let uintjson: Uint8Array;
+    if (json) {
+      console.debug(json);
+      uintjson = this.stringToUint8(json);
+      buf = new Uint8Array(uintjson.length + 5);
+      for (var i = 5; i < buf.byteLength; i++) {
+        buf[i] = uintjson[i - 5];
+      }
+    } else {
+      buf = new Uint8Array(5);
+    }
+
+    //op
+    buf[0] = 0xff & op;
+    //seq
+    buf[1] = 0xff & (seq >> 24);
+    buf[2] = 0xff & (seq >> 16);
+    buf[3] = 0xff & (seq >> 8);
+    buf[4] = 0xff & seq;
+
+    // this.waitForConnection(() => {
+    this.ws.send(buf);
+    // }, 1000);
+  }
+
+  ack(op: any, seq: number) {
+    console.debug('op:%s seq:%d', op, seq);
+    this.sendWithSeq(OP.ACK, seq);
+  }
 
   private stringToUint8(str: string): Uint8Array {
     const bytes = new Array();
