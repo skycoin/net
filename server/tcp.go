@@ -17,7 +17,7 @@ type ServerTCPConn struct {
 }
 
 func NewServerTCPConn(c *net.TCPConn, factory *ConnectionFactory) *ServerTCPConn {
-	return &ServerTCPConn{TCPConn: conn.TCPConn{TcpConn: c, In: make(chan []byte), Out: make(chan []byte), PendingMap: conn.PendingMap{Pending: make(map[uint32]*msg.Message)}}, factory: factory}
+	return &ServerTCPConn{TCPConn: conn.TCPConn{TcpConn: c, In: make(chan []byte), Out: make(chan []byte), PendingMap: conn.PendingMap{Pending: make(map[uint32]interface{})}}, factory: factory}
 }
 
 func (c *ServerTCPConn) ReadLoop() error {

@@ -5,6 +5,7 @@ import (
 	"sync"
 	"time"
 	"log"
+	"github.com/skycoin/net/conn"
 )
 
 type Factory struct {
@@ -30,7 +31,7 @@ func GetFactory() *Factory {
 }
 
 func (factory *Factory) NewClient(conn *websocket.Conn) *Client {
-	client := &Client{conn: conn, push: make(chan interface{})}
+	client := &Client{conn: conn, push: make(chan interface{}), PendingMap: conn.PendingMap{Pending: make(map[uint32]interface{})}}
 	factory.clientsMutex.Lock()
 	factory.clients[client] = true
 	factory.clientsMutex.Unlock()

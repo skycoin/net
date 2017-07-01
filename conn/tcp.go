@@ -30,10 +30,6 @@ type TCPConn struct {
 	fieldsMutex sync.RWMutex
 }
 
-func NewTCPConn(c *net.TCPConn) *TCPConn {
-	return &TCPConn{TcpConn: c, In: make(chan []byte), Out: make(chan []byte), PendingMap: PendingMap{Pending: make(map[uint32]*msg.Message)}}
-}
-
 func (c *TCPConn) ReadLoop() error {
 	defer func() {
 		c.Close()

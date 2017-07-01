@@ -17,15 +17,13 @@ func (g *Gateway) Send(op *op.Send, result *int) error {
 }
 
 func (g *Gateway) Receive(option int, msgs *[]*msg.PushMsg) error {
-	var result []*msg.PushMsg
 	for {
 		select {
 		case m, ok := <-DefaultClient.push:
 			if !ok {
 				return nil
 			}
-			result = append(result, &m)
-			msgs = &result
+			*msgs = append(*msgs, &m)
 		default:
 			return nil
 		}

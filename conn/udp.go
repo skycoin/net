@@ -32,7 +32,7 @@ type UDPConn struct {
 }
 
 func NewUDPConn(c *net.UDPConn, addr *net.UDPAddr) *UDPConn {
-	return &UDPConn{UdpConn: c, addr: addr, lastTime: time.Now().Unix(), In: make(chan []byte), Out: make(chan []byte), PendingMap: PendingMap{Pending: make(map[uint32]*msg.Message)}}
+	return &UDPConn{UdpConn: c, addr: addr, lastTime: time.Now().Unix(), In: make(chan []byte), Out: make(chan []byte), PendingMap: PendingMap{Pending: make(map[uint32]interface{})}}
 }
 
 func (c *UDPConn) ReadLoop() error {

@@ -5,7 +5,6 @@ import (
 	"github.com/skycoin/net/conn"
 	"net"
 	"log"
-	"github.com/skycoin/net/msg"
 )
 
 type ClientTCPConn struct {
@@ -13,7 +12,7 @@ type ClientTCPConn struct {
 }
 
 func NewClientTCPConn(c *net.TCPConn) *ClientTCPConn {
-	return &ClientTCPConn{conn.TCPConn{TcpConn: c, In: make(chan []byte), Out: make(chan []byte), PendingMap: conn.PendingMap{Pending: make(map[uint32]*msg.Message)}}}
+	return &ClientTCPConn{conn.TCPConn{TcpConn: c, In: make(chan []byte), Out: make(chan []byte), PendingMap: conn.PendingMap{Pending: make(map[uint32]interface{})}}}
 }
 
 func (c *ClientTCPConn) WriteLoop() error {

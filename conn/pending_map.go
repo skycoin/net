@@ -1,16 +1,15 @@
 package conn
 
 import (
-	"github.com/skycoin/net/msg"
 	"sync"
 )
 
 type PendingMap struct {
-	Pending map[uint32]*msg.Message
+	Pending map[uint32]interface{}
 	sync.RWMutex
 }
 
-func (m *PendingMap) AddMsgToPendingMap(k uint32, v *msg.Message) {
+func (m *PendingMap) AddMsgToPendingMap(k uint32, v interface{}) {
 	m.Lock()
 	m.Pending[k] = v
 	m.Unlock()

@@ -32,6 +32,23 @@ func client2() {
 	factory := client.NewClientConnectionFactory()
 	factory.SetIncomingCallback(func(conn *client.ClientConnection, data []byte) bool {
 		log.Printf("msg from %s In %s", conn.Key.Hex(), data)
+
+		go func() {
+			defer func() {
+				if err := recover(); err != nil {
+					log.Printf("recovered err %v", err)
+				}
+			}()
+			for {
+				select {
+				case m, ok := <-conn.In:
+					if !ok {
+						return
+					}
+					log.Printf("received msg %s", m)
+				}
+			}
+		}()
 		return true
 	})
 	factory.Connect("udp", ":8081", cipher.PubKey([33]byte{0xf2}))

@@ -54,8 +54,8 @@ func NewClientConnectionFactory() *ClientConnectionFactory {
 }
 
 func defaultIncomingCallback(conn *ClientConnection, data []byte) bool {
-	log.Printf("msg from %s In %s", conn.Key.Hex(), data)
-	return true
+	log.Printf("defaultIncomingCallback msg from %s In %s, you should setup your callback", conn.Key.Hex(), data)
+	return false
 }
 
 var (

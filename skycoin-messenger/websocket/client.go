@@ -9,11 +9,18 @@ import (
 	"github.com/skycoin/net/client"
 	"encoding/json"
 	"github.com/skycoin/net/util"
+	"io"
+	"encoding/binary"
+	"sync/atomic"
+	"github.com/skycoin/net/conn"
 )
 
 type Client struct {
 	factory *client.ClientConnectionFactory
 	sync.RWMutex
+
+	seq uint32
+	conn.PendingMap
 
 	conn *websocket.Conn
 	push chan interface{}
@@ -75,11 +82,18 @@ func (c *Client) readLoop() {
 			break
 		}
 		opn := int(m[msg.MSG_OP_BEGIN])
+		if opn == msg.OP_ACK {
+			c.DelMsgToPendingMap(binary.BigEndian.Uint32(m[msg.MSG_SEQ_BEGIN:msg.MSG_SEQ_END]))
+			continue
+		}
 		op := msg.GetOP(opn)
 		if op == nil {
 			log.Printf("op not found, %d", opn)
 			continue
 		}
+
+		c.ack(m[msg.MSG_OP_BEGIN:msg.MSG_SEQ_END])
+
 		err = json.Unmarshal(m[msg.MSG_HEADER_END:], op)
 		if err == nil {
 			err = op.Execute(c)
@@ -112,24 +126,13 @@ func (c *Client) writeLoop() {
 				return
 			}
 
-			w, err := c.conn.NextWriter(websocket.TextMessage)
+			w, err := c.conn.NextWriter(websocket.BinaryMessage)
 			if err != nil {
 				return
 			}
 			switch m := message.(type) {
 			case msg.PushMsg:
-				_, err := w.Write([]byte{msg.PUSH_MSG})
-				if err != nil {
-					return
-				}
-				jbs, err := json.Marshal(m)
-				if err != nil {
-					return
-				}
-				_, err = w.Write(jbs)
-				if err != nil {
-					return
-				}
+				c.write(w, &m)
 			}
 			if err := w.Close(); err != nil {
 				return
@@ -141,4 +144,34 @@ func (c *Client) writeLoop() {
 			}
 		}
 	}
+}
+
+func (c *Client) write(w io.WriteCloser, m *msg.PushMsg) (err error) {
+	_, err = w.Write([]byte{msg.PUSH_MSG})
+	if err != nil {
+		return
+	}
+	ss := make([]byte, 4)
+	nseq := atomic.AddUint32(&c.seq, 1)
+	c.AddMsgToPendingMap(nseq, m)
+	binary.BigEndian.PutUint32(ss, nseq)
+	_, err = w.Write(ss)
+	if err != nil {
+		return
+	}
+	jbs, err := json.Marshal(m)
+	if err != nil {
+		return
+	}
+	_, err = w.Write(jbs)
+	if err != nil {
+		return
+	}
+
+	return nil
+}
+
+func (c *Client) ack(data []byte) error {
+	data[msg.MSG_OP_BEGIN] = msg.PUSH_ACK
+	return c.conn.WriteMessage(websocket.BinaryMessage, data)
 }

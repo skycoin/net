@@ -1,14 +1,14 @@
 # Skycoin Messenger
 
 ## Client Websocket Protocol
-                       +--+-------------------------------------------------------+
-                       |  |                                                       |
-                       +-++---------------------+---------------------------------+
-                         |                      |
-                         v                      v
-                      op type               json body
-                       1 byte
-    
+                       +--+--------+----------------------------------------------+
+                       |  |        |                                              |
+                       +-++-------++-------------------------+--------------------+
+                         |        |                          |
+                         v        v                          v
+                      op type    seq                     json body
+                       1 byte   4 byte
+
                        +----------------------------------------------------------+
                reg     |00|{"Network":"", "Address":"", "PublicKey":""}           |
                        +----------------------------------------------------------+
@@ -19,56 +19,46 @@
            |
     +--------------------------------------------------------------------------------------+
            |
-           |           +----------------------------------------------------------+
-      resp |   push    |00|{"PublicKey":"", "Msg":""}                             |
-           |           +----------------------------------------------------------+
+           |           +-----------+
+      resp |   ack     |00|  seq   |
+           |           +-----------+
            v
+                       +----------------------------------------------------------+
+               push    |01|{"PublicKey":"", "Msg":""}                             |
+                       +----------------------------------------------------------+
 
 
-## TCP/UDP Client Example
+## RPC Client Example
 
-```
-factory := client.NewClientConnectionFactory()
-factory.Connect("tcp", ":8080", cipher.PubKey([33]byte{0xf1}))
-conn := factory.Dial(cipher.PubKey([33]byte{0xf2}))
-conn.Out <- []byte("Hello 0xf2")
-
-for {
-   select {
-   case m, ok := <-conn.In:
-      if !ok {
-         log.Println("conn closed")
-         return
-      }
-      log.Printf("msg In %x", m)
-   }
-}
-```
+Look inside rpc/rpc_test.go
 
 ```
-factory := client.NewClientConnectionFactory()
-factory.SetIncomingCallback(func(conn *client.ClientConnection, data []byte) bool {
-   log.Printf("msg from %s In %s", conn.Key.Hex(), data)
-   
-   // return true for save this conn in factory so can use conn.Out for resp something
-   // otherwise conn.Out can not be used, because no receiver goroutine exists
-   return true
-})
-factory.Connect("udp", ":8081", cipher.PubKey([33]byte{0xf2}))
+	client, err := rpc.DialHTTP("tcp", ":8083")
+	if err != nil {
+		log.Fatal("dialing:", err)
+	}
+
+	var code int
+	key := cipher.PubKey([33]byte{0xf3})
+	err = client.Call("Gateway.Reg", &op.Reg{PublicKey:key.Hex(), Address:":8080", Network:"tcp"}, &code)
+	if err != nil {
+		log.Fatal("calling:", err)
+	}
+	t.Log("code", code)
+
+	_ = msg.PUSH_MSG
+	target := cipher.PubKey([33]byte{0xf1})
+	err = client.Call("Gateway.Send", &op.Send{PublicKey:target.Hex(), Msg:"What a beautiful day!"}, &code)
+	if err != nil {
+		log.Fatal("calling:", err)
+	}
+	t.Log("code", code)
+
+	var msgs []*msg.PushMsg
+	err = client.Call("Gateway.Receive", 0, &msgs)
+	if err != nil {
+		log.Fatal("calling:", err)
+	}
+	t.Logf("%v", msgs)
 ```
 
-## Server Example
-
-```
-s := server.New(":8080", ":8081")
-go func() {
-    log.Println("listening udp")
-    if err := s.ListenUDP(); err != nil {
-        panic(err)
-    }
-}()
-log.Println("listening tcp")
-if err := s.ListenTCP(); err != nil {
-    panic(err)
-}
-```

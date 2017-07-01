@@ -16,7 +16,7 @@ type ClientUDPConn struct {
 }
 
 func NewClientUDPConn(c *net.UDPConn) *ClientUDPConn {
-	return &ClientUDPConn{conn.UDPConn{UdpConn: c, In: make(chan []byte), Out: make(chan []byte), PendingMap: conn.PendingMap{Pending: make(map[uint32]*msg.Message)}}}
+	return &ClientUDPConn{conn.UDPConn{UdpConn: c, In: make(chan []byte), Out: make(chan []byte), PendingMap: conn.PendingMap{Pending: make(map[uint32]interface{})}}}
 }
 
 func (c *ClientUDPConn) ReadLoop() error {
