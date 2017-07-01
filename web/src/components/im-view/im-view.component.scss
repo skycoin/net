@@ -1,0 +1,54 @@
+app-im-view {
+  display: block;
+  width: 75%;
+  height: 35rem; // padding: .75rem;
+  float: left;
+  border-radius: 0 .5rem .5rem 0;
+  background-color: #F2F5F8;
+  .message-box,
+  .send-box {
+    width: 100%;
+  }
+  .message-box {
+    height: 70%;
+    padding: .25rem;
+    border-bottom: .2rem solid #fff;
+    overflow: auto;
+  }
+  .send-box {
+    height: 30%;
+    padding: 1rem 2rem;
+    textarea {
+      font-size: 1.1rem;
+      width: 100%;
+      border: none;
+      border-radius: .5rem;
+      resize: none;
+      padding: .5rem;
+      transition: box-shadow .1s;
+      &:focus {
+        border: none;
+        outline: none;
+        box-shadow: .1rem .2rem .75rem hsla(210, 75%, 52%, 0.6), -.1rem -.2rem .75rem hsla(210, 75%, 52%, 0.6);
+      }
+    }
+    .more-box {
+      text-align: right;
+      margin-top: .5rem;
+      .btn {
+        border: none;
+        border-radius: .5rem;
+        padding: .5rem 1rem;
+        outline: none;
+      }
+      .btn-send {
+        cursor: pointer;
+        background-color: #2a85e0;
+        color: #fff;
+        &:active {
+          background-color: #0a0aad;
+        }
+      }
+    }
+  }
+}

@@ -101,7 +101,7 @@ electron/.electron_output
 electron/.standalone_output
 
 .vscode/
-
+yarn.lock
 src/mesh/TODO
 src/gui/static/dist
 

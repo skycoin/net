@@ -1,0 +1,31 @@
+app-im-recent-item {
+  &:hover {
+    background-color: hsla(0, 0%, 0%, 0.5);
+  }
+  cursor: pointer;
+  display: block;
+  min-height: 4rem;
+  margin: .5rem 0;
+  padding: .5rem 1rem;
+  .head,
+  .content {
+    display: inline-block;
+  }
+  .head {
+    width: 25%;
+  }
+  .content {
+    width: 65%;
+    padding: 0 .5rem;
+    .name {
+      font-size: 1rem;
+    }
+    .last-text {
+      color: hsla(0, 0%, 93%, 0.7);
+    }
+  }
+}
+
+.item-active {
+  background-color: #000;
+}

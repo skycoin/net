@@ -1,0 +1,63 @@
+app-im-history-message {
+  display: block;
+  min-height: 4rem;
+  margin: 1.5rem 0;
+  .data {
+    color: #999;
+    font-size: 1rem;
+  }
+  .bubble {
+    max-width: 90%;
+    margin-top: 1rem;
+    padding: 1rem;
+    border-radius: .5rem;
+    background-color: #eee;
+  }
+  .other-message {
+    .bubble {
+      color: #fff;
+      background-color: #86BB71;
+    }
+  }
+  .my-message {
+    .data {
+      text-align: right;
+    }
+    .bubble {
+      color: #fff;
+      background-color: #94C2ED;
+    }
+  }
+  .float-right {
+    float: right;
+    position: relative;
+    &::after {
+      position: absolute;
+      right: 5%;
+      bottom: 100%;
+      content: " ";
+      border: solid transparent;
+      pointer-events: none;
+      width: 0;
+      height: 0;
+      border-bottom-color: #94C2ED;
+      border-width: .75rem;
+    }
+  }
+  .float-left {
+    position: relative;
+    float: left;
+    &::after {
+      position: absolute;
+      left: 5%;
+      bottom: 100%;
+      content: " ";
+      border: solid transparent;
+      pointer-events: none;
+      width: 0;
+      height: 0;
+      border-bottom-color: #86BB71;
+      border-width: .75rem;
+    }
+  }
+}
