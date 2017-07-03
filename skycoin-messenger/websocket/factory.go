@@ -30,8 +30,8 @@ func GetFactory() *Factory {
 	return defaultFactory
 }
 
-func (factory *Factory) NewClient(conn *websocket.Conn) *Client {
-	client := &Client{conn: conn, push: make(chan interface{}), PendingMap: conn.PendingMap{Pending: make(map[uint32]interface{})}}
+func (factory *Factory) NewClient(c *websocket.Conn) *Client {
+	client := &Client{conn: c, push: make(chan interface{}), PendingMap: conn.PendingMap{Pending: make(map[uint32]interface{})}}
 	factory.clientsMutex.Lock()
 	factory.clients[client] = true
 	factory.clientsMutex.Unlock()

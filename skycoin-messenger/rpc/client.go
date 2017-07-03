@@ -5,7 +5,6 @@ import (
 	"sync"
 	"log"
 	"github.com/skycoin/net/skycoin-messenger/msg"
-	"github.com/skycoin/net/util"
 )
 
 var DefaultClient = &Client{push:make(chan msg.PushMsg, 8)}
@@ -38,7 +37,7 @@ func (c *Client) PushLoop(conn *client.ClientConnection, data []byte) {
 			log.Printf("PushLoop recovered err %v", err)
 		}
 	}()
-	push := &msg.PushMsg{PublicKey: conn.Key.Hex(), Msg: util.ByteSlice2String(data)}
+	push := &msg.PushMsg{PublicKey: conn.Key.Hex(), Msg: string(data)}
 	c.push <- *push
 	for {
 		select {
@@ -46,7 +45,7 @@ func (c *Client) PushLoop(conn *client.ClientConnection, data []byte) {
 			if !ok {
 				return
 			}
-			push.Msg = util.ByteSlice2String(m)
+			push.Msg = string(m)
 			c.push <- *push
 		}
 	}

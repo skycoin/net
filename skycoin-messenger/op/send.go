@@ -4,7 +4,6 @@ import (
 	"sync"
 	"github.com/skycoin/net/skycoin-messenger/msg"
 	"github.com/skycoin/skycoin/src/cipher"
-	"github.com/skycoin/net/util"
 )
 
 type Send struct {
@@ -26,6 +25,6 @@ func (s *Send) Execute(c msg.OPer) error {
 		return err
 	}
 	connection := c.GetFactory().Dial(key)
-	connection.Out <- util.String2ByteSlice(s.Msg)
+	connection.Out <- []byte(s.Msg)
 	return nil
 }
