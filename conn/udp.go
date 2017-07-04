@@ -6,9 +6,7 @@ import (
 	"net"
 	"log"
 	"time"
-	"sync"
 	"sync/atomic"
-	"github.com/skycoin/skycoin/src/cipher"
 )
 
 const (
@@ -21,18 +19,12 @@ type UDPConn struct {
 	In      chan []byte
 	Out     chan []byte
 
-	seq          uint32
-	PendingMap
-
-
 	lastTime    int64
-	closed      bool
-	pubkey      cipher.PubKey
-	fieldsMutex sync.RWMutex
+	*ConnCommonFields
 }
 
 func NewUDPConn(c *net.UDPConn, addr *net.UDPAddr) *UDPConn {
-	return &UDPConn{UdpConn: c, addr: addr, lastTime: time.Now().Unix(), In: make(chan []byte), Out: make(chan []byte), PendingMap: PendingMap{Pending: make(map[uint32]interface{})}}
+	return &UDPConn{UdpConn: c, addr: addr, lastTime: time.Now().Unix(), In: make(chan []byte), Out: make(chan []byte), ConnCommonFields:NewConnCommonFileds()}
 }
 
 func (c *UDPConn) ReadLoop() error {
@@ -43,7 +35,12 @@ func (c *UDPConn) WriteSlice(bytes ...[]byte) error {
 	panic("UDPConn unimplemented WriteSlice")
 }
 
-func (c *UDPConn) WriteLoop() error {
+func (c *UDPConn) WriteLoop() (err error) {
+	defer func() {
+		if err != nil {
+			c.SetStatusToError(err)
+		}
+	}()
 	for {
 		select {
 		case m, ok := <-c.Out:
@@ -62,25 +59,15 @@ func (c *UDPConn) WriteLoop() error {
 }
 
 func (c *UDPConn) Write(bytes []byte) error {
-	new := atomic.AddUint32(&c.seq, 1)
-	m := msg.New(msg.TYPE_NORMAL, new, bytes)
-	c.AddMsgToPendingMap(new, m)
+	s := atomic.AddUint32(&c.seq, 1)
+	m := msg.New(msg.TYPE_NORMAL, s, bytes)
+	c.AddMsg(s, m)
 	return c.WriteBytes(m.Bytes())
 }
 
-func (c *UDPConn) GetPublicKey() cipher.PubKey {
-	c.fieldsMutex.RLock()
-	defer c.fieldsMutex.RUnlock()
-	return c.pubkey
-}
-
-func (c *UDPConn) SetPublicKey(key cipher.PubKey) {
-	c.fieldsMutex.Lock()
-	c.pubkey = key
-	c.fieldsMutex.Unlock()
-}
-
 func (c *UDPConn) WriteBytes(bytes []byte) error {
+	c.writeMutex.Lock()
+	defer c.writeMutex.Unlock()
 	_, err := c.UdpConn.WriteToUDP(bytes, c.addr)
 	return err
 }
@@ -104,10 +91,6 @@ func (c *UDPConn) IsClosed() bool {
 	c.fieldsMutex.RLock()
 	defer c.fieldsMutex.RUnlock()
 	return c.closed
-}
-
-func (c *UDPConn) SendReg(key cipher.PubKey) error {
-	panic("UDPConn unimplemented SendReg")
 }
 
 func (c *UDPConn) GetLastTime() int64 {

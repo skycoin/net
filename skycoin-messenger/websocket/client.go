@@ -6,16 +6,16 @@ import (
 	"log"
 	"github.com/skycoin/net/skycoin-messenger/msg"
 	"sync"
-	"github.com/skycoin/net/client"
 	"encoding/json"
 	"io"
 	"encoding/binary"
 	"sync/atomic"
+	"github.com/skycoin/net/skycoin-messenger/factory"
 	"github.com/skycoin/net/conn"
 )
 
 type Client struct {
-	factory *client.ClientConnectionFactory
+	connection *factory.Connection
 	sync.RWMutex
 
 	seq uint32
@@ -25,22 +25,22 @@ type Client struct {
 	push chan interface{}
 }
 
-func (c *Client) GetFactory() *client.ClientConnectionFactory {
+func (c *Client) GetConnection() *factory.Connection {
 	c.RLock()
 	defer c.RUnlock()
-	return c.factory
+	return c.connection
 }
 
-func (c *Client) SetFactory(factory *client.ClientConnectionFactory) {
+func (c *Client) SetConnection(connection *factory.Connection) {
 	c.Lock()
-	if c.factory != nil {
-		c.factory.Close()
+	if c.connection != nil {
+		c.connection.Close()
 	}
-	c.factory = factory
+	c.connection = connection
 	c.Unlock()
 }
 
-func (c *Client) PushLoop(conn *client.ClientConnection, data []byte) {
+func (c *Client) PushLoop(conn *factory.Connection, data []byte) {
 	defer func() {
 		if err := recover(); err != nil {
 			log.Printf("PushLoop recovered err %v", err)
@@ -50,7 +50,7 @@ func (c *Client) PushLoop(conn *client.ClientConnection, data []byte) {
 	c.push <- push
 	for {
 		select {
-		case m, ok := <-conn.In:
+		case m, ok := <-conn.GetChanIn():
 			if !ok {
 				return
 			}
@@ -65,7 +65,7 @@ func (c *Client) readLoop() {
 		if err := recover(); err != nil {
 			log.Printf("readLoop recovered err %v", err)
 		}
-		c.SetFactory(nil)
+		c.SetConnection(nil)
 		c.conn.Close()
 		close(c.push)
 	}()
@@ -82,7 +82,7 @@ func (c *Client) readLoop() {
 		}
 		opn := int(m[msg.MSG_OP_BEGIN])
 		if opn == msg.OP_ACK {
-			c.DelMsgToPendingMap(binary.BigEndian.Uint32(m[msg.MSG_SEQ_BEGIN:msg.MSG_SEQ_END]))
+			c.DelMsg(binary.BigEndian.Uint32(m[msg.MSG_SEQ_BEGIN:msg.MSG_SEQ_END]))
 			continue
 		}
 		op := msg.GetOP(opn)
@@ -113,7 +113,7 @@ func (c *Client) writeLoop() {
 			log.Printf("writeLoop recovered err %v", err)
 		}
 		ticker.Stop()
-		c.SetFactory(nil)
+		c.SetConnection(nil)
 		c.conn.Close()
 	}()
 	for {
@@ -152,7 +152,7 @@ func (c *Client) write(w io.WriteCloser, m *msg.PushMsg) (err error) {
 	}
 	ss := make([]byte, 4)
 	nseq := atomic.AddUint32(&c.seq, 1)
-	c.AddMsgToPendingMap(nseq, m)
+	c.AddMsg(nseq, m)
 	binary.BigEndian.PutUint32(ss, nseq)
 	_, err = w.Write(ss)
 	if err != nil {

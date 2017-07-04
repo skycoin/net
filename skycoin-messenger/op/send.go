@@ -24,7 +24,5 @@ func (s *Send) Execute(c msg.OPer) error {
 	if err != nil {
 		return err
 	}
-	connection := c.GetFactory().Dial(key)
-	connection.Out <- []byte(s.Msg)
-	return nil
+	return c.GetConnection().Send(key, []byte(s.Msg))
 }

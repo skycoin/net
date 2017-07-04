@@ -8,18 +8,22 @@ import (
 	"github.com/skycoin/net/msg"
 	"log"
 	"encoding/binary"
-	"github.com/skycoin/skycoin/src/cipher"
 )
 
 type ClientUDPConn struct {
-	conn.UDPConn
+	*conn.UDPConn
 }
 
 func NewClientUDPConn(c *net.UDPConn) *ClientUDPConn {
-	return &ClientUDPConn{conn.UDPConn{UdpConn: c, In: make(chan []byte), Out: make(chan []byte), PendingMap: conn.PendingMap{Pending: make(map[uint32]interface{})}}}
+	return &ClientUDPConn{&conn.UDPConn{UdpConn: c, In: make(chan []byte), Out: make(chan []byte), ConnCommonFields:conn.NewConnCommonFileds()}}
 }
 
-func (c *ClientUDPConn) ReadLoop() error {
+func (c *ClientUDPConn) ReadLoop() (err error) {
+	defer func() {
+		if err != nil {
+			c.SetStatusToError(err)
+		}
+	}()
 	for {
 		maxBuf := make([]byte, conn.MAX_UDP_PACKAGE_SIZE)
 		n, err := c.UdpConn.Read(maxBuf)
@@ -32,7 +36,7 @@ func (c *ClientUDPConn) ReadLoop() error {
 		case msg.TYPE_PONG:
 		case msg.TYPE_ACK:
 			seq := binary.BigEndian.Uint32(maxBuf[msg.MSG_SEQ_BEGIN:msg.MSG_SEQ_END])
-			c.DelMsgToPendingMap(seq)
+			c.DelMsg(seq)
 		case msg.TYPE_NORMAL:
 			seq := binary.BigEndian.Uint32(maxBuf[msg.MSG_SEQ_BEGIN:msg.MSG_SEQ_END])
 			err = c.Ack(seq)
@@ -55,10 +59,13 @@ func (c *ClientUDPConn) ping() error {
 	return c.WriteBytes(b)
 }
 
-func (c *ClientUDPConn) WriteLoop() error {
+func (c *ClientUDPConn) WriteLoop() (err error) {
 	ticker := time.NewTicker(time.Second * TICK_PERIOD)
 	defer func() {
 		ticker.Stop()
+		if err != nil {
+			c.SetStatusToError(err)
+		}
 	}()
 
 	for {
@@ -87,7 +94,7 @@ func (c *ClientUDPConn) WriteLoop() error {
 func (c *ClientUDPConn) Write(bytes []byte) error {
 	new := c.GetNextSeq()
 	m := msg.New(msg.TYPE_NORMAL, new, bytes)
-	c.AddMsgToPendingMap(new, m)
+	c.AddMsg(new, m)
 	return c.WriteBytes(m.Bytes())
 }
 
@@ -98,7 +105,7 @@ func (c *ClientUDPConn) WriteSlice(src ...[]byte) error {
 		r.Write(b)
 	}
 	m := msg.New(msg.TYPE_NORMAL, new, r.Bytes())
-	c.AddMsgToPendingMap(new, m)
+	c.AddMsg(new, m)
 	return c.WriteBytes(m.Bytes())
 }
 
@@ -114,9 +121,3 @@ func (c *ClientUDPConn) Ack(seq uint32) error {
 	return c.WriteBytes(resp)
 }
 
-func (c *ClientUDPConn) SendReg(key cipher.PubKey) error {
-	new := c.GetNextSeq()
-	m := msg.New(msg.TYPE_REG, new, key[:])
-	c.AddMsgToPendingMap(new, m)
-	return c.WriteBytes(m.Bytes())
-}

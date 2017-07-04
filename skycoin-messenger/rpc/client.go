@@ -1,37 +1,37 @@
 package rpc
 
 import (
-	"github.com/skycoin/net/client"
 	"sync"
 	"log"
 	"github.com/skycoin/net/skycoin-messenger/msg"
+	"github.com/skycoin/net/skycoin-messenger/factory"
 )
 
 var DefaultClient = &Client{push:make(chan msg.PushMsg, 8)}
 
 type Client struct {
-	factory *client.ClientConnectionFactory
+	connection *factory.Connection
 	sync.RWMutex
 
 	push chan msg.PushMsg
 }
 
-func (c *Client) GetFactory() *client.ClientConnectionFactory {
+func (c *Client) GetConnection() *factory.Connection{
 	c.RLock()
 	defer c.RUnlock()
-	return c.factory
+	return c.connection
 }
 
-func (c *Client) SetFactory(factory *client.ClientConnectionFactory) {
+func (c *Client) SetConnection(connection *factory.Connection) {
 	c.Lock()
-	if c.factory != nil {
-		c.factory.Close()
+	if c.connection != nil {
+		c.connection.Close()
 	}
-	c.factory = factory
+	c.connection = connection
 	c.Unlock()
 }
 
-func (c *Client) PushLoop(conn *client.ClientConnection, data []byte) {
+func (c *Client) PushLoop(conn *factory.Connection, data []byte) {
 	defer func() {
 		if err := recover(); err != nil {
 			log.Printf("PushLoop recovered err %v", err)
@@ -41,7 +41,7 @@ func (c *Client) PushLoop(conn *client.ClientConnection, data []byte) {
 	c.push <- *push
 	for {
 		select {
-		case m, ok := <-conn.In:
+		case m, ok := <-conn.GetChanIn():
 			if !ok {
 				return
 			}

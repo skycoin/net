@@ -7,21 +7,23 @@ import (
 	"log"
 	"github.com/skycoin/net/conn"
 	"github.com/skycoin/net/msg"
-	"github.com/skycoin/skycoin/src/cipher"
 	"net"
+	"fmt"
 )
 
 type ServerTCPConn struct {
-	conn.TCPConn
-	factory *ConnectionFactory
+	*conn.TCPConn
 }
 
-func NewServerTCPConn(c *net.TCPConn, factory *ConnectionFactory) *ServerTCPConn {
-	return &ServerTCPConn{TCPConn: conn.TCPConn{TcpConn: c, In: make(chan []byte), Out: make(chan []byte), PendingMap: conn.PendingMap{Pending: make(map[uint32]interface{})}}, factory: factory}
+func NewServerTCPConn(c *net.TCPConn) *ServerTCPConn {
+	return &ServerTCPConn{TCPConn: &conn.TCPConn{TcpConn: c, In: make(chan []byte), Out: make(chan []byte), ConnCommonFields:conn.NewConnCommonFileds()}}
 }
 
-func (c *ServerTCPConn) ReadLoop() error {
+func (c *ServerTCPConn) ReadLoop() (err error) {
 	defer func() {
+		if err != nil {
+			c.SetStatusToError(err)
+		}
 		c.Close()
 	}()
 	header := make([]byte, msg.MSG_HEADER_SIZE)
@@ -35,12 +37,12 @@ func (c *ServerTCPConn) ReadLoop() error {
 		msg_t := t[msg.MSG_TYPE_BEGIN]
 		switch msg_t {
 		case msg.TYPE_ACK:
-			_, err = io.ReadAtLeast(reader, header, msg.MSG_SEQ_END)
+			_, err = io.ReadAtLeast(reader, header[:msg.MSG_SEQ_END], msg.MSG_SEQ_END)
 			if err != nil {
 				return err
 			}
 			seq := binary.BigEndian.Uint32(header[msg.MSG_SEQ_BEGIN:msg.MSG_SEQ_END])
-			c.DelMsgToPendingMap(seq)
+			c.DelMsg(seq)
 		case msg.TYPE_PING:
 			reader.Discard(msg.MSG_TYPE_SIZE)
 			err = c.WriteBytes([]byte{msg.TYPE_PONG})
@@ -65,6 +67,7 @@ func (c *ServerTCPConn) ReadLoop() error {
 
 			seq := binary.BigEndian.Uint32(header[msg.MSG_TYPE_END:msg.MSG_SEQ_END])
 			c.Ack(seq)
+			log.Printf("acked out %d", seq)
 
 			func() {
 				defer func() {
@@ -74,27 +77,8 @@ func (c *ServerTCPConn) ReadLoop() error {
 				}()
 				c.In <- m.Body
 			}()
-		case msg.TYPE_REG:
-			_, err = io.ReadAtLeast(reader, header, msg.MSG_HEADER_SIZE)
-			if err != nil {
-				return err
-			}
-
-			m := msg.NewByHeader(header)
-			_, err = io.ReadAtLeast(reader, m.Body, int(m.Len))
-			if err != nil {
-				return err
-			}
-
-			seq := binary.BigEndian.Uint32(header[msg.MSG_TYPE_END:msg.MSG_SEQ_END])
-			c.Ack(seq)
-
-			if m.Len != 33 {
-				continue
-			}
-			key := cipher.NewPubKey(m.Body)
-			c.SetPublicKey(key)
-			c.factory.Register(key.Hex(), c)
+		default:
+			return fmt.Errorf("not implemented msg type %d", msg_t)
 		}
 
 		c.UpdateLastTime()

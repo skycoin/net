@@ -2,7 +2,7 @@ package msg
 
 import (
 	"sync"
-	"github.com/skycoin/net/client"
+	"github.com/skycoin/net/skycoin-messenger/factory"
 )
 
 var (
@@ -15,9 +15,9 @@ type OP interface {
 }
 
 type OPer interface {
-	GetFactory() *client.ClientConnectionFactory
-	SetFactory(factory *client.ClientConnectionFactory)
-	PushLoop(conn *client.ClientConnection, data []byte)
+	GetConnection() *factory.Connection
+	SetConnection(*factory.Connection)
+	PushLoop(*factory.Connection, []byte)
 }
 
 func GetOP(opn int) OP {

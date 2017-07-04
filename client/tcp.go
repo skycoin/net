@@ -8,17 +8,20 @@ import (
 )
 
 type ClientTCPConn struct {
-	conn.TCPConn
+	*conn.TCPConn
 }
 
-func NewClientTCPConn(c *net.TCPConn) *ClientTCPConn {
-	return &ClientTCPConn{conn.TCPConn{TcpConn: c, In: make(chan []byte), Out: make(chan []byte), PendingMap: conn.PendingMap{Pending: make(map[uint32]interface{})}}}
+func NewClientTCPConn(c net.Conn) *ClientTCPConn {
+	return &ClientTCPConn{&conn.TCPConn{TcpConn: c, In: make(chan []byte), Out: make(chan []byte), ConnCommonFields:conn.NewConnCommonFileds()}}
 }
 
-func (c *ClientTCPConn) WriteLoop() error {
+func (c *ClientTCPConn) WriteLoop() (err error) {
 	ticker := time.NewTicker(time.Second * TICK_PERIOD)
 	defer func() {
 		ticker.Stop()
+		if err != nil {
+			c.SetStatusToError(err)
+		}
 	}()
 	for {
 		select {

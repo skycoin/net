@@ -8,9 +8,8 @@ import (
 	"encoding/binary"
 	"time"
 	"log"
-	"sync"
 	"sync/atomic"
-	"github.com/skycoin/skycoin/src/cipher"
+	"fmt"
 )
 
 const (
@@ -18,20 +17,18 @@ const (
 )
 
 type TCPConn struct {
-	TcpConn *net.TCPConn
+	TcpConn net.Conn
 	In      chan []byte
 	Out     chan []byte
 
-	seq          uint32
-	PendingMap
-
-	closed      bool
-	pubkey      cipher.PubKey
-	fieldsMutex sync.RWMutex
+	*ConnCommonFields
 }
 
-func (c *TCPConn) ReadLoop() error {
+func (c *TCPConn) ReadLoop() (err error) {
 	defer func() {
+		if err != nil {
+			c.SetStatusToError(err)
+		}
 		c.Close()
 	}()
 	header := make([]byte, msg.MSG_HEADER_SIZE)
@@ -45,22 +42,19 @@ func (c *TCPConn) ReadLoop() error {
 		msg_t := t[msg.MSG_TYPE_BEGIN]
 		switch msg_t {
 		case msg.TYPE_ACK:
-			_, err = io.ReadAtLeast(reader, header, msg.MSG_SEQ_END)
+			_, err = io.ReadAtLeast(reader, header[:msg.MSG_SEQ_END], msg.MSG_SEQ_END)
 			if err != nil {
 				return err
 			}
 			seq := binary.BigEndian.Uint32(header[msg.MSG_SEQ_BEGIN:msg.MSG_SEQ_END])
-			c.DelMsgToPendingMap(seq)
-			c.PendingMap.RLock()
-			log.Printf("acked %d, Pending:%d, %v", seq, len(c.Pending), c.Pending)
-			c.PendingMap.RUnlock()
+			c.DelMsg(seq)
 		case msg.TYPE_PING:
 			reader.Discard(msg.MSG_TYPE_SIZE)
 			err = c.WriteBytes([]byte{msg.TYPE_PONG})
 			if err != nil {
 				return err
 			}
-			log.Println("recv Ping")
+			log.Println("recv ping")
 		case msg.TYPE_PONG:
 			reader.Discard(msg.MSG_TYPE_SIZE)
 			log.Println("recv pong")
@@ -76,18 +70,24 @@ func (c *TCPConn) ReadLoop() error {
 				return err
 			}
 
-			seq := binary.BigEndian.Uint32(header[msg.MSG_TYPE_END:msg.MSG_SEQ_END])
+			seq := binary.BigEndian.Uint32(header[msg.MSG_SEQ_BEGIN:msg.MSG_SEQ_END])
 			c.Ack(seq)
 
 			c.In <- m.Body
+		default:
+			return fmt.Errorf("not implemented msg type %d", msg_t)
 		}
-
 		c.UpdateLastTime()
 	}
 	return nil
 }
 
-func (c *TCPConn) WriteLoop() error {
+func (c *TCPConn) WriteLoop() (err error) {
+	defer func() {
+		if err != nil {
+			c.SetStatusToError(err)
+		}
+	}()
 	for {
 		select {
 		case m, ok := <-c.Out:
@@ -116,20 +116,20 @@ func getTCPReadDeadline() time.Time {
 }
 
 func (c *TCPConn) Write(bytes []byte) error {
-	new := atomic.AddUint32(&c.seq, 1)
-	m := msg.New(msg.TYPE_NORMAL, new, bytes)
-	c.AddMsgToPendingMap(new, m)
+	s := atomic.AddUint32(&c.seq, 1)
+	m := msg.New(msg.TYPE_NORMAL, s, bytes)
+	c.AddMsg(s, m)
 	return c.WriteBytes(m.Bytes())
 }
 
 func (c *TCPConn) WriteSlice(bytes ...[]byte) error {
-	new := atomic.AddUint32(&c.seq, 1)
-	m := msg.New(msg.TYPE_NORMAL, new, nil)
+	s := atomic.AddUint32(&c.seq, 1)
+	m := msg.New(msg.TYPE_NORMAL, s, nil)
 	for _, s := range bytes {
 		m.Len += uint32(len(s))
 	}
 	m.BodySlice = bytes
-	c.AddMsgToPendingMap(new, m)
+	c.AddMsg(s, m)
 	err := c.WriteBytes(m.HeaderBytes())
 	if err != nil {
 		return err
@@ -145,14 +145,10 @@ func (c *TCPConn) WriteSlice(bytes ...[]byte) error {
 	return nil
 }
 
-func (c *TCPConn) SendReg(key cipher.PubKey) error {
-	new := atomic.AddUint32(&c.seq, 1)
-	m := msg.New(msg.TYPE_REG, new, key[:])
-	c.AddMsgToPendingMap(new, m)
-	return c.WriteBytes(m.Bytes())
-}
-
 func (c *TCPConn) WriteBytes(bytes []byte) error {
+	c.writeMutex.Lock()
+	defer c.writeMutex.Unlock()
+	//log.Printf("write %x", bytes)
 	index := 0
 	for n, err := c.TcpConn.Write(bytes[index:]); index != len(bytes); index += n {
 		if err != nil {
@@ -198,18 +194,6 @@ func (c *TCPConn) Close() {
 	c.fieldsMutex.Unlock()
 	close(c.In)
 	close(c.Out)
-}
-
-func (c *TCPConn) GetPublicKey() cipher.PubKey {
-	c.fieldsMutex.RLock()
-	defer c.fieldsMutex.RUnlock()
-	return c.pubkey
-}
-
-func (c *TCPConn) SetPublicKey(key cipher.PubKey) {
-	c.fieldsMutex.Lock()
-	c.pubkey = key
-	c.fieldsMutex.Unlock()
 }
 
 func (c *TCPConn) UpdateLastTime() {

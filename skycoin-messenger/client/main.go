@@ -8,13 +8,15 @@ import (
 )
 
 func main() {
-	log.SetFlags(log.LstdFlags|log.Lshortfile)
+	log.SetFlags(log.LstdFlags | log.Lshortfile)
 
 	http.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
 		websocket.ServeWs(w, r)
 	})
-	log.Println("listening rpc")
-	rpc.ServeRPC(":8083")
+	go func() {
+		log.Println("listening rpc")
+		rpc.ServeRPC(":8083")
+	}()
 	log.Println("listening websocket")
 	err := http.ListenAndServe(":8082", nil)
 	if err != nil {

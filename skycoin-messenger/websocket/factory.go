@@ -50,7 +50,7 @@ func (factory *Factory) logStatus() {
 		select {
 		case <-ticker.C:
 			factory.clientsMutex.RLock()
-			log.Printf("websocket factory clients count:%d", len(factory.clients))
+			log.Printf("websocket connection clients count:%d", len(factory.clients))
 			factory.clientsMutex.RUnlock()
 		}
 	}

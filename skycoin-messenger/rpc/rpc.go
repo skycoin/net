@@ -13,6 +13,5 @@ func ServeRPC(address string) error {
 	if e != nil {
 		return e
 	}
-	go http.Serve(l, nil)
-	return nil
+	return http.Serve(l, nil)
 }

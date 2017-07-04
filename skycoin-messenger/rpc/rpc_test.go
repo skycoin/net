@@ -17,7 +17,7 @@ func TestServeRPC(t *testing.T) {
 
 	var code int
 	key := cipher.PubKey([33]byte{0xf3})
-	err = client.Call("Gateway.Reg", &op.Reg{PublicKey:key.Hex(), Address:":8080", Network:"tcp"}, &code)
+	err = client.Call("Gateway.Reg", &op.Reg{PublicKey:key.Hex(), Address:":8080"}, &code)
 	if err != nil {
 		log.Fatal("calling:", err)
 	}
