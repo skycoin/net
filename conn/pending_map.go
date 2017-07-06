@@ -3,27 +3,99 @@ package conn
 import (
 	"sync"
 	"log"
+	"github.com/skycoin/net/msg"
+	"time"
+	"math/big"
+	"fmt"
 )
 
 type PendingMap struct {
-	Pending map[uint32]interface{}
+	Pending              map[uint32]*msg.Message
 	sync.RWMutex
+	ackedMessages        map[uint32]*msg.Message
+	ackedMessagesMutex   sync.RWMutex
+	lastMinuteAcked      map[uint32]*msg.Message
+	lastMinuteAckedMutex sync.RWMutex
+
+	statistics  string
+	fieldsMutex sync.RWMutex
 }
 
 func NewPendingMap() *PendingMap {
-	return &PendingMap{Pending: make(map[uint32]interface{})}
+	pendingMap := &PendingMap{Pending: make(map[uint32]*msg.Message), ackedMessages: make(map[uint32]*msg.Message)}
+	go pendingMap.analyse()
+	return pendingMap
 }
 
-func (m *PendingMap) AddMsg(k uint32, v interface{}) {
+func (m *PendingMap) AddMsg(k uint32, v *msg.Message) {
 	m.Lock()
 	m.Pending[k] = v
-	//log.Printf("add %d, Pending:%d, %v", k, len(m.Pending), m.Pending)
 	m.Unlock()
+	v.Transmitted()
 }
 
 func (m *PendingMap) DelMsg(k uint32) {
+	m.RLock()
+	v, ok := m.Pending[k]
+	m.RUnlock()
+
+	if !ok {
+		return
+	}
+
+	v.Acked()
+
+	m.ackedMessagesMutex.Lock()
+	m.ackedMessages[k] = v
+	m.ackedMessagesMutex.Unlock()
+
 	m.Lock()
 	delete(m.Pending, k)
 	log.Printf("acked %d, Pending:%d, %v", k, len(m.Pending), m.Pending)
 	m.Unlock()
+}
+
+func (m *PendingMap) analyse() {
+	ticker := time.NewTicker(time.Minute)
+	for {
+		select {
+		case <-ticker.C:
+			m.ackedMessagesMutex.Lock()
+			m.lastMinuteAckedMutex.Lock()
+			m.lastMinuteAcked = m.ackedMessages
+			m.lastMinuteAckedMutex.Unlock()
+			m.ackedMessages = make(map[uint32]*msg.Message)
+			m.ackedMessagesMutex.Unlock()
+
+			m.lastMinuteAckedMutex.RLock()
+			if len(m.lastMinuteAcked) < 1 {
+				m.lastMinuteAckedMutex.RUnlock()
+				continue
+			}
+			var max, min int64
+			sum := new(big.Int)
+			for _, v := range m.lastMinuteAcked {
+				latency := v.Latency.Nanoseconds()
+				if max < latency {
+					max = latency
+				}
+				if min == 0 || min > latency {
+					min = latency
+				}
+				y := new(big.Int)
+				y.SetInt64(latency)
+				sum.Add(sum, y)
+			}
+			n := new(big.Int)
+			n.SetInt64(int64(len(m.lastMinuteAcked)))
+			avg := new(big.Int)
+			avg.Div(sum, n)
+			m.lastMinuteAckedMutex.RUnlock()
+
+			m.fieldsMutex.Lock()
+			m.statistics = fmt.Sprintf("latency: max %d ns, min %d ns, avg %s ns, count %s", max, min, avg, n)
+			m.fieldsMutex.Unlock()
+			log.Println(m.statistics)
+		}
+	}
 }

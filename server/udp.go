@@ -45,6 +45,7 @@ func (c *ServerUDPConn) ReadLoop(fn func(c *net.UDPConn, addr *net.UDPAddr) *con
 		case msg.TYPE_ACK:
 			seq := binary.BigEndian.Uint32(maxBuf[msg.MSG_SEQ_BEGIN:msg.MSG_SEQ_END])
 			c.DelMsg(seq)
+			c.UpdateLastAck(seq)
 		case msg.TYPE_PING:
 			log.Println("recv ping")
 			err = cc.WriteBytes([]byte{msg.TYPE_PONG})

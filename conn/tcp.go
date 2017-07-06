@@ -48,6 +48,7 @@ func (c *TCPConn) ReadLoop() (err error) {
 			}
 			seq := binary.BigEndian.Uint32(header[msg.MSG_SEQ_BEGIN:msg.MSG_SEQ_END])
 			c.DelMsg(seq)
+			c.UpdateLastAck(seq)
 		case msg.TYPE_PING:
 			reader.Discard(msg.MSG_TYPE_SIZE)
 			err = c.WriteBytes([]byte{msg.TYPE_PONG})
@@ -120,29 +121,6 @@ func (c *TCPConn) Write(bytes []byte) error {
 	m := msg.New(msg.TYPE_NORMAL, s, bytes)
 	c.AddMsg(s, m)
 	return c.WriteBytes(m.Bytes())
-}
-
-func (c *TCPConn) WriteSlice(bytes ...[]byte) error {
-	s := atomic.AddUint32(&c.seq, 1)
-	m := msg.New(msg.TYPE_NORMAL, s, nil)
-	for _, s := range bytes {
-		m.Len += uint32(len(s))
-	}
-	m.BodySlice = bytes
-	c.AddMsg(s, m)
-	err := c.WriteBytes(m.HeaderBytes())
-	if err != nil {
-		return err
-	}
-
-	for _, m := range bytes {
-		err := c.WriteBytes(m)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
 }
 
 func (c *TCPConn) WriteBytes(bytes []byte) error {

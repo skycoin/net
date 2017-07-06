@@ -31,10 +31,6 @@ func (c *UDPConn) ReadLoop() error {
 	panic("UDPConn unimplemented ReadLoop")
 }
 
-func (c *UDPConn) WriteSlice(bytes ...[]byte) error {
-	panic("UDPConn unimplemented WriteSlice")
-}
-
 func (c *UDPConn) WriteLoop() (err error) {
 	defer func() {
 		if err != nil {

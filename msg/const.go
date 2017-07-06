@@ -26,3 +26,9 @@ const (
 	TYPE_PING   = 0x81
 	TYPE_PONG   = 0x82
 )
+
+const (
+	MSG_STATUS_INIT = 1 << iota
+	MSG_STATUS_TRANSMITTED
+	MSG_STATUS_ACKED
+)

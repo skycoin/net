@@ -4,14 +4,17 @@ import (
 	"github.com/skycoin/skycoin/src/cipher"
 	"encoding/binary"
 	"fmt"
+	"sync"
+	"time"
 )
 
 type Message struct {
-	Type      uint8
-	Seq       uint32
-	Len       uint32
-	Body      []byte
-	BodySlice [][]byte
+	Type uint8
+	Seq  uint32
+	Len  uint32
+	Body []byte
+
+	MessageStatus
 }
 
 func NewByHeader(header []byte) *Message {
@@ -52,4 +55,29 @@ func (msg *Message) HeaderBytes() []byte {
 	binary.BigEndian.PutUint32(result[MSG_SEQ_BEGIN:MSG_SEQ_END], msg.Seq)
 	binary.BigEndian.PutUint32(result[MSG_LEN_BEGIN:MSG_LEN_END], msg.Len)
 	return result
+}
+
+type MessageStatus struct {
+	Status int
+
+	TransmittedAt time.Time
+	AckedAt       time.Time
+	Latency       time.Duration
+
+	sync.RWMutex
+}
+
+func (ms *MessageStatus) Transmitted() {
+	ms.Lock()
+	ms.Status |= MSG_STATUS_TRANSMITTED
+	ms.TransmittedAt = time.Now()
+	ms.Unlock()
+}
+
+func (ms *MessageStatus) Acked() {
+	ms.Lock()
+	ms.Status |= MSG_STATUS_ACKED
+	ms.AckedAt = time.Now()
+	ms.Latency = ms.AckedAt.Sub(ms.TransmittedAt)
+	ms.Unlock()
 }

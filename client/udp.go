@@ -1,7 +1,6 @@
 package client
 
 import (
-	"bytes"
 	"time"
 	"net"
 	"github.com/skycoin/net/conn"
@@ -37,6 +36,7 @@ func (c *ClientUDPConn) ReadLoop() (err error) {
 		case msg.TYPE_ACK:
 			seq := binary.BigEndian.Uint32(maxBuf[msg.MSG_SEQ_BEGIN:msg.MSG_SEQ_END])
 			c.DelMsg(seq)
+			c.UpdateLastAck(seq)
 		case msg.TYPE_NORMAL:
 			seq := binary.BigEndian.Uint32(maxBuf[msg.MSG_SEQ_BEGIN:msg.MSG_SEQ_END])
 			err = c.Ack(seq)
@@ -94,17 +94,6 @@ func (c *ClientUDPConn) WriteLoop() (err error) {
 func (c *ClientUDPConn) Write(bytes []byte) error {
 	new := c.GetNextSeq()
 	m := msg.New(msg.TYPE_NORMAL, new, bytes)
-	c.AddMsg(new, m)
-	return c.WriteBytes(m.Bytes())
-}
-
-func (c *ClientUDPConn) WriteSlice(src ...[]byte) error {
-	new := c.GetNextSeq()
-	r := &bytes.Buffer{}
-	for _, b := range src {
-		r.Write(b)
-	}
-	m := msg.New(msg.TYPE_NORMAL, new, r.Bytes())
 	c.AddMsg(new, m)
 	return c.WriteBytes(m.Bytes())
 }

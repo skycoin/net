@@ -19,7 +19,7 @@ type Client struct {
 	sync.RWMutex
 
 	seq uint32
-	conn.PendingMap
+	PendingMap
 
 	conn *websocket.Conn
 	push chan interface{}
