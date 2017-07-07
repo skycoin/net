@@ -11,7 +11,6 @@ import (
 	"encoding/binary"
 	"sync/atomic"
 	"github.com/skycoin/net/skycoin-messenger/factory"
-	"github.com/skycoin/net/conn"
 )
 
 type Client struct {

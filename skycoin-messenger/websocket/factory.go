@@ -5,7 +5,6 @@ import (
 	"sync"
 	"time"
 	"log"
-	"github.com/skycoin/net/conn"
 )
 
 type Factory struct {
