@@ -9,17 +9,20 @@ import (
 
 func main() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
+	go func() {
+		log.Println("listening rpc")
+		err := rpc.ServeRPC("localhost:8083")
+		if err != nil {
+			log.Fatal("rpc.ServeRPC: ", err)
+		}
+	}()
 
+	log.Println("listening websocket")
 	http.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
 		websocket.ServeWs(w, r)
 	})
-	go func() {
-		log.Println("listening rpc")
-		rpc.ServeRPC(":8083")
-	}()
-	log.Println("listening websocket")
-	err := http.ListenAndServe(":8082", nil)
+	err := http.ListenAndServe("localhost:8082", nil)
 	if err != nil {
-		log.Fatal("ListenAndServe: ", err)
+		log.Fatal("http.ListenAndServe: ", err)
 	}
 }

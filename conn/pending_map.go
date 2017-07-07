@@ -74,6 +74,7 @@ func (m *PendingMap) analyse() {
 			}
 			var max, min int64
 			sum := new(big.Int)
+			bytesSent := 0
 			for _, v := range m.lastMinuteAcked {
 				latency := v.Latency.Nanoseconds()
 				if max < latency {
@@ -85,6 +86,8 @@ func (m *PendingMap) analyse() {
 				y := new(big.Int)
 				y.SetInt64(latency)
 				sum.Add(sum, y)
+
+				bytesSent += v.TotalSize()
 			}
 			n := new(big.Int)
 			n.SetInt64(int64(len(m.lastMinuteAcked)))
@@ -93,7 +96,7 @@ func (m *PendingMap) analyse() {
 			m.lastMinuteAckedMutex.RUnlock()
 
 			m.fieldsMutex.Lock()
-			m.statistics = fmt.Sprintf("latency: max %d ns, min %d ns, avg %s ns, count %s", max, min, avg, n)
+			m.statistics = fmt.Sprintf("sent: %d bytes, latency: max %d ns, min %d ns, avg %s ns, count %s", bytesSent, max, min, avg, n)
 			m.fieldsMutex.Unlock()
 			log.Println(m.statistics)
 		}

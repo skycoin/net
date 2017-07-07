@@ -23,7 +23,6 @@ func TestServeRPC(t *testing.T) {
 	}
 	t.Log("code", code)
 
-	_ = msg.PUSH_MSG
 	target := cipher.PubKey([33]byte{0xf1})
 	err = client.Call("Gateway.Send", &op.Send{PublicKey:target.Hex(), Msg:"What a beautiful day!"}, &code)
 	if err != nil {

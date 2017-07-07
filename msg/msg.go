@@ -57,6 +57,10 @@ func (msg *Message) HeaderBytes() []byte {
 	return result
 }
 
+func (msg *Message) TotalSize() int {
+	return MSG_HEADER_SIZE + len(msg.Body)
+}
+
 type MessageStatus struct {
 	Status int
 
