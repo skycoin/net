@@ -31,5 +31,10 @@ func (r *Reg) Execute(c msg.OPer) error {
 		return err
 	}
 	c.SetConnection(conn)
-	return conn.Reg(key)
+	err = conn.Reg(key)
+	if err != nil {
+		return err
+	}
+	go c.PushLoop(conn)
+	return nil
 }

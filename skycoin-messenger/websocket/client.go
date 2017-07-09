@@ -39,14 +39,13 @@ func (c *Client) SetConnection(connection *factory.Connection) {
 	c.Unlock()
 }
 
-func (c *Client) PushLoop(conn *factory.Connection, data []byte) {
+func (c *Client) PushLoop(conn *factory.Connection) {
 	defer func() {
 		if err := recover(); err != nil {
 			log.Printf("PushLoop recovered err %v", err)
 		}
 	}()
-	push := &msg.PushMsg{PublicKey: conn.GetKey().Hex(), Msg: string(data)}
-	c.push <- push
+	push := &msg.PushMsg{PublicKey: conn.GetKey().Hex()}
 	for {
 		select {
 		case m, ok := <-conn.GetChanIn():
@@ -77,6 +76,7 @@ func (c *Client) readLoop() {
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway) {
 				log.Printf("error: %v", err)
 			}
+			log.Printf("error: %v", err)
 			break
 		}
 		opn := int(m[msg.MSG_OP_BEGIN])
@@ -90,7 +90,7 @@ func (c *Client) readLoop() {
 			continue
 		}
 
-		c.ack(m[msg.MSG_OP_BEGIN:msg.MSG_SEQ_END])
+		//c.ack(m[msg.MSG_OP_BEGIN:msg.MSG_SEQ_END])
 
 		err = json.Unmarshal(m[msg.MSG_HEADER_END:], op)
 		if err == nil {
@@ -105,7 +105,7 @@ func (c *Client) readLoop() {
 	}
 }
 
-func (c *Client) writeLoop() {
+func (c *Client) writeLoop() (err error) {
 	ticker := time.NewTicker(pingPeriod)
 	defer func() {
 		if err := recover(); err != nil {
@@ -118,27 +118,38 @@ func (c *Client) writeLoop() {
 	for {
 		select {
 		case message, ok := <-c.push:
-			c.conn.SetWriteDeadline(time.Now().Add(writeWait))
 			if !ok {
-				c.conn.WriteMessage(websocket.CloseMessage, []byte{})
-				return
+				log.Println("closed c.push")
+				err = c.conn.WriteMessage(websocket.CloseMessage, []byte{})
+				if err != nil {
+					log.Println(err)
+					return
+				}
 			}
 
+			c.conn.SetWriteDeadline(time.Now().Add(writeWait))
 			w, err := c.conn.NextWriter(websocket.BinaryMessage)
 			if err != nil {
-				return
+				log.Println(err)
+				return err
 			}
 			switch m := message.(type) {
 			case msg.PushMsg:
-				c.write(w, &m)
+				err = c.write(w, &m)
+				if err != nil {
+					log.Println(err)
+					return err
+				}
 			}
-			if err := w.Close(); err != nil {
-				return
+			if err = w.Close(); err != nil {
+				log.Println(err)
+				return err
 			}
 		case <-ticker.C:
 			c.conn.SetWriteDeadline(time.Now().Add(writeWait))
 			if err := c.conn.WriteMessage(websocket.PingMessage, []byte{}); err != nil {
-				return
+				log.Println(err)
+				return err
 			}
 		}
 	}
@@ -171,5 +182,6 @@ func (c *Client) write(w io.WriteCloser, m *msg.PushMsg) (err error) {
 
 func (c *Client) ack(data []byte) error {
 	data[msg.MSG_OP_BEGIN] = msg.PUSH_ACK
+	c.conn.SetWriteDeadline(time.Now().Add(writeWait))
 	return c.conn.WriteMessage(websocket.BinaryMessage, data)
 }

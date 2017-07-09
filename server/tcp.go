@@ -21,12 +21,12 @@ func NewServerTCPConn(c *net.TCPConn) *ServerTCPConn {
 
 func (c *ServerTCPConn) ReadLoop() (err error) {
 	defer func() {
-		if err != nil {
-			c.SetStatusToError(err)
-		}
 		if e := recover(); e != nil {
 			log.Println(e)
-			return
+			err = fmt.Errorf("readloop panic err:%v", e)
+		}
+		if err != nil {
+			c.SetStatusToError(err)
 		}
 		c.Close()
 	}()
