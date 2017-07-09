@@ -37,7 +37,7 @@ func (c *Client) PushLoop(conn *factory.Connection, data []byte) {
 			log.Printf("PushLoop recovered err %v", err)
 		}
 	}()
-	push := &msg.PushMsg{PublicKey: conn.Key.Hex(), Msg: string(data)}
+	push := &msg.PushMsg{PublicKey: conn.GetKey().Hex(), Msg: string(data)}
 	c.push <- *push
 	for {
 		select {

@@ -31,7 +31,7 @@ func (f *MessengerFactory) acceptedCallback(connection *factory.Connection) {
 			if err := recover(); err != nil {
 				log.Printf("acceptedCallback err %v", err)
 			}
-			f.unregister(conn.Key, conn)
+			f.unregister(conn.GetKey(), conn)
 		}()
 		for {
 			select {
@@ -49,6 +49,7 @@ func (f *MessengerFactory) acceptedCallback(connection *factory.Connection) {
 						return
 					}
 					key := cipher.NewPubKey(m[MSG_PUBLIC_KEY_BEGIN:MSG_PUBLIC_KEY_END])
+					conn.SetKey(key)
 					f.register(key, conn)
 				case OP_SEND:
 					if len(m) < MSG_TO_PUBLIC_KEY_END {
@@ -59,7 +60,7 @@ func (f *MessengerFactory) acceptedCallback(connection *factory.Connection) {
 					c, ok := f.regConnections[key.Hex()]
 					f.regConnectionsMutex.RUnlock()
 					if !ok {
-						log.Printf("Key %s not found", key.Hex())
+						log.Printf("key %s not found", key.Hex())
 						continue
 					}
 					err := c.Write(m)

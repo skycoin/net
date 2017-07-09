@@ -13,7 +13,7 @@ type ServerUDPConn struct {
 }
 
 func NewServerUDPConn(c *net.UDPConn) *ServerUDPConn {
-	return &ServerUDPConn{UDPConn:&conn.UDPConn{UdpConn:c}}
+	return &ServerUDPConn{UDPConn: &conn.UDPConn{UdpConn: c}}
 }
 
 func (c *ServerUDPConn) ReadLoop(fn func(c *net.UDPConn, addr *net.UDPAddr) *conn.UDPConn) (err error) {
@@ -58,11 +58,18 @@ func (c *ServerUDPConn) ReadLoop(fn func(c *net.UDPConn, addr *net.UDPAddr) *con
 			if err != nil {
 				return err
 			}
-			cc.In <- maxBuf[msg.MSG_HEADER_END:]
+			func() {
+				defer func() {
+					if e := recover(); e != nil {
+						log.Println(e)
+					}
+					cc.Close()
+				}()
+				cc.In <- maxBuf[msg.MSG_HEADER_END:]
+			}()
 		}
 
 		cc.UpdateLastTime()
 	}
 	return nil
 }
-

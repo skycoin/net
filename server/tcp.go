@@ -24,6 +24,10 @@ func (c *ServerTCPConn) ReadLoop() (err error) {
 		if err != nil {
 			c.SetStatusToError(err)
 		}
+		if e := recover(); e != nil {
+			log.Println(e)
+			return
+		}
 		c.Close()
 	}()
 	header := make([]byte, msg.MSG_HEADER_SIZE)
@@ -69,15 +73,7 @@ func (c *ServerTCPConn) ReadLoop() (err error) {
 			seq := binary.BigEndian.Uint32(header[msg.MSG_TYPE_END:msg.MSG_SEQ_END])
 			c.Ack(seq)
 			log.Printf("acked out %d", seq)
-
-			func() {
-				defer func() {
-					if err := recover(); err != nil {
-						log.Printf("c.In <- m.Body panic %v, %x", err, m.Body)
-					}
-				}()
-				c.In <- m.Body
-			}()
+			c.In <- m.Body
 		default:
 			return fmt.Errorf("not implemented msg type %d", msg_t)
 		}

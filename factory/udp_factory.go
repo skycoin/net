@@ -58,8 +58,6 @@ func (factory *UDPFactory) createConn(c *net.UDPConn, addr *net.UDPAddr) *conn.U
 	factory.udpConnMap[addr.String()] = udpConn
 	factory.udpConnMapMutex.Unlock()
 
-	go udpConn.ReadLoop()
-	go udpConn.WriteLoop()
 	udpConn.SetStatusToConnected()
 	connection := &Connection{Connection: udpConn, factory: factory}
 	factory.AddConn(connection)
@@ -109,7 +107,5 @@ func (factory *UDPFactory) Connect(address string) (conn *Connection, err error)
 	cn.SetStatusToConnected()
 	conn = &Connection{Connection: cn, factory: factory}
 	factory.AddConn(conn)
-	go conn.ReadLoop()
-	go conn.WriteLoop()
 	return
 }

@@ -4,6 +4,7 @@ import (
 	"github.com/skycoin/net/server"
 	"net"
 	"github.com/skycoin/net/client"
+	"github.com/skycoin/net/conn"
 )
 
 type TCPFactory struct {
@@ -44,8 +45,6 @@ func (factory *TCPFactory) createConn(c *net.TCPConn) *Connection {
 	tcpConn.SetStatusToConnected()
 	conn := &Connection{Connection: tcpConn, factory: factory}
 	factory.AddConn(conn)
-	go tcpConn.ReadLoop()
-	go tcpConn.WriteLoop()
 	factory.AcceptedCallback(conn)
 	return conn
 }
@@ -59,7 +58,6 @@ func (factory *TCPFactory) Connect(address string) (conn *Connection, err error)
 	cn.SetStatusToConnected()
 	conn = &Connection{Connection: cn, factory: factory}
 	factory.AddConn(conn)
-	go cn.ReadLoop()
-	go cn.WriteLoop()
 	return
 }
+

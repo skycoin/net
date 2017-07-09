@@ -22,6 +22,11 @@ func (c *ClientUDPConn) ReadLoop() (err error) {
 		if err != nil {
 			c.SetStatusToError(err)
 		}
+		if e := recover(); e != nil {
+			log.Println(e)
+			return
+		}
+		c.Close()
 	}()
 	for {
 		maxBuf := make([]byte, conn.MAX_UDP_PACKAGE_SIZE)

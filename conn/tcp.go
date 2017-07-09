@@ -29,6 +29,10 @@ func (c *TCPConn) ReadLoop() (err error) {
 		if err != nil {
 			c.SetStatusToError(err)
 		}
+		if e := recover(); e != nil {
+			log.Println(e)
+			return
+		}
 		c.Close()
 	}()
 	header := make([]byte, msg.MSG_HEADER_SIZE)
@@ -73,7 +77,7 @@ func (c *TCPConn) ReadLoop() (err error) {
 
 			seq := binary.BigEndian.Uint32(header[msg.MSG_SEQ_BEGIN:msg.MSG_SEQ_END])
 			c.Ack(seq)
-
+			log.Printf("c.In <- m.Body %x", m.Body)
 			c.In <- m.Body
 		default:
 			return fmt.Errorf("not implemented msg type %d", msg_t)

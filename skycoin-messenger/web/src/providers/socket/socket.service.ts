@@ -1,39 +1,69 @@
-import {Injectable} from '@angular/core';
+import { Injectable } from '@angular/core';
 
-export enum OP { REG, SEND, ACK}
-;
+export enum OP { REG, SEND, ACK };
+export enum PUSH { ACK, MSG };
 
 @Injectable()
 export class SocketService {
   private ws: WebSocket = null;
-  private url = '';
-  private ackDict = new Dictionary<number, any>();
+  private url = 'ws://localhost:8082/ws';
+  // private ackDict = new Dictionary<number, any>();
+  private key = 'ABCDEFABCDEFABCDEFABCDEFABCDEFABCDEFABCDEFABCDEFABCDEFABCDEF'
   private seqId = 0;
 
   constructor() {
+    this.key += this.getRandomInt(100000, 999999);
+    console.log('key:', this.key);
   }
 
   start() {
     this.ws = new WebSocket(this.url);
     this.ws.binaryType = 'arraybuffer';
-    // TODO send Function
     this.ws.onopen = () => {
-      this.send();
+      this.send(OP.REG, JSON.stringify({ Address: 'localhost:8080', PublicKey: this.key }));
     }
-    this.ws.onclose = (error) => {
+    this.ws.onmessage = (event) => {
+      this.handle(event.data);
+    }
+    this.ws.onerror = (error) => {
       console.error('ws error:', error);
     }
     this.ws.onclose = (res) => {
       console.log('-------ws close-------');
     }
   }
+  private getRandomInt(min, max) {
+    return Math.floor(Math.random() * (max - min + 1) + min);
+  }
+  msg(message: string) {
+    this.send(OP.SEND, JSON.stringify({ PublicKey: this.key, Msg: this.key + ': ' + message }));
+  }
 
+  private handle(data: ArrayBuffer) {
+    let buf = new Uint8Array(data);
+    let op = buf[0]
+    let json = this.utf8ArrayToStr(buf.slice(5));
+    switch (op) {
+      case PUSH.ACK:
+        console.log('send successful');
+        break;
+      case PUSH.MSG:
+        console.log('push msg:', json);
+        break;
+    }
+    this.ack(op, this.getSeq(buf));
+  }
+  private toHexString(byteArray) {
+    return Array.from(byteArray, (byte: number) => {
+      return ('0' + (byte & 0xFF).toString(16)).slice(-2);
+    }).join('')
+  }
   private getSeq(buf: Uint8Array): number {
     return (buf[1] << 24) | (buf[2] << 16) | (buf[3] << 8) | (buf[4]);
   }
 
   private send(op: number, json?: string) {
-    this.ackDict.setValue(++this.seqId, { op: op, json: json });
+    // this.ackDict.setValue(++this.seqId, { op: op, json: json });
     this.sendWithSeq(op, this.seqId, json);
   }
 
@@ -41,7 +71,6 @@ export class SocketService {
     let buf: Uint8Array;
     let uintjson: Uint8Array;
     if (json) {
-      console.debug(json);
       uintjson = this.stringToUint8(json);
       buf = new Uint8Array(uintjson.length + 5);
       for (var i = 5; i < buf.byteLength; i++) {
@@ -92,5 +121,45 @@ export class SocketService {
       }
     }
     return new Uint8Array(bytes);
+  }
+  private utf8ArrayToStr(array) {
+    var out, i, len, c;
+    var char2, char3;
+
+    out = "";
+    len = array.length;
+    i = 0;
+    while (i < len) {
+      c = array[i++];
+      switch (c >> 4) {
+        case 0:
+        case 1:
+        case 2:
+        case 3:
+        case 4:
+        case 5:
+        case 6:
+        case 7:
+          // 0xxxxxxx
+          out += String.fromCharCode(c);
+          break;
+        case 12:
+        case 13:
+          // 110x xxxx   10xx xxxx
+          char2 = array[i++];
+          out += String.fromCharCode(((c & 0x1F) << 6) | (char2 & 0x3F));
+          break;
+        case 14:
+          // 1110 xxxx  10xx xxxx  10xx xxxx
+          char2 = array[i++];
+          char3 = array[i++];
+          out += String.fromCharCode(((c & 0x0F) << 12) |
+            ((char2 & 0x3F) << 6) |
+            ((char3 & 0x3F) << 0));
+          break;
+      }
+    }
+
+    return out;
   }
 }
