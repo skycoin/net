@@ -4,7 +4,6 @@ import (
 	"github.com/skycoin/net/server"
 	"net"
 	"github.com/skycoin/net/client"
-	"github.com/skycoin/net/conn"
 )
 
 type TCPFactory struct {
