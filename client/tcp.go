@@ -4,7 +4,6 @@ import (
 	"time"
 	"github.com/skycoin/net/conn"
 	"net"
-	log "github.com/sirupsen/logrus"
 )
 
 type ClientTCPConn struct {
@@ -26,20 +25,20 @@ func (c *ClientTCPConn) WriteLoop() (err error) {
 	for {
 		select {
 		case <-ticker.C:
-			log.Println("ping out")
+			c.CTXLogger.Debug("ping out")
 			err := c.Ping()
 			if err != nil {
 				return err
 			}
 		case m, ok := <-c.Out:
 			if !ok {
-				log.Println("conn closed")
+				c.CTXLogger.Debug("conn closed")
 				return nil
 			}
-			log.Printf("msg Out %x", m)
+			c.CTXLogger.Debugf("msg Out %x", m)
 			err := c.Write(m)
 			if err != nil {
-				log.Printf("write msg is failed %v", err)
+				c.CTXLogger.Debugf("write msg is failed %v", err)
 				return err
 			}
 		}

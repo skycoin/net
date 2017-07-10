@@ -39,9 +39,10 @@ type ConnCommonFields struct {
 }
 
 func NewConnCommonFileds() ConnCommonFields {
+	entry := log.WithField("ctxId", atomic.AddUint32(&ctxId, 1))
 	return ConnCommonFields{
-		CTXLogger:  log.WithField("ctxId", atomic.AddUint32(&ctxId, 1)),
-		PendingMap: NewPendingMap()}
+		CTXLogger:  entry,
+		PendingMap: NewPendingMap(entry)}
 }
 
 func (c *ConnCommonFields) SetStatusToConnected() {
@@ -55,7 +56,7 @@ func (c *ConnCommonFields) SetStatusToError(err error) {
 	c.Status = STATUS_ERROR
 	c.Err = err
 	c.fieldsMutex.Unlock()
-	log.Printf("SetStatusToError %v", err)
+	c.CTXLogger.Debugf("SetStatusToError %v", err)
 }
 
 func (c *ConnCommonFields) UpdateLastAck(s uint32) {

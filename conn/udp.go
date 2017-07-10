@@ -4,7 +4,6 @@ import (
 	"encoding/binary"
 	"github.com/skycoin/net/msg"
 	"net"
-	log "github.com/sirupsen/logrus"
 	"time"
 	"sync/atomic"
 )
@@ -41,13 +40,13 @@ func (c *UDPConn) WriteLoop() (err error) {
 		select {
 		case m, ok := <-c.Out:
 			if !ok {
-				log.Println("udp conn closed")
+				c.CTXLogger.Debug("udp conn closed")
 				return nil
 			}
-			log.Printf("msg out %x", m)
+			c.CTXLogger.Debugf("msg out %x", m)
 			err := c.Write(m)
 			if err != nil {
-				log.Printf("write msg is failed %v", err)
+				c.CTXLogger.Debugf("write msg is failed %v", err)
 				return err
 			}
 		}
@@ -104,7 +103,7 @@ func (c *UDPConn) UpdateLastTime() {
 func (c *UDPConn) Close() {
 	defer func() {
 		if err := recover(); err != nil {
-			log.Println("closing closed udpconn")
+			c.CTXLogger.Debug("closing closed udpconn")
 		}
 	}()
 	c.fieldsMutex.Lock()

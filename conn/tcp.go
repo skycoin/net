@@ -7,7 +7,6 @@ import (
 	"io"
 	"encoding/binary"
 	"time"
-	log "github.com/sirupsen/logrus"
 	"sync/atomic"
 	"fmt"
 )
@@ -26,7 +25,7 @@ type TCPConn struct {
 func (c *TCPConn) ReadLoop() (err error) {
 	defer func() {
 		if e := recover(); e != nil {
-			log.Println(e)
+			c.CTXLogger.Debug(e)
 			err = fmt.Errorf("readloop panic err:%v", e)
 		}
 		if err != nil {
@@ -58,10 +57,10 @@ func (c *TCPConn) ReadLoop() (err error) {
 			if err != nil {
 				return err
 			}
-			log.Println("recv ping")
+			c.CTXLogger.Debug("recv ping")
 		case msg.TYPE_PONG:
 			reader.Discard(msg.MSG_TYPE_SIZE)
-			log.Println("recv pong")
+			c.CTXLogger.Debug("recv pong")
 		case msg.TYPE_NORMAL:
 			_, err = io.ReadAtLeast(reader, header, msg.MSG_HEADER_SIZE)
 			if err != nil {
@@ -76,7 +75,7 @@ func (c *TCPConn) ReadLoop() (err error) {
 
 			seq := binary.BigEndian.Uint32(header[msg.MSG_SEQ_BEGIN:msg.MSG_SEQ_END])
 			c.Ack(seq)
-			log.Printf("c.In <- m.Body %x", m.Body)
+			c.CTXLogger.Debugf("c.In <- m.Body %x", m.Body)
 			c.In <- m.Body
 		default:
 			return fmt.Errorf("not implemented msg type %d", msg_t)
@@ -96,13 +95,13 @@ func (c *TCPConn) WriteLoop() (err error) {
 		select {
 		case m, ok := <-c.Out:
 			if !ok {
-				log.Println("conn closed")
+				c.CTXLogger.Debug("conn closed")
 				return nil
 			}
-			log.Printf("msg Out %x", m)
+			c.CTXLogger.Debugf("msg Out %x", m)
 			err := c.Write(m)
 			if err != nil {
-				log.Printf("write msg is failed %v", err)
+				c.CTXLogger.Debugf("write msg is failed %v", err)
 				return err
 			}
 		}
@@ -129,7 +128,7 @@ func (c *TCPConn) Write(bytes []byte) error {
 func (c *TCPConn) WriteBytes(bytes []byte) error {
 	c.writeMutex.Lock()
 	defer c.writeMutex.Unlock()
-	//log.Printf("write %x", bytes)
+	//c.CTXLogger.Debugf("write %x", bytes)
 	index := 0
 	for n, err := c.TcpConn.Write(bytes[index:]); index != len(bytes); index += n {
 		if err != nil {
@@ -163,7 +162,7 @@ func (c *TCPConn) GetChanIn() <-chan []byte {
 func (c *TCPConn) Close() {
 	defer func() {
 		if err := recover(); err != nil {
-			log.Println("closing closed udpconn")
+			c.CTXLogger.Debug("closing closed udpconn")
 		}
 	}()
 	c.fieldsMutex.Lock()

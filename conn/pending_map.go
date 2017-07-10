@@ -2,11 +2,11 @@ package conn
 
 import (
 	"sync"
-	log "github.com/sirupsen/logrus"
 	"github.com/skycoin/net/msg"
 	"time"
 	"math/big"
 	"fmt"
+	"github.com/sirupsen/logrus"
 )
 
 type PendingMap struct {
@@ -19,10 +19,12 @@ type PendingMap struct {
 
 	statistics  string
 	fieldsMutex sync.RWMutex
+	logger      *logrus.Entry
 }
 
-func NewPendingMap() *PendingMap {
+func NewPendingMap(logger *logrus.Entry) *PendingMap {
 	pendingMap := &PendingMap{Pending: make(map[uint32]*msg.Message), ackedMessages: make(map[uint32]*msg.Message)}
+	pendingMap.logger = logger
 	go pendingMap.analyse()
 	return pendingMap
 }
@@ -51,7 +53,7 @@ func (m *PendingMap) DelMsg(k uint32) {
 
 	m.Lock()
 	delete(m.Pending, k)
-	log.Printf("acked %d, Pending:%d, %v", k, len(m.Pending), m.Pending)
+	m.logger.Debugf("acked %d, Pending:%d, %v", k, len(m.Pending), m.Pending)
 	m.Unlock()
 }
 
@@ -98,7 +100,7 @@ func (m *PendingMap) analyse() {
 			m.fieldsMutex.Lock()
 			m.statistics = fmt.Sprintf("sent: %d bytes, latency: max %d ns, min %d ns, avg %s ns, count %s", bytesSent, max, min, avg, n)
 			m.fieldsMutex.Unlock()
-			log.Println(m.statistics)
+			m.logger.Debug(m.statistics)
 		}
 	}
 }

@@ -5,7 +5,6 @@ import (
 	"net"
 	"github.com/skycoin/net/conn"
 	"github.com/skycoin/net/msg"
-	log "github.com/sirupsen/logrus"
 	"encoding/binary"
 )
 
@@ -23,7 +22,7 @@ func (c *ClientUDPConn) ReadLoop() (err error) {
 			c.SetStatusToError(err)
 		}
 		if e := recover(); e != nil {
-			log.Println(e)
+			c.CTXLogger.Debug(e)
 			return
 		}
 		c.Close()
@@ -76,20 +75,20 @@ func (c *ClientUDPConn) WriteLoop() (err error) {
 	for {
 		select {
 		case <-ticker.C:
-			log.Println("Ping out")
+			c.CTXLogger.Debug("Ping out")
 			err := c.ping()
 			if err != nil {
 				return err
 			}
 		case m, ok := <-c.Out:
 			if !ok {
-				log.Println("udp conn closed")
+				c.CTXLogger.Debug("udp conn closed")
 				return nil
 			}
-			log.Printf("msg out %x", m)
+			c.CTXLogger.Debugf("msg out %x", m)
 			err := c.Write(m)
 			if err != nil {
-				log.Printf("write msg is failed %v", err)
+				c.CTXLogger.Debugf("write msg is failed %v", err)
 				return err
 			}
 		}

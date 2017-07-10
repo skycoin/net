@@ -3,7 +3,6 @@ package server
 import (
 	"github.com/skycoin/net/conn"
 	"github.com/skycoin/net/msg"
-	log "github.com/sirupsen/logrus"
 	"net"
 	"encoding/binary"
 )
@@ -30,7 +29,7 @@ func (c *ServerUDPConn) ReadLoop(fn func(c *net.UDPConn, addr *net.UDPAddr) *con
 			if e, ok := err.(net.Error); ok {
 				if e.Timeout() {
 					cc := fn(c.UdpConn, addr)
-					log.Println("close in")
+					c.CTXLogger.Debug("close in")
 					close(cc.In)
 					continue
 				}
@@ -47,7 +46,7 @@ func (c *ServerUDPConn) ReadLoop(fn func(c *net.UDPConn, addr *net.UDPAddr) *con
 			c.DelMsg(seq)
 			c.UpdateLastAck(seq)
 		case msg.TYPE_PING:
-			log.Println("recv ping")
+			c.CTXLogger.Debug("recv ping")
 			err = cc.WriteBytes([]byte{msg.TYPE_PONG})
 			if err != nil {
 				return err
@@ -61,7 +60,7 @@ func (c *ServerUDPConn) ReadLoop(fn func(c *net.UDPConn, addr *net.UDPAddr) *con
 			func() {
 				defer func() {
 					if e := recover(); e != nil {
-						log.Println(e)
+						c.CTXLogger.Debug(e)
 					}
 					cc.Close()
 				}()
