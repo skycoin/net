@@ -2,7 +2,7 @@ package rpc
 
 import (
 	"sync"
-	"log"
+	log "github.com/sirupsen/logrus"
 	"github.com/skycoin/net/skycoin-messenger/msg"
 	"github.com/skycoin/net/skycoin-messenger/factory"
 )

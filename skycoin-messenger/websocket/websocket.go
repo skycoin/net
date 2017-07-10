@@ -2,7 +2,7 @@ package websocket
 
 import (
 	"net/http"
-	"log"
+	log "github.com/sirupsen/logrus"
 	"github.com/gorilla/websocket"
 )
 

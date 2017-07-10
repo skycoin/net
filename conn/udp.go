@@ -4,7 +4,7 @@ import (
 	"encoding/binary"
 	"github.com/skycoin/net/msg"
 	"net"
-	"log"
+	log "github.com/sirupsen/logrus"
 	"time"
 	"sync/atomic"
 )
@@ -14,13 +14,13 @@ const (
 )
 
 type UDPConn struct {
+	ConnCommonFields
 	UdpConn *net.UDPConn
 	addr    *net.UDPAddr
 	In      chan []byte
 	Out     chan []byte
 
 	lastTime    int64
-	*ConnCommonFields
 }
 
 func NewUDPConn(c *net.UDPConn, addr *net.UDPAddr) *UDPConn {

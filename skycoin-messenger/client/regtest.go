@@ -2,15 +2,13 @@ package main
 
 import (
 	"github.com/skycoin/net/skycoin-messenger/factory"
-	"log"
+	log "github.com/sirupsen/logrus"
 	"github.com/skycoin/skycoin/src/cipher"
 	_ "net/http/pprof"
 	"net/http"
 )
 
 func main() {
-	log.SetFlags(log.LstdFlags | log.Lshortfile)
-
 	go func() {
 		http.ListenAndServe(":6060", nil)
 	}()

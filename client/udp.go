@@ -5,16 +5,16 @@ import (
 	"net"
 	"github.com/skycoin/net/conn"
 	"github.com/skycoin/net/msg"
-	"log"
+	log "github.com/sirupsen/logrus"
 	"encoding/binary"
 )
 
 type ClientUDPConn struct {
-	*conn.UDPConn
+	conn.UDPConn
 }
 
 func NewClientUDPConn(c *net.UDPConn) *ClientUDPConn {
-	return &ClientUDPConn{&conn.UDPConn{UdpConn: c, In: make(chan []byte), Out: make(chan []byte), ConnCommonFields:conn.NewConnCommonFileds()}}
+	return &ClientUDPConn{conn.UDPConn{UdpConn: c, In: make(chan []byte), Out: make(chan []byte), ConnCommonFields:conn.NewConnCommonFileds()}}
 }
 
 func (c *ClientUDPConn) ReadLoop() (err error) {

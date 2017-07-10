@@ -2,11 +2,10 @@ package main
 
 import (
 	"github.com/skycoin/net/skycoin-messenger/factory"
-	"log"
+	log "github.com/sirupsen/logrus"
 )
 
 func main() {
-	log.SetFlags(log.LstdFlags | log.Lshortfile)
 	log.Println("listening tcp")
 	f := factory.NewMessengerFactory()
 	err := f.Listen(":8080")

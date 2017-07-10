@@ -1,14 +1,13 @@
 package main
 
 import (
-	"log"
+	log "github.com/sirupsen/logrus"
 	"net/http"
 	"github.com/skycoin/net/skycoin-messenger/websocket"
 	"github.com/skycoin/net/skycoin-messenger/rpc"
 )
 
 func main() {
-	log.SetFlags(log.LstdFlags | log.Lshortfile)
 	go func() {
 		log.Println("listening rpc")
 		err := rpc.ServeRPC("localhost:8083")

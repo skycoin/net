@@ -3,17 +3,17 @@ package server
 import (
 	"github.com/skycoin/net/conn"
 	"github.com/skycoin/net/msg"
-	"log"
+	log "github.com/sirupsen/logrus"
 	"net"
 	"encoding/binary"
 )
 
 type ServerUDPConn struct {
-	*conn.UDPConn
+	conn.UDPConn
 }
 
 func NewServerUDPConn(c *net.UDPConn) *ServerUDPConn {
-	return &ServerUDPConn{UDPConn: &conn.UDPConn{UdpConn: c}}
+	return &ServerUDPConn{UDPConn: conn.UDPConn{UdpConn: c}}
 }
 
 func (c *ServerUDPConn) ReadLoop(fn func(c *net.UDPConn, addr *net.UDPAddr) *conn.UDPConn) (err error) {

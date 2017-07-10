@@ -3,7 +3,7 @@ package rpc
 import (
 	"testing"
 	"net/rpc"
-	"log"
+	log "github.com/sirupsen/logrus"
 	"github.com/skycoin/net/skycoin-messenger/op"
 	"github.com/skycoin/skycoin/src/cipher"
 	"github.com/skycoin/net/skycoin-messenger/msg"

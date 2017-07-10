@@ -4,7 +4,7 @@ import (
 	"bufio"
 	"encoding/binary"
 	"io"
-	"log"
+	log "github.com/sirupsen/logrus"
 	"github.com/skycoin/net/conn"
 	"github.com/skycoin/net/msg"
 	"net"
@@ -12,11 +12,11 @@ import (
 )
 
 type ServerTCPConn struct {
-	*conn.TCPConn
+	conn.TCPConn
 }
 
 func NewServerTCPConn(c *net.TCPConn) *ServerTCPConn {
-	return &ServerTCPConn{TCPConn: &conn.TCPConn{TcpConn: c, In: make(chan []byte), Out: make(chan []byte), ConnCommonFields:conn.NewConnCommonFileds()}}
+	return &ServerTCPConn{TCPConn: conn.TCPConn{TcpConn: c, In: make(chan []byte), Out: make(chan []byte), ConnCommonFields:conn.NewConnCommonFileds()}}
 }
 
 func (c *ServerTCPConn) ReadLoop() (err error) {

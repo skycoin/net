@@ -3,7 +3,7 @@ package websocket
 import (
 	"github.com/gorilla/websocket"
 	"time"
-	"log"
+	log "github.com/sirupsen/logrus"
 	"github.com/skycoin/net/skycoin-messenger/msg"
 	"sync"
 	"encoding/json"

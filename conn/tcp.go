@@ -7,7 +7,7 @@ import (
 	"io"
 	"encoding/binary"
 	"time"
-	"log"
+	log "github.com/sirupsen/logrus"
 	"sync/atomic"
 	"fmt"
 )
@@ -17,11 +17,10 @@ const (
 )
 
 type TCPConn struct {
+	ConnCommonFields
 	TcpConn net.Conn
 	In      chan []byte
 	Out     chan []byte
-
-	*ConnCommonFields
 }
 
 func (c *TCPConn) ReadLoop() (err error) {

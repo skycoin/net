@@ -4,7 +4,7 @@ import (
 	"github.com/skycoin/net/factory"
 	"github.com/skycoin/skycoin/src/cipher"
 	"sync"
-	"log"
+	log "github.com/sirupsen/logrus"
 )
 
 type MessengerFactory struct {

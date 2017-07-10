@@ -4,7 +4,7 @@ import (
 	"github.com/gorilla/websocket"
 	"sync"
 	"time"
-	"log"
+	log "github.com/sirupsen/logrus"
 )
 
 type Factory struct {

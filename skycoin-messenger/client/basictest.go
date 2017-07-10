@@ -1,14 +1,12 @@
 package main
 
 import (
-	"log"
+	log "github.com/sirupsen/logrus"
 	"github.com/skycoin/net/factory"
 	"time"
 )
 
 func main() {
-	log.SetFlags(log.LstdFlags | log.Lshortfile)
-
 	tcpFactory := factory.NewTCPFactory()
 	conn, err := tcpFactory.Connect(":8080")
 	if err != nil {

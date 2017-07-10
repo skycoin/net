@@ -2,7 +2,7 @@ package conn
 
 import (
 	"sync"
-	"log"
+	log "github.com/sirupsen/logrus"
 	"github.com/skycoin/net/msg"
 	"time"
 	"math/big"

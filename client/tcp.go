@@ -4,15 +4,15 @@ import (
 	"time"
 	"github.com/skycoin/net/conn"
 	"net"
-	"log"
+	log "github.com/sirupsen/logrus"
 )
 
 type ClientTCPConn struct {
-	*conn.TCPConn
+	conn.TCPConn
 }
 
 func NewClientTCPConn(c net.Conn) *ClientTCPConn {
-	return &ClientTCPConn{&conn.TCPConn{TcpConn: c, In: make(chan []byte), Out: make(chan []byte), ConnCommonFields:conn.NewConnCommonFileds()}}
+	return &ClientTCPConn{conn.TCPConn{TcpConn: c, In: make(chan []byte), Out: make(chan []byte), ConnCommonFields:conn.NewConnCommonFileds()}}
 }
 
 func (c *ClientTCPConn) WriteLoop() (err error) {

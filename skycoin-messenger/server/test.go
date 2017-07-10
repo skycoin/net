@@ -1,12 +1,11 @@
 package main
 
 import (
-	"log"
+	log "github.com/sirupsen/logrus"
 	"github.com/skycoin/net/factory"
 )
 
 func main() {
-	log.SetFlags(log.LstdFlags | log.Lshortfile)
 	go func() {
 		log.Println("listening udp")
 		udpFactory := factory.NewUDPFactory()

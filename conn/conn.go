@@ -2,8 +2,13 @@ package conn
 
 import (
 	"sync"
-	"log"
+	log "github.com/sirupsen/logrus"
 	"time"
+	"sync/atomic"
+)
+
+var (
+	ctxId uint32
 )
 
 type Connection interface {
@@ -24,15 +29,19 @@ type ConnCommonFields struct {
 	LastAck                    int64  // last time an ACK of receipt was received (better to store id of highest packet id with an ACK?)
 
 	Status int // STATUS_CONNECTING, STATUS_CONNECTED, STATUS_ERROR
-	Err error
+	Err    error
 
 	closed      bool
 	fieldsMutex sync.RWMutex
 	writeMutex  sync.Mutex
+
+	CTXLogger *log.Entry
 }
 
-func NewConnCommonFileds() *ConnCommonFields {
-	return &ConnCommonFields{PendingMap: NewPendingMap()}
+func NewConnCommonFileds() ConnCommonFields {
+	return ConnCommonFields{
+		CTXLogger:  log.WithField("ctxId", atomic.AddUint32(&ctxId, 1)),
+		PendingMap: NewPendingMap()}
 }
 
 func (c *ConnCommonFields) SetStatusToConnected() {
