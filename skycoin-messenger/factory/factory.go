@@ -27,9 +27,10 @@ func (f *MessengerFactory) Listen(address string) error {
 func (f *MessengerFactory) acceptedCallback(connection *factory.Connection) {
 	go func() {
 		conn := &Connection{Connection:connection}
+		conn.SetContextLogger(conn.GetContextLogger().WithField("app", "messenger"))
 		defer func() {
 			if err := recover(); err != nil {
-				conn.ContextLogger().Infof("acceptedCallback err %v", err)
+				conn.GetContextLogger().Infof("acceptedCallback err %v", err)
 			}
 			f.unregister(conn.GetKey(), conn)
 		}()
@@ -50,6 +51,7 @@ func (f *MessengerFactory) acceptedCallback(connection *factory.Connection) {
 					}
 					key := cipher.NewPubKey(m[MSG_PUBLIC_KEY_BEGIN:MSG_PUBLIC_KEY_END])
 					conn.SetKey(key)
+					conn.SetContextLogger(conn.GetContextLogger().WithField("pubkey", key.Hex()))
 					f.register(key, conn)
 				case OP_SEND:
 					if len(m) < MSG_TO_PUBLIC_KEY_END {
@@ -60,13 +62,13 @@ func (f *MessengerFactory) acceptedCallback(connection *factory.Connection) {
 					c, ok := f.regConnections[key.Hex()]
 					f.regConnectionsMutex.RUnlock()
 					if !ok {
-						conn.ContextLogger().Infof("key %s not found", key.Hex())
+						conn.GetContextLogger().Infof("key %s not found", key.Hex())
 						continue
 					}
 					err := c.Write(m)
 					if err != nil {
-						conn.ContextLogger().Infof("forward to key %s err %v", key.Hex(), err)
-						c.ContextLogger().Infof("write %x err %v", m, err)
+						conn.GetContextLogger().Infof("forward to key %s err %v", key.Hex(), err)
+						c.GetContextLogger().Infof("write %x err %v", m, err)
 						c.Close()
 					}
 				}
@@ -110,6 +112,7 @@ func (f *MessengerFactory) Connect(address string) (conn *Connection, err error)
 		return nil, err
 	}
 	conn = &Connection{Connection:c}
+	conn.SetContextLogger(conn.GetContextLogger().WithField("app", "messenger"))
 	return
 }
 

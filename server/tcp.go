@@ -71,7 +71,7 @@ func (c *ServerTCPConn) ReadLoop() (err error) {
 
 			seq := binary.BigEndian.Uint32(header[msg.MSG_TYPE_END:msg.MSG_SEQ_END])
 			c.Ack(seq)
-			c.CTXLogger.Debugf("acked out %d", seq)
+			c.CTXLogger.Debugf("c.In <- m.Body %x", m.Body)
 			c.In <- m.Body
 		default:
 			return fmt.Errorf("not implemented msg type %d", msg_t)

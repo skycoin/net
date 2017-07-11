@@ -21,7 +21,7 @@ func main() {
 	http.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
 		websocket.ServeWs(w, r)
 	})
-	err := http.ListenAndServe("localhost:8082", nil)
+	err := http.ListenAndServe(":8082", nil)
 	if err != nil {
 		log.Fatal("http.ListenAndServe: ", err)
 	}

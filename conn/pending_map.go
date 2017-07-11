@@ -6,7 +6,7 @@ import (
 	"time"
 	"math/big"
 	"fmt"
-	"github.com/sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 )
 
 type PendingMap struct {
@@ -19,10 +19,10 @@ type PendingMap struct {
 
 	statistics  string
 	fieldsMutex sync.RWMutex
-	logger      *logrus.Entry
+	logger      *log.Entry
 }
 
-func NewPendingMap(logger *logrus.Entry) *PendingMap {
+func NewPendingMap(logger *log.Entry) *PendingMap {
 	pendingMap := &PendingMap{Pending: make(map[uint32]*msg.Message), ackedMessages: make(map[uint32]*msg.Message)}
 	pendingMap.logger = logger
 	go pendingMap.analyse()

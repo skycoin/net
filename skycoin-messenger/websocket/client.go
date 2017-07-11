@@ -11,6 +11,7 @@ import (
 	"encoding/binary"
 	"sync/atomic"
 	"github.com/skycoin/net/skycoin-messenger/factory"
+	"github.com/skycoin/skycoin/src/cipher"
 )
 
 type Client struct {
@@ -22,6 +23,8 @@ type Client struct {
 
 	conn *websocket.Conn
 	push chan interface{}
+
+	logger *log.Entry
 }
 
 func (c *Client) GetConnection() *factory.Connection {
@@ -42,17 +45,19 @@ func (c *Client) SetConnection(connection *factory.Connection) {
 func (c *Client) PushLoop(conn *factory.Connection) {
 	defer func() {
 		if err := recover(); err != nil {
-			log.Printf("PushLoop recovered err %v", err)
+			c.logger.Errorf("PushLoop recovered err %v", err)
 		}
 	}()
-	push := &msg.PushMsg{PublicKey: conn.GetKey().Hex()}
+	push := &msg.PushMsg{}
 	for {
 		select {
 		case m, ok := <-conn.GetChanIn():
 			if !ok {
 				return
 			}
-			push.Msg = string(m)
+			key := cipher.NewPubKey(m[factory.MSG_PUBLIC_KEY_BEGIN:factory.MSG_PUBLIC_KEY_END])
+			push.From = key.Hex()
+			push.Msg = string(m[factory.MSG_META_END:])
 			c.push <- push
 		}
 	}
@@ -61,7 +66,7 @@ func (c *Client) PushLoop(conn *factory.Connection) {
 func (c *Client) readLoop() {
 	defer func() {
 		if err := recover(); err != nil {
-			log.Printf("readLoop recovered err %v", err)
+			c.logger.Errorf("readLoop recovered err %v", err)
 		}
 		c.SetConnection(nil)
 		c.conn.Close()
@@ -74,11 +79,12 @@ func (c *Client) readLoop() {
 		_, m, err := c.conn.ReadMessage()
 		if err != nil {
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway) {
-				log.Printf("error: %v", err)
+				c.logger.Errorf("error: %v", err)
 			}
-			log.Printf("error: %v", err)
+			c.logger.Errorf("error: %v", err)
 			break
 		}
+		c.logger.Debugf("recv %x", m)
 		opn := int(m[msg.MSG_OP_BEGIN])
 		if opn == msg.OP_ACK {
 			c.DelMsg(binary.BigEndian.Uint32(m[msg.MSG_SEQ_BEGIN:msg.MSG_SEQ_END]))
@@ -86,20 +92,20 @@ func (c *Client) readLoop() {
 		}
 		op := msg.GetOP(opn)
 		if op == nil {
-			log.Printf("op not found, %d", opn)
+			c.logger.Errorf("op not found, %d", opn)
 			continue
 		}
 
-		//c.ack(m[msg.MSG_OP_BEGIN:msg.MSG_SEQ_END])
+		c.ack(m[msg.MSG_OP_BEGIN:msg.MSG_SEQ_END])
 
 		err = json.Unmarshal(m[msg.MSG_HEADER_END:], op)
 		if err == nil {
 			err = op.Execute(c)
 			if err != nil {
-				log.Printf("websocket readLoop executed err: %v", err)
+				c.logger.Errorf("websocket readLoop executed err: %v", err)
 			}
 		} else {
-			log.Printf("websocket readLoop json Unmarshal err: %v", err)
+			c.logger.Errorf("websocket readLoop json Unmarshal err: %v", err)
 		}
 		msg.PutOP(opn, op)
 	}
@@ -109,7 +115,7 @@ func (c *Client) writeLoop() (err error) {
 	ticker := time.NewTicker(pingPeriod)
 	defer func() {
 		if err := recover(); err != nil {
-			log.Printf("writeLoop recovered err %v", err)
+			c.logger.Errorf("writeLoop recovered err %v", err)
 		}
 		ticker.Stop()
 		c.SetConnection(nil)
@@ -118,11 +124,12 @@ func (c *Client) writeLoop() (err error) {
 	for {
 		select {
 		case message, ok := <-c.push:
+			c.logger.Debug("push", message)
 			if !ok {
-				log.Println("closed c.push")
+				c.logger.Debug("closed c.push")
 				err = c.conn.WriteMessage(websocket.CloseMessage, []byte{})
 				if err != nil {
-					log.Println(err)
+					c.logger.Error(err)
 					return
 				}
 			}
@@ -130,25 +137,27 @@ func (c *Client) writeLoop() (err error) {
 			c.conn.SetWriteDeadline(time.Now().Add(writeWait))
 			w, err := c.conn.NextWriter(websocket.BinaryMessage)
 			if err != nil {
-				log.Println(err)
+				c.logger.Error(err)
 				return err
 			}
 			switch m := message.(type) {
-			case msg.PushMsg:
-				err = c.write(w, &m)
+			case *msg.PushMsg:
+				err = c.write(w, m)
 				if err != nil {
-					log.Println(err)
+					c.logger.Error(err)
 					return err
 				}
+			default:
+				c.logger.Errorf("not implemented msg %v", m)
 			}
 			if err = w.Close(); err != nil {
-				log.Println(err)
+				c.logger.Error(err)
 				return err
 			}
 		case <-ticker.C:
 			c.conn.SetWriteDeadline(time.Now().Add(writeWait))
 			if err := c.conn.WriteMessage(websocket.PingMessage, []byte{}); err != nil {
-				log.Println(err)
+				c.logger.Error(err)
 				return err
 			}
 		}
@@ -157,6 +166,7 @@ func (c *Client) writeLoop() (err error) {
 
 func (c *Client) write(w io.WriteCloser, m *msg.PushMsg) (err error) {
 	_, err = w.Write([]byte{msg.PUSH_MSG})
+	c.logger.Debugf("op %d", msg.PUSH_MSG)
 	if err != nil {
 		return
 	}
@@ -165,6 +175,7 @@ func (c *Client) write(w io.WriteCloser, m *msg.PushMsg) (err error) {
 	c.AddMsg(nseq, m)
 	binary.BigEndian.PutUint32(ss, nseq)
 	_, err = w.Write(ss)
+	c.logger.Debugf("seq %x", ss)
 	if err != nil {
 		return
 	}
@@ -173,6 +184,7 @@ func (c *Client) write(w io.WriteCloser, m *msg.PushMsg) (err error) {
 		return
 	}
 	_, err = w.Write(jbs)
+	c.logger.Debugf("json %x", jbs)
 	if err != nil {
 		return
 	}

@@ -19,6 +19,6 @@ func (m *PendingMap) AddMsg(k uint32, v interface{}) {
 func (m *PendingMap) DelMsg(k uint32) {
 	m.Lock()
 	delete(m.Pending, k)
-	log.Printf("acked %d, Pending:%d, %v", k, len(m.Pending), m.Pending)
+	log.Debugf("acked %d, Pending:%d, %v", k, len(m.Pending), m.Pending)
 	m.Unlock()
 }

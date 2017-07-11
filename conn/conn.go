@@ -20,7 +20,8 @@ type Connection interface {
 	Close()
 	IsClosed() bool
 
-	ContextLogger() *log.Entry
+	GetContextLogger() *log.Entry
+	SetContextLogger(*log.Entry)
 }
 
 type ConnCommonFields struct {
@@ -70,6 +71,14 @@ func (c *ConnCommonFields) UpdateLastAck(s uint32) {
 	c.fieldsMutex.Unlock()
 }
 
-func (c *ConnCommonFields) ContextLogger() *log.Entry {
+func (c *ConnCommonFields) GetContextLogger() *log.Entry {
+	c.fieldsMutex.RLock()
+	defer c.fieldsMutex.RUnlock()
 	return c.CTXLogger
+}
+
+func (c *ConnCommonFields) SetContextLogger(l *log.Entry) {
+	c.fieldsMutex.Lock()
+	c.CTXLogger = l
+	c.fieldsMutex.Unlock()
 }

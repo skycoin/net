@@ -5,18 +5,20 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/skycoin/net/skycoin-messenger/msg"
 	"github.com/skycoin/net/skycoin-messenger/factory"
+	"github.com/skycoin/skycoin/src/cipher"
 )
 
-var DefaultClient = &Client{push:make(chan msg.PushMsg, 8)}
+var DefaultClient = &Client{push:make(chan interface{}, 8)}
 
 type Client struct {
 	connection *factory.Connection
 	sync.RWMutex
 
-	push chan msg.PushMsg
+	push chan interface{}
+	logger *log.Entry
 }
 
-func (c *Client) GetConnection() *factory.Connection{
+func (c *Client) GetConnection() *factory.Connection {
 	c.RLock()
 	defer c.RUnlock()
 	return c.connection
@@ -34,18 +36,20 @@ func (c *Client) SetConnection(connection *factory.Connection) {
 func (c *Client) PushLoop(conn *factory.Connection) {
 	defer func() {
 		if err := recover(); err != nil {
-			log.Printf("PushLoop recovered err %v", err)
+			c.logger.Errorf("PushLoop recovered err %v", err)
 		}
 	}()
-	push := &msg.PushMsg{PublicKey: conn.GetKey().Hex()}
+	push := &msg.PushMsg{}
 	for {
 		select {
 		case m, ok := <-conn.GetChanIn():
 			if !ok {
 				return
 			}
-			push.Msg = string(m)
-			c.push <- *push
+			key := cipher.NewPubKey(m[factory.MSG_PUBLIC_KEY_BEGIN:factory.MSG_PUBLIC_KEY_END])
+			push.From = key.Hex()
+			push.Msg = string(m[factory.MSG_META_END:])
+			c.push <- push
 		}
 	}
 }

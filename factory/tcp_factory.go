@@ -43,6 +43,7 @@ func (factory *TCPFactory) createConn(c *net.TCPConn) *Connection {
 	tcpConn := server.NewServerTCPConn(c)
 	tcpConn.SetStatusToConnected()
 	conn := &Connection{Connection: tcpConn, factory: factory}
+	conn.SetContextLogger(conn.GetContextLogger().WithField("type", "tcp"))
 	factory.AddConn(conn)
 	factory.AcceptedCallback(conn)
 	return conn
@@ -56,6 +57,7 @@ func (factory *TCPFactory) Connect(address string) (conn *Connection, err error)
 	cn := client.NewClientTCPConn(c)
 	cn.SetStatusToConnected()
 	conn = &Connection{Connection: cn, factory: factory}
+	conn.SetContextLogger(conn.GetContextLogger().WithField("type", "tcp"))
 	factory.AddConn(conn)
 	return
 }

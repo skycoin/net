@@ -26,6 +26,7 @@ func (c *Connection) GetKey() cipher.PubKey {
 
 func (c *Connection) Reg(key cipher.PubKey) error {
 	c.SetKey(key)
+	c.SetContextLogger(c.GetContextLogger().WithField("pubkey", key.Hex()))
 	return c.Write(GenRegMsg(key))
 }
 

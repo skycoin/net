@@ -3,6 +3,7 @@ package rpc
 import (
 	"github.com/skycoin/net/skycoin-messenger/op"
 	"github.com/skycoin/net/skycoin-messenger/msg"
+	"fmt"
 )
 
 type Gateway struct {
@@ -23,7 +24,12 @@ func (g *Gateway) Receive(option int, msgs *[]*msg.PushMsg) error {
 			if !ok {
 				return nil
 			}
-			*msgs = append(*msgs, &m)
+			switch m := m.(type) {
+			case *msg.PushMsg:
+				*msgs = append(*msgs, m)
+			default:
+				return fmt.Errorf("recv not implemented msg %#v", m)
+			}
 		default:
 			return nil
 		}

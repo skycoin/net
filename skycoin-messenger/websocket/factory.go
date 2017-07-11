@@ -5,6 +5,7 @@ import (
 	"sync"
 	"time"
 	log "github.com/sirupsen/logrus"
+	"sync/atomic"
 )
 
 type Factory struct {
@@ -19,6 +20,7 @@ func NewFactory() *Factory {
 var (
 	once           = &sync.Once{}
 	defaultFactory *Factory
+	wsId           uint32
 )
 
 func GetFactory() *Factory {
@@ -30,7 +32,8 @@ func GetFactory() *Factory {
 }
 
 func (factory *Factory) NewClient(c *websocket.Conn) *Client {
-	client := &Client{conn: c, push: make(chan interface{}), PendingMap: PendingMap{Pending: make(map[uint32]interface{})}}
+	logger := log.WithField("wsId", atomic.AddUint32(&wsId, 1))
+	client := &Client{conn: c, push: make(chan interface{}), PendingMap: PendingMap{Pending: make(map[uint32]interface{})}, logger: logger}
 	factory.clientsMutex.Lock()
 	factory.clients[client] = true
 	factory.clientsMutex.Unlock()
@@ -49,7 +52,7 @@ func (factory *Factory) logStatus() {
 		select {
 		case <-ticker.C:
 			factory.clientsMutex.RLock()
-			log.Printf("websocket connection clients count:%d", len(factory.clients))
+			log.Debugf("websocket connection clients count:%d", len(factory.clients))
 			factory.clientsMutex.RUnlock()
 		}
 	}

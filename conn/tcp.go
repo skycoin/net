@@ -126,9 +126,9 @@ func (c *TCPConn) Write(bytes []byte) error {
 }
 
 func (c *TCPConn) WriteBytes(bytes []byte) error {
+	c.CTXLogger.Debugf("write %x", bytes)
 	c.writeMutex.Lock()
 	defer c.writeMutex.Unlock()
-	//c.CTXLogger.Debugf("write %x", bytes)
 	index := 0
 	for n, err := c.TcpConn.Write(bytes[index:]); index != len(bytes); index += n {
 		if err != nil {

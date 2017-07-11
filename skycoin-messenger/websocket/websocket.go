@@ -17,7 +17,7 @@ var upgrader = websocket.Upgrader{
 func ServeWs(w http.ResponseWriter, r *http.Request) {
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		log.Println(err)
+		log.Error(err)
 		return
 	}
 	client := GetFactory().NewClient(conn)
