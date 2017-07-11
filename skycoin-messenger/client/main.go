@@ -8,6 +8,7 @@ import (
 )
 
 func main() {
+	log.SetLevel(log.DebugLevel)
 	go func() {
 		log.Println("listening rpc")
 		err := rpc.ServeRPC("localhost:8083")

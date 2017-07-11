@@ -19,6 +19,8 @@ type Connection interface {
 	GetChanOut() chan<- []byte
 	Close()
 	IsClosed() bool
+
+	ContextLogger() *log.Entry
 }
 
 type ConnCommonFields struct {
@@ -66,4 +68,8 @@ func (c *ConnCommonFields) UpdateLastAck(s uint32) {
 		c.HighestACKedSequenceNumber = s
 	}
 	c.fieldsMutex.Unlock()
+}
+
+func (c *ConnCommonFields) ContextLogger() *log.Entry {
+	return c.CTXLogger
 }

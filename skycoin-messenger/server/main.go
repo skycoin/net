@@ -6,6 +6,7 @@ import (
 )
 
 func main() {
+	log.SetLevel(log.DebugLevel)
 	log.Println("listening tcp")
 	f := factory.NewMessengerFactory()
 	err := f.Listen(":8080")

@@ -29,7 +29,7 @@ func (f *MessengerFactory) acceptedCallback(connection *factory.Connection) {
 		conn := &Connection{Connection:connection}
 		defer func() {
 			if err := recover(); err != nil {
-				log.Printf("acceptedCallback err %v", err)
+				conn.ContextLogger().Infof("acceptedCallback err %v", err)
 			}
 			f.unregister(conn.GetKey(), conn)
 		}()
@@ -60,12 +60,13 @@ func (f *MessengerFactory) acceptedCallback(connection *factory.Connection) {
 					c, ok := f.regConnections[key.Hex()]
 					f.regConnectionsMutex.RUnlock()
 					if !ok {
-						log.Printf("key %s not found", key.Hex())
+						conn.ContextLogger().Infof("key %s not found", key.Hex())
 						continue
 					}
 					err := c.Write(m)
 					if err != nil {
-						log.Printf("forward err %v", err)
+						conn.ContextLogger().Infof("forward to key %s err %v", key.Hex(), err)
+						c.ContextLogger().Infof("write %x err %v", m, err)
 						c.Close()
 					}
 				}
