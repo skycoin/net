@@ -1,16 +1,16 @@
-<div class="other-message" *ngIf="type === 'other'">
+<div class="other-message" *ngIf="type === 1">
   <p class="data">
-    <span class="name">Name</span>
+    <span class="name">{{from}}</span>
   </p>
   <p class="bubble float-left">
-    im-history-message works!
+    {{msg}}
   </p>
 </div>
-<div class="my-message" *ngIf="type === 'my'">
+<div class="my-message" *ngIf="type === 0">
   <p class="data">
-    <span class="name">Name</span>
+    <span class="name">{{from}}</span>
   </p>
   <p class="bubble float-right">
-    im-history-message works!
+    {{msg}}
   </p>
 </div>

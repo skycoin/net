@@ -1,4 +1,4 @@
-import { Component, OnInit, ViewEncapsulation } from '@angular/core';
+import { Component, OnInit, ViewEncapsulation,Input } from '@angular/core';
 
 @Component({
   selector: 'app-im-history-view',
@@ -7,9 +7,21 @@ import { Component, OnInit, ViewEncapsulation } from '@angular/core';
   encapsulation: ViewEncapsulation.None
 })
 export class ImHistoryViewComponent implements OnInit {
-  testList = [1, 2, 3, 4, 5, 6, 7];
+  @Input() chatList:Array<ImHistoryMessage>;
+  @Input() from = 'self';
   constructor() { }
   ngOnInit() {
   }
 
 }
+
+export interface ImHistoryMessage {
+  type: HistoryMessageType;
+  msg: string;
+}
+
+export enum HistoryMessageType {
+  MYMESSAGE,
+  OTHERMESSAGE
+}
+

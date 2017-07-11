@@ -8,6 +8,8 @@ import { Component, OnInit, ViewEncapsulation, Input } from '@angular/core';
 })
 export class ImHistoryMessageComponent implements OnInit {
   @Input() type = 'other';
+  @Input() msg = '';
+  @Input() from = '';
   constructor() { }
 
   ngOnInit() {

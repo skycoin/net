@@ -1,7 +1,1 @@
-<app-im-history-message fxLayout="column" fxLayoutAlign="space-around" type="my"></app-im-history-message>
-<app-im-history-message fxLayout="column" fxLayoutAlign="space-around" type="other"></app-im-history-message>
-<app-im-history-message fxLayout="column" fxLayoutAlign="space-around" type="my"></app-im-history-message>
-<app-im-history-message fxLayout="column" fxLayoutAlign="space-around" type="other"></app-im-history-message>
-<app-im-history-message fxLayout="column" fxLayoutAlign="space-around" type="my"></app-im-history-message>
-<app-im-history-message fxLayout="column" fxLayoutAlign="space-around" type="other"></app-im-history-message>
-<app-im-history-message fxLayout="column" fxLayoutAlign="space-around" type="my"></app-im-history-message>
+<app-im-history-message *ngFor="let chat of chatList" fxLayout="column" fxLayoutAlign="space-around" [msg]="chat.msg"  [type]="chat.type" [from]="from"></app-im-history-message>

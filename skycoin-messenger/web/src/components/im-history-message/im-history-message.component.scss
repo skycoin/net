@@ -7,6 +7,7 @@ app-im-history-message {
     font-size: 1rem;
   }
   .bubble {
+    word-wrap: break-word;
     max-width: 90%;
     margin-top: 1rem;
     padding: 1rem;
@@ -34,7 +35,7 @@ app-im-history-message {
     &::after {
       position: absolute;
       right: 5%;
-      bottom: 100%;
+      bottom: 95%;
       content: " ";
       border: solid transparent;
       pointer-events: none;
@@ -50,7 +51,7 @@ app-im-history-message {
     &::after {
       position: absolute;
       left: 5%;
-      bottom: 100%;
+      bottom: 95%;
       content: " ";
       border: solid transparent;
       pointer-events: none;

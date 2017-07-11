@@ -1,5 +1,6 @@
-import { Component, OnInit, ViewEncapsulation, Input, ViewChildren, QueryList } from '@angular/core';
+import { Component, OnInit, ViewEncapsulation, Input, ViewChildren, QueryList, Output, EventEmitter } from '@angular/core';
 import { ImRecentItemComponent } from '../im-recent-item/im-recent-item.component';
+import { SocketService } from '../../providers';
 
 @Component({
   selector: 'app-im-recent-bar',
@@ -8,14 +9,18 @@ import { ImRecentItemComponent } from '../im-recent-item/im-recent-item.componen
   encapsulation: ViewEncapsulation.None
 })
 export class ImRecentBarComponent implements OnInit {
+  // @Output() chatting: EventEmitter<ImRecentItemComponent> = new EventEmitter();
+  chatting = '';
   @ViewChildren(ImRecentItemComponent) items: QueryList<ImRecentItemComponent>;
   @Input() list = [];
-  constructor() { }
-
+  constructor(private socket: SocketService) { }
   ngOnInit() {
   }
 
   selectItem(item: ImRecentItemComponent) {
+    // this.chatting.emit(item);
+    this.chatting = item.name;
+    this.socket.chattingUser = item.name;
     const tmp = this.items.filter((el) => {
       return el.name !== item.name;
     });

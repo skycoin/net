@@ -10,6 +10,7 @@ import {
   ImHistoryViewComponent,
   ImHistoryMessageComponent
 } from '../components';
+import { FormsModule } from '@angular/forms';
 import { SocketService } from '../providers';
 
 
@@ -24,6 +25,7 @@ import { SocketService } from '../providers';
     ImHistoryMessageComponent
   ],
   imports: [
+    FormsModule,
     BrowserModule,
     FlexLayoutModule,
   ],

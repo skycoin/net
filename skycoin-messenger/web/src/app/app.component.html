@@ -1,5 +1,4 @@
 <div class="container">
-  <app-im-recent-bar [list]="recent_list">
-  </app-im-recent-bar>
-  <app-im-view></app-im-view>
+  <app-im-recent-bar [list]="recent_list" #recent></app-im-recent-bar>
+  <app-im-view [chatting]="recent.chatting"></app-im-view>
 </div>

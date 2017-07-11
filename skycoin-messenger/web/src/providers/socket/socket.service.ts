@@ -1,14 +1,16 @@
 import { Injectable } from '@angular/core';
-
+import { ImHistoryMessage } from '../../components/im-history-view/im-history-view.component';
 export enum OP { REG, SEND, ACK };
 export enum PUSH { ACK, MSG };
 
 @Injectable()
 export class SocketService {
+  static chatHistorys = new Map<string, Array<ImHistoryMessage>>();
   private ws: WebSocket = null;
   private url = 'ws://localhost:8082/ws';
   // private ackDict = new Dictionary<number, any>();
   private key = 'ABCDEFABCDEFABCDEFABCDEFABCDEFABCDEFABCDEFABCDEFABCDEFABCDEF'
+  chattingUser = '';
   private seqId = 0;
 
   constructor() {
@@ -29,29 +31,31 @@ export class SocketService {
       console.error('ws error:', error);
     }
     this.ws.onclose = (res) => {
-      console.log('-------ws close-------');
+      console.log('-------ws close-------', res);
     }
   }
   private getRandomInt(min, max) {
     return Math.floor(Math.random() * (max - min + 1) + min);
   }
   msg(message: string) {
-    this.send(OP.SEND, JSON.stringify({ PublicKey: this.key, Msg: this.key + ': ' + message }));
+    this.send(OP.SEND, JSON.stringify({ PublicKey: message, Msg: this.key + ': ' + 'hello' }));
   }
 
   private handle(data: ArrayBuffer) {
     let buf = new Uint8Array(data);
     let op = buf[0]
     let json = this.utf8ArrayToStr(buf.slice(5));
+    console.log('handle function:', json);
     switch (op) {
       case PUSH.ACK:
         console.log('send successful');
+        this.ack(op, this.getSeq(buf));
         break;
       case PUSH.MSG:
         console.log('push msg:', json);
+        this.ack(op, this.getSeq(buf));
         break;
     }
-    this.ack(op, this.getSeq(buf));
   }
   private toHexString(byteArray) {
     return Array.from(byteArray, (byte: number) => {
@@ -64,13 +68,15 @@ export class SocketService {
 
   private send(op: number, json?: string) {
     // this.ackDict.setValue(++this.seqId, { op: op, json: json });
-    this.sendWithSeq(op, this.seqId, json);
+    this.sendWithSeq(op, ++this.seqId, json);
   }
 
   private sendWithSeq(op, seq: number, json?: string) {
     let buf: Uint8Array;
     let uintjson: Uint8Array;
     if (json) {
+      console.log('send json:', json);
+      console.log('send seq:', seq);
       uintjson = this.stringToUint8(json);
       buf = new Uint8Array(uintjson.length + 5);
       for (var i = 5; i < buf.byteLength; i++) {
