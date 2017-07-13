@@ -9,7 +9,6 @@ import { SocketService } from '../../providers';
   encapsulation: ViewEncapsulation.None
 })
 export class ImRecentBarComponent implements OnInit {
-  // @Output() chatting: EventEmitter<ImRecentItemComponent> = new EventEmitter();
   chatting = '';
   @ViewChildren(ImRecentItemComponent) items: QueryList<ImRecentItemComponent>;
   @Input() list = [];

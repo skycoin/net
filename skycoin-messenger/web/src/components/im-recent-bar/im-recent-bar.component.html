@@ -1,3 +1,2 @@
 <app-im-recent-item *ngFor="let item of list" [name]="item" (onClick)="selectItem($event)"></app-im-recent-item>
-<ng-content>
-</ng-content>
+<div class="hint-box" *ngIf="list?.length <= 0">No Chat User</div>

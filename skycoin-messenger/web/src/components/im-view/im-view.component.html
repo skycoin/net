@@ -1,6 +1,6 @@
 <div class="hint-box" *ngIf="!chatting"><p>The chat record is empty</p></div>
 <div class="container" *ngIf="chatting">
-  <div class="message-box-head">{{chatting}}</div>
+  <div class="message-box-head"><p class="single-line">{{chatting}}</p></div>
   <div class="message-box">
     <app-im-history-view fxLayout="column-reverse" [chatList]="chatList" [from]="chatting"></app-im-history-view>
   </div>

@@ -1,6 +1,6 @@
 import { Component, OnInit, ViewEncapsulation, Input, OnChanges, SimpleChanges } from '@angular/core';
 import { SocketService } from '../../providers';
-import { ImHistoryMessage, HistoryMessageType } from '../im-history-view/im-history-view.component';
+import { ImHistoryMessage, HistoryMessageType } from '../../providers';
 
 @Component({
   selector: 'app-im-view',
@@ -9,24 +9,32 @@ import { ImHistoryMessage, HistoryMessageType } from '../im-history-view/im-hist
   encapsulation: ViewEncapsulation.None
 })
 export class ImViewComponent implements OnInit, OnChanges {
-
   chatList: Array<ImHistoryMessage>;
+  historys: Map<string, Array<ImHistoryMessage>> = null;
   msg = '';
   @Input() chatting = '';
   constructor(private socket: SocketService) { }
 
   ngOnInit() {
-    // this.chattingUser = this.socket.chattingUser;
+    this.socket.chatHistorys.subscribe((data: Map<string, Array<ImHistoryMessage>>) => {
+      console.log('send msg after:', data);
+      this.historys = data;
+    })
   }
 
   ngOnChanges(changes: SimpleChanges) {
-    for (let propName in changes) {
-      let chng = changes[propName];
-      let data = SocketService.chatHistorys.get(chng.currentValue);
-      if (data) {
-        this.chatList = data;
-      }else {
-        this.chatList = [];
+    for (const propName in changes) {
+      if (changes.hasOwnProperty(propName)) {
+        const chng = changes[propName];
+        if (!this.historys) {
+          continue;
+        }
+        const data = this.historys.get((<string>chng.currentValue).toLocaleLowerCase());
+        if (data) {
+          this.chatList = data;
+        } else {
+          this.chatList = [];
+        }
       }
     }
   }
@@ -41,14 +49,9 @@ export class ImViewComponent implements OnInit, OnChanges {
   }
 
   addChat() {
-    if (this.chatList.length > 0) {
-      this.chatList.unshift({ type: HistoryMessageType.MYMESSAGE, msg: this.msg });
-    } else {
-      this.chatList = this.chatList.concat({ type: HistoryMessageType.MYMESSAGE, msg: this.msg });
-    }
-    SocketService.chatHistorys.set(this.chatting, this.chatList);
-    console.log('log map:', SocketService.chatHistorys);
-    // this.socket.msg(this.msg);
+    this.socket.msg(this.chatting, this.msg);
+    this.socket.saveHistorys(this.chatting, this.msg, true);
+    this.chatList = this.historys.get(this.chatting);
     this.msg = '';
   }
 }

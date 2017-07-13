@@ -1,5 +1,5 @@
 import { Component, OnInit, ViewChild } from '@angular/core';
-import { SocketService } from '../providers';
+import { SocketService, ImHistoryMessage } from '../providers';
 import { ImRecentItemComponent } from '../components';
 @Component({
   selector: 'app-im',
@@ -8,23 +8,26 @@ import { ImRecentItemComponent } from '../components';
 })
 export class AppComponent implements OnInit {
   chatWindow = false;
-  recent_list = [
-    'Mary',
-    'Lucien',
-    'Steve',
-    'LiLei',
-    'Apple',
-    'Box',
-    'Test',
-    'Green',
-    'White']
+  recent_list = []
   constructor(private socket: SocketService) {
   }
   ngOnInit(): void {
+    // TODO Test User
+    const testUser = window.location.search.slice(6);
+    if (testUser !== '') {
+      this.recent_list.push(testUser);
+    }
+    this.socket.chatHistorys.subscribe((data: Map<string, Array<ImHistoryMessage>>) => {
+      data.forEach((value, key) => {
+        if (this.recent_list.indexOf(key) <= -1) {
+          this.recent_list.push(key.toLocaleUpperCase());
+        }
+      })
+    })
     if (this.socket.chattingUser) {
       this.chatWindow = true;
     }
-    // this.socket.start();
+    this.socket.start();
   }
 
 }

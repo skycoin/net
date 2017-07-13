@@ -1,17 +1,21 @@
 import { Injectable } from '@angular/core';
-import { ImHistoryMessage } from '../../components/im-history-view/im-history-view.component';
+import { ImHistoryMessage, HistoryMessageType } from './msg';
+import { Subject } from 'rxjs/Subject';
+
 export enum OP { REG, SEND, ACK };
 export enum PUSH { ACK, MSG };
 
 @Injectable()
 export class SocketService {
-  static chatHistorys = new Map<string, Array<ImHistoryMessage>>();
   private ws: WebSocket = null;
   private url = 'ws://localhost:8082/ws';
+  // private url = 'ws://192.168.33.104:8082/ws';
   // private ackDict = new Dictionary<number, any>();
   private key = 'ABCDEFABCDEFABCDEFABCDEFABCDEFABCDEFABCDEFABCDEFABCDEFABCDEF'
   chattingUser = '';
   private seqId = 0;
+  private historySubject = new Subject<Map<string, Array<ImHistoryMessage>>>();
+  chatHistorys = this.historySubject.asObservable();
 
   constructor() {
     this.key += this.getRandomInt(100000, 999999);
@@ -37,26 +41,40 @@ export class SocketService {
   private getRandomInt(min, max) {
     return Math.floor(Math.random() * (max - min + 1) + min);
   }
-  msg(message: string) {
-    this.send(OP.SEND, JSON.stringify({ PublicKey: message, Msg: this.key + ': ' + 'hello' }));
+  msg(chattingKey, message: string) {
+    this.send(OP.SEND, JSON.stringify({ PublicKey: chattingKey, Msg: message }));
   }
 
   private handle(data: ArrayBuffer) {
-    let buf = new Uint8Array(data);
-    let op = buf[0]
-    let json = this.utf8ArrayToStr(buf.slice(5));
-    console.log('handle function:', json);
+    const buf = new Uint8Array(data);
+    // console.log('orgin data:', this.toHexString(buf));
+    const op = buf[0]
+    const metaData = this.utf8ArrayToStr(buf.slice(5));
+    let json = null;
+    if (metaData) {
+      json = JSON.parse(metaData);
+    }
     switch (op) {
       case PUSH.ACK:
         console.log('send successful');
         this.ack(op, this.getSeq(buf));
         break;
       case PUSH.MSG:
-        console.log('push msg:', json);
+        this.saveHistorys(json.From, json.Msg);
         this.ack(op, this.getSeq(buf));
         break;
     }
   }
+  saveHistorys(from: string, msg: string, self: boolean = false) {
+    let type = HistoryMessageType.OTHERMESSAGE;
+    if (self) {
+      type = HistoryMessageType.MYMESSAGE;
+    }
+    const data = new Map<string, Array<ImHistoryMessage>>();
+    data.set(from, [{ type: type, msg: msg }]);
+    this.historySubject.next(data);
+  }
+
   private toHexString(byteArray) {
     return Array.from(byteArray, (byte: number) => {
       return ('0' + (byte & 0xFF).toString(16)).slice(-2);
@@ -79,16 +97,16 @@ export class SocketService {
       console.log('send seq:', seq);
       uintjson = this.stringToUint8(json);
       buf = new Uint8Array(uintjson.length + 5);
-      for (var i = 5; i < buf.byteLength; i++) {
+      for (let i = 5; i < buf.byteLength; i++) {
         buf[i] = uintjson[i - 5];
       }
     } else {
       buf = new Uint8Array(5);
     }
 
-    //op
+    // op
     buf[0] = 0xff & op;
-    //seq
+    // seq
     buf[1] = 0xff & (seq >> 24);
     buf[2] = 0xff & (seq >> 16);
     buf[3] = 0xff & (seq >> 8);
@@ -100,7 +118,7 @@ export class SocketService {
   }
 
   ack(op: any, seq: number) {
-    console.debug('op:%s seq:%d', op, seq);
+    console.log('op:%s seq:%d', op, seq);
     this.sendWithSeq(OP.ACK, seq);
   }
 
@@ -129,10 +147,10 @@ export class SocketService {
     return new Uint8Array(bytes);
   }
   private utf8ArrayToStr(array) {
-    var out, i, len, c;
-    var char2, char3;
+    let out, i, len, c;
+    let char2, char3;
 
-    out = "";
+    out = '';
     len = array.length;
     i = 0;
     while (i < len) {
