@@ -1,16 +1,16 @@
-<div class="other-message" *ngIf="type === 1">
+<div class="my-message" *ngIf="chat.From === selfId">
   <p class="data">
-    <span class="name">{{from}}</span>
-  </p>
-  <p class="bubble float-left">
-    {{msg}}
-  </p>
-</div>
-<div class="my-message" *ngIf="type === 0">
-  <p class="data">
-    <span class="name">{{from}}</span>
+    <span class="name">{{chat.From}}</span>
   </p>
   <p class="bubble float-right">
-    {{msg}}
+    {{chat.Msg}}
+  </p>
+</div>
+<div class="other-message" *ngIf="chat.From !== selfId">
+  <p class="data">
+    <span class="name">{{chat.From}}</span>
+  </p>
+  <p class="bubble float-left">
+    {{chat.Msg}}
   </p>
 </div>

@@ -1,4 +1,5 @@
 import { Component, OnInit, ViewEncapsulation, Input } from '@angular/core';
+import { ImHistoryMessage, SocketService } from '../../providers';
 
 @Component({
   selector: 'app-im-history-message',
@@ -7,12 +8,14 @@ import { Component, OnInit, ViewEncapsulation, Input } from '@angular/core';
   encapsulation: ViewEncapsulation.None
 })
 export class ImHistoryMessageComponent implements OnInit {
-  @Input() type = 'other';
-  @Input() msg = '';
-  @Input() from = '';
-  constructor() { }
+  selfId = '';
+  @Input() chat: ImHistoryMessage = null;
+  constructor(private socket: SocketService) {
+    this.selfId = this.socket.key;
+  }
 
   ngOnInit() {
+    console.log('history message:', this.chat);
   }
 
 }

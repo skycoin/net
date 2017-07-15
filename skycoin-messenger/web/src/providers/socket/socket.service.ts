@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { ImHistoryMessage, HistoryMessageType } from './msg';
+import { ImHistoryMessage } from './msg';
 import { Subject } from 'rxjs/Subject';
 
 export enum OP { REG, SEND, ACK };
@@ -11,12 +11,11 @@ export class SocketService {
   private url = 'ws://localhost:8082/ws';
   // private url = 'ws://192.168.33.104:8082/ws';
   // private ackDict = new Dictionary<number, any>();
-  private key = 'ABCDEFABCDEFABCDEFABCDEFABCDEFABCDEFABCDEFABCDEFABCDEFABCDEF'
+  key = 'ABCDEFABCDEFABCDEFABCDEFABCDEFABCDEFABCDEFABCDEFABCDEFABCDEF'
   chattingUser = '';
   private seqId = 0;
   private historySubject = new Subject<Map<string, Array<ImHistoryMessage>>>();
   chatHistorys = this.historySubject.asObservable();
-
   constructor() {
     this.key += this.getRandomInt(100000, 999999);
     console.log('key:', this.key);
@@ -60,18 +59,14 @@ export class SocketService {
         this.ack(op, this.getSeq(buf));
         break;
       case PUSH.MSG:
-        this.saveHistorys(json.From, json.Msg);
+        this.saveHistorys(json.From, json.From, json.Msg);
         this.ack(op, this.getSeq(buf));
         break;
     }
   }
-  saveHistorys(from: string, msg: string, self: boolean = false) {
-    let type = HistoryMessageType.OTHERMESSAGE;
-    if (self) {
-      type = HistoryMessageType.MYMESSAGE;
-    }
+  saveHistorys(key, from: string, msgList: Array<ImHistoryMessage>) {
     const data = new Map<string, Array<ImHistoryMessage>>();
-    data.set(from, [{ type: type, msg: msg }]);
+    data.set(key, msgList);
     this.historySubject.next(data);
   }
 

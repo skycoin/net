@@ -1,6 +1,6 @@
 import { Component, OnInit, ViewEncapsulation, Input, OnChanges, SimpleChanges } from '@angular/core';
 import { SocketService } from '../../providers';
-import { ImHistoryMessage, HistoryMessageType } from '../../providers';
+import { ImHistoryMessage } from '../../providers';
 
 @Component({
   selector: 'app-im-view',
@@ -50,8 +50,9 @@ export class ImViewComponent implements OnInit, OnChanges {
 
   addChat() {
     this.socket.msg(this.chatting, this.msg);
-    this.socket.saveHistorys(this.chatting, this.msg, true);
-    this.chatList = this.historys.get(this.chatting);
+    this.chatList.push({ From: this.socket.key, Msg: this.msg });
+    this.socket.saveHistorys(this.chatting, this.socket.key, this.chatList);
+    // this.chatList = this.historys.get(this.chatting);
     this.msg = '';
   }
 }
