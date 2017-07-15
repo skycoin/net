@@ -27,7 +27,7 @@ func NewUDPConn(c *net.UDPConn, addr *net.UDPAddr) *UDPConn {
 }
 
 func (c *UDPConn) ReadLoop() error {
-	panic("UDPConn unimplemented ReadLoop")
+	return nil
 }
 
 func (c *UDPConn) WriteLoop() (err error) {

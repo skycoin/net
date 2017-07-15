@@ -54,9 +54,6 @@ func (c *ServerTCPConn) ReadLoop() (err error) {
 				return err
 			}
 			c.CTXLogger.Debug("recv ping")
-		case msg.TYPE_PONG:
-			reader.Discard(msg.MSG_TYPE_SIZE)
-			c.CTXLogger.Debug("recv pong")
 		case msg.TYPE_NORMAL:
 			_, err = io.ReadAtLeast(reader, header, msg.MSG_HEADER_SIZE)
 			if err != nil {
@@ -74,6 +71,7 @@ func (c *ServerTCPConn) ReadLoop() (err error) {
 			c.CTXLogger.Debugf("c.In <- m.Body %x", m.Body)
 			c.In <- m.Body
 		default:
+			c.CTXLogger.Debugf("not implemented msg type %d", t)
 			return fmt.Errorf("not implemented msg type %d", msg_t)
 		}
 

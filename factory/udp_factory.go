@@ -21,7 +21,7 @@ type UDPFactory struct {
 }
 
 func NewUDPFactory() *UDPFactory {
-	udpFactory := &UDPFactory{stopGC: make(chan bool), FactoryCommonFields:NewFactoryCommonFields()}
+	udpFactory := &UDPFactory{stopGC: make(chan bool), FactoryCommonFields:NewFactoryCommonFields(), udpConnMap:make(map[string]*conn.UDPConn)}
 	go udpFactory.GC()
 	return udpFactory
 }

@@ -22,10 +22,10 @@ func (f *FactoryCommonFields) AddConn(conn *Connection) {
 	f.connections[conn] = true
 	f.connectionsMutex.Unlock()
 	go func() {
-		conn.ReadLoop()
+		conn.WriteLoop()
 		f.RemoveConn(conn)
 	}()
-	go conn.WriteLoop()
+	go conn.ReadLoop()
 }
 
 func (f *FactoryCommonFields) RemoveConn(conn *Connection) {

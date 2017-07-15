@@ -6,6 +6,7 @@ import (
 )
 
 func main() {
+	log.SetLevel(log.DebugLevel)
 	go func() {
 		log.Println("listening udp")
 		udpFactory := factory.NewUDPFactory()

@@ -6,6 +6,7 @@ import (
 	"github.com/skycoin/net/conn"
 	"github.com/skycoin/net/msg"
 	"encoding/binary"
+	"fmt"
 )
 
 type ClientUDPConn struct {
@@ -18,12 +19,12 @@ func NewClientUDPConn(c *net.UDPConn) *ClientUDPConn {
 
 func (c *ClientUDPConn) ReadLoop() (err error) {
 	defer func() {
-		if err != nil {
-			c.SetStatusToError(err)
-		}
 		if e := recover(); e != nil {
 			c.CTXLogger.Debug(e)
-			return
+			err = fmt.Errorf("readloop panic err:%v", e)
+		}
+		if err != nil {
+			c.SetStatusToError(err)
 		}
 		c.Close()
 	}()
@@ -35,7 +36,8 @@ func (c *ClientUDPConn) ReadLoop() (err error) {
 		}
 		maxBuf = maxBuf[:n]
 
-		switch maxBuf[msg.MSG_TYPE_BEGIN] {
+		t := maxBuf[msg.MSG_TYPE_BEGIN]
+		switch t {
 		case msg.TYPE_PONG:
 		case msg.TYPE_ACK:
 			seq := binary.BigEndian.Uint32(maxBuf[msg.MSG_SEQ_BEGIN:msg.MSG_SEQ_END])
@@ -48,6 +50,9 @@ func (c *ClientUDPConn) ReadLoop() (err error) {
 				return err
 			}
 			c.In <- maxBuf[msg.MSG_HEADER_END:]
+		default:
+			c.CTXLogger.Debugf("not implemented msg type %d", t)
+			return fmt.Errorf("not implemented msg type %d", t)
 		}
 	}
 	return nil

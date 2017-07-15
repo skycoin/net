@@ -78,6 +78,7 @@ func (c *TCPConn) ReadLoop() (err error) {
 			c.CTXLogger.Debugf("c.In <- m.Body %x", m.Body)
 			c.In <- m.Body
 		default:
+			c.CTXLogger.Debugf("not implemented msg type %d", t)
 			return fmt.Errorf("not implemented msg type %d", msg_t)
 		}
 		c.UpdateLastTime()

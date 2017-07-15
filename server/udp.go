@@ -1,10 +1,12 @@
 package server
 
 import (
+	"encoding/binary"
+	"fmt"
+	"net"
+
 	"github.com/skycoin/net/conn"
 	"github.com/skycoin/net/msg"
-	"net"
-	"encoding/binary"
 )
 
 type ServerUDPConn struct {
@@ -12,11 +14,15 @@ type ServerUDPConn struct {
 }
 
 func NewServerUDPConn(c *net.UDPConn) *ServerUDPConn {
-	return &ServerUDPConn{UDPConn: conn.UDPConn{UdpConn: c}}
+	return &ServerUDPConn{UDPConn: conn.UDPConn{UdpConn: c, ConnCommonFields: conn.NewConnCommonFileds()}}
 }
 
 func (c *ServerUDPConn) ReadLoop(fn func(c *net.UDPConn, addr *net.UDPAddr) *conn.UDPConn) (err error) {
 	defer func() {
+		if e := recover(); e != nil {
+			c.CTXLogger.Debug(e)
+			err = fmt.Errorf("readloop panic err:%v", e)
+		}
 		if err != nil {
 			c.SetStatusToError(err)
 		}
@@ -29,7 +35,7 @@ func (c *ServerUDPConn) ReadLoop(fn func(c *net.UDPConn, addr *net.UDPAddr) *con
 			if e, ok := err.(net.Error); ok {
 				if e.Timeout() {
 					cc := fn(c.UdpConn, addr)
-					c.CTXLogger.Debug("close in")
+					cc.CTXLogger.Debug("close in")
 					close(cc.In)
 					continue
 				}
@@ -43,10 +49,10 @@ func (c *ServerUDPConn) ReadLoop(fn func(c *net.UDPConn, addr *net.UDPAddr) *con
 		switch t {
 		case msg.TYPE_ACK:
 			seq := binary.BigEndian.Uint32(maxBuf[msg.MSG_SEQ_BEGIN:msg.MSG_SEQ_END])
-			c.DelMsg(seq)
-			c.UpdateLastAck(seq)
+			cc.DelMsg(seq)
+			cc.UpdateLastAck(seq)
 		case msg.TYPE_PING:
-			c.CTXLogger.Debug("recv ping")
+			cc.CTXLogger.Debug("recv ping")
 			err = cc.WriteBytes([]byte{msg.TYPE_PONG})
 			if err != nil {
 				return err
@@ -60,12 +66,20 @@ func (c *ServerUDPConn) ReadLoop(fn func(c *net.UDPConn, addr *net.UDPAddr) *con
 			func() {
 				defer func() {
 					if e := recover(); e != nil {
-						c.CTXLogger.Debug(e)
+						cc.CTXLogger.Debug(e)
+						err = fmt.Errorf("readloop panic err:%v", e)
+					}
+					if err != nil {
+						cc.SetStatusToError(err)
 					}
 					cc.Close()
 				}()
+				cc.CTXLogger.Debugf("c.In <- m.Body %x", maxBuf[msg.MSG_HEADER_END:])
 				cc.In <- maxBuf[msg.MSG_HEADER_END:]
 			}()
+		default:
+			cc.CTXLogger.Debugf("not implemented msg type %d", t)
+			return fmt.Errorf("not implemented msg type %d", t)
 		}
 
 		cc.UpdateLastTime()
