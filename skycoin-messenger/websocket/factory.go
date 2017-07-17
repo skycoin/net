@@ -1,11 +1,13 @@
 package websocket
 
 import (
-	"github.com/gorilla/websocket"
 	"sync"
-	"time"
-	log "github.com/sirupsen/logrus"
 	"sync/atomic"
+	"time"
+
+	"github.com/gorilla/websocket"
+	log "github.com/sirupsen/logrus"
+	"github.com/skycoin/net/skycoin-messenger/rpc"
 )
 
 type Factory struct {
@@ -33,7 +35,7 @@ func GetFactory() *Factory {
 
 func (factory *Factory) NewClient(c *websocket.Conn) *Client {
 	logger := log.WithField("wsId", atomic.AddUint32(&wsId, 1))
-	client := &Client{conn: c, push: make(chan interface{}), PendingMap: PendingMap{Pending: make(map[uint32]interface{})}, logger: logger}
+	client := &Client{conn: c, PendingMap: PendingMap{Pending: make(map[uint32]interface{})}, Client: rpc.Client{Push: make(chan interface{}), Logger: logger}}
 	factory.clientsMutex.Lock()
 	factory.clients[client] = true
 	factory.clientsMutex.Unlock()

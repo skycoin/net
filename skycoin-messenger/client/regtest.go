@@ -19,8 +19,7 @@ func main() {
 		panic(err)
 	}
 
-	key := cipher.PubKey([33]byte{0xf1})
-	err = conn.Reg(key)
+	err = conn.Reg()
 	if err != nil {
 		panic(err)
 	}
@@ -33,7 +32,7 @@ func main() {
 			if !ok {
 				return
 			}
-			log.Printf("received msg %s", m)
+			log.Printf("received msg %x", m)
 		}
 	}
 }
@@ -46,7 +45,7 @@ func client2() {
 	}
 
 	key := cipher.PubKey([33]byte{0xf2})
-	conn.GetChanOut() <- factory.GenRegMsg(key)
+	conn.GetChanOut() <- factory.GenRegMsg()
 
 	f1 := cipher.PubKey([33]byte{0xf1})
 	conn.GetChanOut() <- factory.GenSendMsg(key, f1, []byte("Hello 0xf1 1"))
@@ -59,7 +58,7 @@ func client2() {
 			if !ok {
 				return
 			}
-			log.Printf("received msg %s", m)
+			log.Printf("received msg %x", m)
 		}
 	}
 }

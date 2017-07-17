@@ -16,6 +16,7 @@ func (c *Connection) SetKey(key cipher.PubKey) {
 	c.fieldsMutex.Lock()
 	c.key = key
 	c.fieldsMutex.Unlock()
+	c.SetContextLogger(c.GetContextLogger().WithField("pubkey", key.Hex()))
 }
 
 func (c *Connection) GetKey() cipher.PubKey {
@@ -24,10 +25,8 @@ func (c *Connection) GetKey() cipher.PubKey {
 	return c.key
 }
 
-func (c *Connection) Reg(key cipher.PubKey) error {
-	c.SetKey(key)
-	c.SetContextLogger(c.GetContextLogger().WithField("pubkey", key.Hex()))
-	return c.Write(GenRegMsg(key))
+func (c *Connection) Reg() error {
+	return c.Write(GenRegMsg())
 }
 
 func (c *Connection) Send(to cipher.PubKey, msg []byte) error {

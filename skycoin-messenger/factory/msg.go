@@ -4,7 +4,13 @@ import (
 	"github.com/skycoin/skycoin/src/cipher"
 )
 
-func GenRegMsg(key cipher.PubKey) []byte {
+func GenRegMsg() []byte {
+	result := make([]byte, MSG_HEADER_END)
+	result[MSG_OP_BEGIN] = OP_REG
+	return result
+}
+
+func GenRegRespMsg(key cipher.PubKey) []byte {
 	result := make([]byte, MSG_PUBLIC_KEY_END)
 	result[MSG_OP_BEGIN] = OP_REG
 	copy(result[MSG_PUBLIC_KEY_BEGIN:], key[:])

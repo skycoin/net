@@ -22,6 +22,7 @@ const (
 
 const (
 	PUSH_ACK  = iota
+	PUSH_REG
 	PUSH_MSG
 	PUSH_SIZE
 )

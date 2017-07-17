@@ -9,7 +9,6 @@ import (
 
 type Reg struct {
 	Address   string
-	PublicKey string
 }
 
 func init() {
@@ -21,20 +20,12 @@ func init() {
 }
 
 func (r *Reg) Execute(c msg.OPer) error {
-	key, err := cipher.PubKeyFromHex(r.PublicKey)
-	if err != nil {
-		return err
-	}
 	f := factory.NewMessengerFactory()
 	conn, err := f.Connect(r.Address)
 	if err != nil {
 		return err
 	}
 	c.SetConnection(conn)
-	err = conn.Reg(key)
-	if err != nil {
-		return err
-	}
 	go c.PushLoop(conn)
 	return nil
 }

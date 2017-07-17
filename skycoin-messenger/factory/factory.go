@@ -1,20 +1,21 @@
 package factory
 
 import (
+	"sync"
+
+	log "github.com/sirupsen/logrus"
 	"github.com/skycoin/net/factory"
 	"github.com/skycoin/skycoin/src/cipher"
-	"sync"
-	log "github.com/sirupsen/logrus"
 )
 
 type MessengerFactory struct {
-	factory factory.Factory
+	factory             factory.Factory
 	regConnections      map[string]*Connection
 	regConnectionsMutex sync.RWMutex
 }
 
 func NewMessengerFactory() *MessengerFactory {
-	return &MessengerFactory{regConnections:make(map[string]*Connection)}
+	return &MessengerFactory{regConnections: make(map[string]*Connection)}
 }
 
 func (f *MessengerFactory) Listen(address string) error {
@@ -24,9 +25,11 @@ func (f *MessengerFactory) Listen(address string) error {
 	return tcpFactory.Listen(address)
 }
 
+var EMPTY_KEY = cipher.PubKey{}
+
 func (f *MessengerFactory) acceptedCallback(connection *factory.Connection) {
 	go func() {
-		conn := &Connection{Connection:connection}
+		conn := &Connection{Connection: connection}
 		conn.SetContextLogger(conn.GetContextLogger().WithField("app", "messenger"))
 		defer func() {
 			if err := recover(); err != nil {
@@ -46,13 +49,22 @@ func (f *MessengerFactory) acceptedCallback(connection *factory.Connection) {
 				op := m[MSG_OP_BEGIN]
 				switch op {
 				case OP_REG:
-					if len(m) < MSG_PUBLIC_KEY_END {
+					if len(m) < MSG_HEADER_END {
 						return
 					}
-					key := cipher.NewPubKey(m[MSG_PUBLIC_KEY_BEGIN:MSG_PUBLIC_KEY_END])
+					if conn.GetKey() != EMPTY_KEY {
+						conn.GetContextLogger().Infof("reg %s already", conn.key.Hex())
+						continue
+					}
+					key, _ := cipher.GenerateKeyPair()
 					conn.SetKey(key)
 					conn.SetContextLogger(conn.GetContextLogger().WithField("pubkey", key.Hex()))
 					f.register(key, conn)
+					err := conn.Write(GenRegRespMsg(key))
+					if err != nil {
+						conn.GetContextLogger().Errorf("resp reg key %s err %v", key.Hex(), err)
+						conn.Close()
+					}
 				case OP_SEND:
 					if len(m) < MSG_TO_PUBLIC_KEY_END {
 						return
@@ -67,8 +79,8 @@ func (f *MessengerFactory) acceptedCallback(connection *factory.Connection) {
 					}
 					err := c.Write(m)
 					if err != nil {
-						conn.GetContextLogger().Infof("forward to key %s err %v", key.Hex(), err)
-						c.GetContextLogger().Infof("write %x err %v", m, err)
+						conn.GetContextLogger().Errorf("forward to key %s err %v", key.Hex(), err)
+						c.GetContextLogger().Errorf("write %x err %v", m, err)
 						c.Close()
 					}
 				}
@@ -97,7 +109,7 @@ func (f *MessengerFactory) unregister(key cipher.PubKey, connection *Connection)
 	f.regConnectionsMutex.Lock()
 	defer f.regConnectionsMutex.Unlock()
 	c, ok := f.regConnections[key.Hex()]
-	if ok && c == connection{
+	if ok && c == connection {
 		delete(f.regConnections, key.Hex())
 		log.Printf("unreg %s %p", key.Hex(), c)
 	} else {
@@ -111,8 +123,9 @@ func (f *MessengerFactory) Connect(address string) (conn *Connection, err error)
 	if err != nil {
 		return nil, err
 	}
-	conn = &Connection{Connection:c}
+	conn = &Connection{Connection: c}
 	conn.SetContextLogger(conn.GetContextLogger().WithField("app", "messenger"))
+	err = conn.Reg()
 	return
 }
 

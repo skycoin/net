@@ -17,19 +17,14 @@ func (g *Gateway) Send(op *op.Send, result *int) error {
 	return op.Execute(DefaultClient)
 }
 
-func (g *Gateway) Receive(option int, msgs *[]*msg.PushMsg) error {
+func (g *Gateway) Receive(option int, msgs *[]interface{}) error {
 	for {
 		select {
-		case m, ok := <-DefaultClient.push:
+		case m, ok := <-DefaultClient.Push:
 			if !ok {
 				return nil
 			}
-			switch m := m.(type) {
-			case *msg.PushMsg:
-				*msgs = append(*msgs, m)
-			default:
-				return fmt.Errorf("recv not implemented msg %#v", m)
-			}
+			*msgs = append(*msgs, m)
 		default:
 			return nil
 		}
