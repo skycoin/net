@@ -10,12 +10,12 @@ import (
 
 type MessengerFactory struct {
 	factory             factory.Factory
-	regConnections      map[string]*Connection
+	regConnections      map[cipher.PubKey]*Connection
 	regConnectionsMutex sync.RWMutex
 }
 
 func NewMessengerFactory() *MessengerFactory {
-	return &MessengerFactory{regConnections: make(map[string]*Connection)}
+	return &MessengerFactory{regConnections: make(map[cipher.PubKey]*Connection)}
 }
 
 func (f *MessengerFactory) Listen(address string) error {
@@ -71,7 +71,7 @@ func (f *MessengerFactory) acceptedCallback(connection *factory.Connection) {
 					}
 					key := cipher.NewPubKey(m[MSG_TO_PUBLIC_KEY_BEGIN:MSG_TO_PUBLIC_KEY_END])
 					f.regConnectionsMutex.RLock()
-					c, ok := f.regConnections[key.Hex()]
+					c, ok := f.regConnections[key]
 					f.regConnectionsMutex.RUnlock()
 					if !ok {
 						conn.GetContextLogger().Infof("key %s not found", key.Hex())
@@ -92,7 +92,7 @@ func (f *MessengerFactory) acceptedCallback(connection *factory.Connection) {
 func (f *MessengerFactory) register(key cipher.PubKey, connection *Connection) {
 	f.regConnectionsMutex.Lock()
 	defer f.regConnectionsMutex.Unlock()
-	c, ok := f.regConnections[key.Hex()]
+	c, ok := f.regConnections[key]
 	if ok {
 		if c == connection {
 			log.Printf("reg %s %p already", key.Hex(), connection)
@@ -101,16 +101,23 @@ func (f *MessengerFactory) register(key cipher.PubKey, connection *Connection) {
 		log.Printf("reg close %s %p for %p", key.Hex(), c, connection)
 		c.Close()
 	}
-	f.regConnections[key.Hex()] = connection
+	f.regConnections[key] = connection
 	log.Printf("reg %s %p", key.Hex(), connection)
+}
+
+func (f *MessengerFactory) GetConnection(key cipher.PubKey) (c *Connection, ok bool) {
+	f.regConnectionsMutex.RLock()
+	c, ok = f.regConnections[key]
+	f.regConnectionsMutex.RUnlock()
+	return
 }
 
 func (f *MessengerFactory) unregister(key cipher.PubKey, connection *Connection) {
 	f.regConnectionsMutex.Lock()
 	defer f.regConnectionsMutex.Unlock()
-	c, ok := f.regConnections[key.Hex()]
+	c, ok := f.regConnections[key]
 	if ok && c == connection {
-		delete(f.regConnections, key.Hex())
+		delete(f.regConnections, key)
 		log.Printf("unreg %s %p", key.Hex(), c)
 	} else {
 		log.Printf("unreg %s %p != new %p", key.Hex(), connection, c)
