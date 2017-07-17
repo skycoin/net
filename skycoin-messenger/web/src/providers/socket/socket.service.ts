@@ -14,11 +14,22 @@ export class SocketService {
   key = 'ABCDEFABCDEFABCDEFABCDEFABCDEFABCDEFABCDEFABCDEFABCDEFABCDEF'
   chattingUser = '';
   private seqId = 0;
+  recent_list = [];
+  // private history = new Collections.LinkedDictionary<string, Array<ImHistoryMessage>>()
   private historySubject = new Subject<Map<string, Array<ImHistoryMessage>>>();
+  histories = new Map<string, Array<ImHistoryMessage>>();
   chatHistorys = this.historySubject.asObservable();
   constructor() {
     this.key += this.getRandomInt(100000, 999999);
     console.log('key:', this.key);
+    this.historySubject.subscribe((data: Map<string, Array<ImHistoryMessage>>) => {
+      data.forEach((value, key) => {
+        if (this.recent_list.indexOf(key.toUpperCase()) <= -1) {
+          this.recent_list.push(key.toLocaleUpperCase());
+        }
+      })
+      this.histories = data;
+    })
   }
 
   start() {
@@ -59,15 +70,19 @@ export class SocketService {
         this.ack(op, this.getSeq(buf));
         break;
       case PUSH.MSG:
-        this.saveHistorys(json.From, json.From, json.Msg);
+        let list = this.histories.get(json.From)
+        if (list === undefined) {
+          list = [];
+        }
+        list.unshift({ From: json.From.toUpperCase(), Msg: json.Msg });
+        this.saveHistorys(json.From, list);
         this.ack(op, this.getSeq(buf));
         break;
     }
   }
-  saveHistorys(key, from: string, msgList: Array<ImHistoryMessage>) {
-    const data = new Map<string, Array<ImHistoryMessage>>();
-    data.set(key, msgList);
-    this.historySubject.next(data);
+  saveHistorys(key: string, msgList: Array<ImHistoryMessage>) {
+    this.histories.set(key, msgList);
+    this.historySubject.next(this.histories);
   }
 
   private toHexString(byteArray) {

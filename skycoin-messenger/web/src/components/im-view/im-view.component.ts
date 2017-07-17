@@ -10,26 +10,21 @@ import { ImHistoryMessage } from '../../providers';
 })
 export class ImViewComponent implements OnInit, OnChanges {
   chatList: Array<ImHistoryMessage>;
-  historys: Map<string, Array<ImHistoryMessage>> = null;
   msg = '';
   @Input() chatting = '';
   constructor(private socket: SocketService) { }
 
   ngOnInit() {
-    this.socket.chatHistorys.subscribe((data: Map<string, Array<ImHistoryMessage>>) => {
-      console.log('send msg after:', data);
-      this.historys = data;
-    })
   }
 
   ngOnChanges(changes: SimpleChanges) {
     for (const propName in changes) {
       if (changes.hasOwnProperty(propName)) {
         const chng = changes[propName];
-        if (!this.historys) {
+        if (!this.socket.histories) {
           continue;
         }
-        const data = this.historys.get((<string>chng.currentValue).toLocaleLowerCase());
+        const data = this.socket.histories.get((<string>chng.currentValue).toLocaleLowerCase());
         if (data) {
           this.chatList = data;
         } else {
@@ -50,9 +45,11 @@ export class ImViewComponent implements OnInit, OnChanges {
 
   addChat() {
     this.socket.msg(this.chatting, this.msg);
-    this.chatList.push({ From: this.socket.key, Msg: this.msg });
-    this.socket.saveHistorys(this.chatting, this.socket.key, this.chatList);
-    // this.chatList = this.historys.get(this.chatting);
+    if (this.chatList === undefined) {
+      this.chatList = [];
+    }
+    this.chatList.unshift({ From: this.socket.key, Msg: this.msg });
+    this.socket.saveHistorys(this.chatting.toLowerCase(), this.chatList);
     this.msg = '';
   }
 }
