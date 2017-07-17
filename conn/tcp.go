@@ -147,9 +147,7 @@ func (c *TCPConn) Ack(seq uint32) error {
 }
 
 func (c *TCPConn) Ping() error {
-	b := make([]byte, msg.MSG_TYPE_SIZE)
-	b[msg.MSG_TYPE_BEGIN] = msg.TYPE_PING
-	return c.WriteBytes(b)
+	return c.WriteBytes(msg.GenPingMsg())
 }
 
 func (c *TCPConn) GetChanOut() chan<- []byte {

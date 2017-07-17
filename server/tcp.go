@@ -30,6 +30,7 @@ func (c *ServerTCPConn) ReadLoop() (err error) {
 		c.Close()
 	}()
 	header := make([]byte, msg.MSG_HEADER_SIZE)
+	pingHeader := make([]byte, msg.PING_MSG_HEADER_SIZE)
 	reader := bufio.NewReader(c.TcpConn)
 
 	for {
@@ -48,8 +49,12 @@ func (c *ServerTCPConn) ReadLoop() (err error) {
 			c.DelMsg(seq)
 			c.UpdateLastAck(seq)
 		case msg.TYPE_PING:
-			reader.Discard(msg.MSG_TYPE_SIZE)
-			err = c.WriteBytes([]byte{msg.TYPE_PONG})
+			_, err = io.ReadAtLeast(reader, pingHeader, msg.PING_MSG_HEADER_SIZE)
+			if err != nil {
+				return err
+			}
+			pingHeader[msg.PING_MSG_TYPE_BEGIN] = msg.TYPE_PONG
+			err = c.WriteBytes(pingHeader)
 			if err != nil {
 				return err
 			}

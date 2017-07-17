@@ -1,9 +1,9 @@
 package msg
 
 const (
-	MSG_TYPE_SIZE   = 1
-	MSG_SEQ_SIZE    = 4
-	MSG_LEN_SIZE    = 4
+	MSG_TYPE_SIZE = 1
+	MSG_SEQ_SIZE  = 4
+	MSG_LEN_SIZE  = 4
 )
 
 const (
@@ -27,7 +27,7 @@ const (
 )
 
 const (
-	MSG_STATUS_INIT = 1 << iota
+	MSG_STATUS_INIT        = 1 << iota
 	MSG_STATUS_TRANSMITTED
 	MSG_STATUS_ACKED
 )
