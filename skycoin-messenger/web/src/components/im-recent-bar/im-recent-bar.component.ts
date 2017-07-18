@@ -18,10 +18,11 @@ export class ImRecentBarComponent implements OnInit {
 
   selectItem(item: ImRecentItemComponent) {
     // this.chatting.emit(item);
-    this.chatting = item.name.toUpperCase();
-    this.socket.chattingUser = item.name;
+    item.info.unRead = 0;
+    this.chatting = item.info.name;
+    this.socket.chattingUser = item.info.name;
     const tmp = this.items.filter((el) => {
-      return el.name !== item.name;
+      return el.info.name !== item.info.name;
     });
     tmp.forEach(el => {
       el.active = false;

@@ -3,7 +3,8 @@ export interface ImHistoryMessage {
   Msg: string;
 }
 
-export interface Recent {
+export interface RecentItem {
   name: string;
-  lastMsg: string;
+  last: string;
+  unRead?: number;
 }

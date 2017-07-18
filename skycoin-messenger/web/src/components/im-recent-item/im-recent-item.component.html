@@ -1,5 +1,8 @@
-<app-im-head [name]="name"></app-im-head>
+<app-im-head [name]="info.name"></app-im-head>
 <div class="content">
-  <p class="name single-line">{{name}}</p>
-  <small class="last-text single-line">This is a last message.This is a last message.This is a last message.</small>
+  <p class="name single-line">{{info.name}}</p>
+  <small class="last-text single-line">{{info.last}}</small>
+</div>
+<div class="badges-box">
+  <span class="badges" *ngIf="info.unRead">{{info.unRead}}</span>
 </div>

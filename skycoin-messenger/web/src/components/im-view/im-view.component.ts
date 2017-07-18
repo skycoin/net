@@ -24,7 +24,7 @@ export class ImViewComponent implements OnInit, OnChanges {
         if (!this.socket.histories) {
           continue;
         }
-        const data = this.socket.histories.get((<string>chng.currentValue).toLocaleLowerCase());
+        const data = this.socket.histories.get((<string>chng.currentValue));
         if (data) {
           this.chatList = data;
         } else {
@@ -49,7 +49,7 @@ export class ImViewComponent implements OnInit, OnChanges {
       this.chatList = [];
     }
     this.chatList.unshift({ From: this.socket.key, Msg: this.msg });
-    this.socket.saveHistorys(this.chatting.toLowerCase(), this.chatList);
+    this.socket.saveHistorys(this.chatting, this.chatList);
     this.msg = '';
   }
 }

@@ -14,6 +14,19 @@ app-im-history-message {
     border-radius: .5rem;
     background-color: #eee;
   }
+  .my-message,
+  .other-message {
+    .content {}
+    .action {
+      padding: .5em;
+      .fa-circle-self {
+        width: 1em;
+        height: 1em;
+        border-radius: 50%;
+        border: 1px solid #ccc;
+      }
+    }
+  }
   .other-message {
     .bubble {
       color: #fff;

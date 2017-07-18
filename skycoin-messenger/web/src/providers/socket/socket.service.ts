@@ -1,9 +1,9 @@
 import { Injectable } from '@angular/core';
-import { ImHistoryMessage } from './msg';
+import { ImHistoryMessage, RecentItem } from './msg';
 import { Subject } from 'rxjs/Subject';
 
 export enum OP { REG, SEND, ACK };
-export enum PUSH { ACK, MSG };
+export enum PUSH { ACK, REG, MSG };
 
 @Injectable()
 export class SocketService {
@@ -11,21 +11,27 @@ export class SocketService {
   private url = 'ws://localhost:8082/ws';
   // private url = 'ws://192.168.33.104:8082/ws';
   // private ackDict = new Dictionary<number, any>();
-  key = 'ABCDEFABCDEFABCDEFABCDEFABCDEFABCDEFABCDEFABCDEFABCDEFABCDEF'
+  key = ''
   chattingUser = '';
   private seqId = 0;
-  recent_list = [];
+  recent_list: Array<RecentItem> = [];
   // private history = new Collections.LinkedDictionary<string, Array<ImHistoryMessage>>()
   private historySubject = new Subject<Map<string, Array<ImHistoryMessage>>>();
   histories = new Map<string, Array<ImHistoryMessage>>();
   chatHistorys = this.historySubject.asObservable();
   constructor() {
-    this.key += this.getRandomInt(100000, 999999);
-    console.log('key:', this.key);
     this.historySubject.subscribe((data: Map<string, Array<ImHistoryMessage>>) => {
       data.forEach((value, key) => {
-        if (this.recent_list.indexOf(key.toUpperCase()) <= -1) {
-          this.recent_list.push(key.toLocaleUpperCase());
+        const index = this.recent_list.findIndex(v => v.name === key);
+        const msg = value[0].Msg;
+        if (index <= -1) {
+          this.recent_list.push({ name: key, last: msg, unRead: 1 });
+        } else {
+          // tslint:disable-next-line:no-unused-expression
+          if (this.chattingUser !== key) {
+            this.recent_list[index].unRead += 1;
+          }
+          this.recent_list[index].last = msg;
         }
       })
       this.histories = data;
@@ -36,7 +42,8 @@ export class SocketService {
     this.ws = new WebSocket(this.url);
     this.ws.binaryType = 'arraybuffer';
     this.ws.onopen = () => {
-      this.send(OP.REG, JSON.stringify({ Address: 'localhost:8080', PublicKey: this.key }));
+      this.send(OP.REG, JSON.stringify({ Address: 'localhost:8080' }));
+      // this.send(OP.REG);
     }
     this.ws.onmessage = (event) => {
       this.handle(event.data);
@@ -69,12 +76,16 @@ export class SocketService {
         console.log('send successful');
         this.ack(op, this.getSeq(buf));
         break;
+      case PUSH.REG:
+        this.key = json.PublicKey;
+        console.log('reg keys:', json.PublicKey);
+        break;
       case PUSH.MSG:
         let list = this.histories.get(json.From)
         if (list === undefined) {
           list = [];
         }
-        list.unshift({ From: json.From.toUpperCase(), Msg: json.Msg });
+        list.unshift({ From: json.From, Msg: json.Msg });
         this.saveHistorys(json.From, list);
         this.ack(op, this.getSeq(buf));
         break;

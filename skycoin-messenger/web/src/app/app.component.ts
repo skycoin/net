@@ -13,7 +13,7 @@ export class AppComponent implements OnInit {
   ngOnInit(): void {
     const testUser = window.location.search.slice(6);
     if (testUser !== '') {
-      this.socket.recent_list.push(testUser);
+      this.socket.recent_list.push({ name: testUser, last: '' });
     }
     if (this.socket.chattingUser) {
       this.chatWindow = true;

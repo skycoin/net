@@ -6,22 +6,36 @@ app-im-recent-item {
   display: block;
   min-height: 4rem;
   margin: .5rem 0;
-  padding: .5rem 1rem;
+  padding: .5rem;
   .head,
-  .content {
+  .content,
+  .badges-box {
     display: inline-block;
   }
   .head {
     width: 25%;
   }
   .content {
-    width: 65%;
+    width: 60%;
     padding: 0 .5rem;
     .name {
       font-size: 1rem;
     }
     .last-text {
       color: hsla(0, 0%, 93%, 0.7);
+    }
+  }
+  .badges-box {
+    width: 10%;
+    vertical-align: super;
+    .badges {
+      display: flex;
+      width: 25px;
+      height: 25px;
+      align-items: center;
+      justify-content: center;
+      background-color: red;
+      border-radius: 50%;
     }
   }
 }
