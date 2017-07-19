@@ -50,18 +50,18 @@ func (c *Client) PushLoop(conn *factory.Connection) {
 			op := m[factory.MSG_OP_BEGIN]
 			switch op {
 			case factory.OP_SEND:
-				if len(m) < factory.MSG_META_END {
+				if len(m) < factory.SEND_MSG_META_END {
 					continue
 				}
-				key := cipher.NewPubKey(m[factory.MSG_PUBLIC_KEY_BEGIN:factory.MSG_PUBLIC_KEY_END])
+				key := cipher.NewPubKey(m[factory.SEND_MSG_PUBLIC_KEY_BEGIN:factory.SEND_MSG_PUBLIC_KEY_END])
 				push.From = key.Hex()
-				push.Msg = string(m[factory.MSG_META_END:])
+				push.Msg = string(m[factory.SEND_MSG_META_END:])
 				c.Push <- push
 			case factory.OP_REG:
-				if len(m) < factory.MSG_PUBLIC_KEY_END {
+				if len(m) < factory.SEND_MSG_PUBLIC_KEY_END {
 					continue
 				}
-				key := cipher.NewPubKey(m[factory.MSG_PUBLIC_KEY_BEGIN:factory.MSG_PUBLIC_KEY_END])
+				key := cipher.NewPubKey(m[factory.SEND_MSG_PUBLIC_KEY_BEGIN:factory.SEND_MSG_PUBLIC_KEY_END])
 				c.Connection.SetKey(key)
 				c.Push <- &msg.Reg{PublicKey:key.Hex()}
 			}

@@ -2,8 +2,6 @@ package rpc
 
 import (
 	"github.com/skycoin/net/skycoin-messenger/op"
-	"github.com/skycoin/net/skycoin-messenger/msg"
-	"fmt"
 )
 
 type Gateway struct {

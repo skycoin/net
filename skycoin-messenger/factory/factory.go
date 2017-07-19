@@ -8,14 +8,22 @@ import (
 	"github.com/skycoin/skycoin/src/cipher"
 )
 
+func init() {
+	log.SetLevel(log.DebugLevel)
+}
+
 type MessengerFactory struct {
 	factory             factory.Factory
 	regConnections      map[cipher.PubKey]*Connection
 	regConnectionsMutex sync.RWMutex
+	CustomMsgHandler    func(*Connection, []byte)
+
+	services      map[string]*ConnectionList
+	servicesMutex sync.RWMutex
 }
 
 func NewMessengerFactory() *MessengerFactory {
-	return &MessengerFactory{regConnections: make(map[cipher.PubKey]*Connection)}
+	return &MessengerFactory{regConnections: make(map[cipher.PubKey]*Connection), services: make(map[string]*ConnectionList)}
 }
 
 func (f *MessengerFactory) Listen(address string) error {
@@ -29,13 +37,14 @@ var EMPTY_KEY = cipher.PubKey{}
 
 func (f *MessengerFactory) acceptedCallback(connection *factory.Connection) {
 	go func() {
-		conn := &Connection{Connection: connection}
+		conn := NewConnection(connection)
 		conn.SetContextLogger(conn.GetContextLogger().WithField("app", "messenger"))
 		defer func() {
 			if err := recover(); err != nil {
-				conn.GetContextLogger().Infof("acceptedCallback err %v", err)
+				conn.GetContextLogger().Errorf("acceptedCallback err %v", err)
 			}
 			f.unregister(conn.GetKey(), conn)
+			f.removeService(conn)
 		}()
 		for {
 			select {
@@ -49,9 +58,6 @@ func (f *MessengerFactory) acceptedCallback(connection *factory.Connection) {
 				op := m[MSG_OP_BEGIN]
 				switch op {
 				case OP_REG:
-					if len(m) < MSG_HEADER_END {
-						return
-					}
 					if conn.GetKey() != EMPTY_KEY {
 						conn.GetContextLogger().Infof("reg %s already", conn.key.Hex())
 						continue
@@ -66,10 +72,10 @@ func (f *MessengerFactory) acceptedCallback(connection *factory.Connection) {
 						conn.Close()
 					}
 				case OP_SEND:
-					if len(m) < MSG_TO_PUBLIC_KEY_END {
+					if len(m) < SEND_MSG_TO_PUBLIC_KEY_END {
 						return
 					}
-					key := cipher.NewPubKey(m[MSG_TO_PUBLIC_KEY_BEGIN:MSG_TO_PUBLIC_KEY_END])
+					key := cipher.NewPubKey(m[SEND_MSG_TO_PUBLIC_KEY_BEGIN:SEND_MSG_TO_PUBLIC_KEY_END])
 					f.regConnectionsMutex.RLock()
 					c, ok := f.regConnections[key]
 					f.regConnectionsMutex.RUnlock()
@@ -83,6 +89,17 @@ func (f *MessengerFactory) acceptedCallback(connection *factory.Connection) {
 						c.GetContextLogger().Errorf("write %x err %v", m, err)
 						c.Close()
 					}
+				case OP_CUSTOM:
+					if f.CustomMsgHandler != nil {
+						f.CustomMsgHandler(conn, m[MSG_HEADER_END:])
+					}
+				case OP_OFFER_SERVICE:
+					service := string(m[MSG_HEADER_END:])
+					if len(service) > 0 {
+						f.addService(service, conn)
+					}
+				default:
+					conn.GetContextLogger().Errorf("not implemented op %d", op)
 				}
 			}
 		}
@@ -130,7 +147,7 @@ func (f *MessengerFactory) Connect(address string) (conn *Connection, err error)
 	if err != nil {
 		return nil, err
 	}
-	conn = &Connection{Connection: c}
+	conn = NewConnection(c)
 	conn.SetContextLogger(conn.GetContextLogger().WithField("app", "messenger"))
 	err = conn.Reg()
 	return
@@ -138,4 +155,40 @@ func (f *MessengerFactory) Connect(address string) (conn *Connection, err error)
 
 func (f *MessengerFactory) Close() error {
 	return f.factory.Close()
+}
+
+func (f *MessengerFactory) addService(service string, conn *Connection) {
+	if len(conn.GetService()) < 1 {
+		return
+	}
+	conn.SetService(service)
+	f.servicesMutex.Lock()
+	defer f.servicesMutex.Unlock()
+	list, ok := f.services[service]
+	if ok {
+		list.PushBack(conn)
+	} else {
+		l := NewConnectionList()
+		l.PushBack(conn)
+		f.services[service] = l
+	}
+	conn.GetContextLogger().Debugf("added service %s now %v", service, f.services)
+}
+
+func (f *MessengerFactory) removeService(conn *Connection) {
+	service := conn.GetService()
+	if len(service) < 1 {
+		return
+	}
+	f.servicesMutex.Lock()
+	defer f.servicesMutex.Unlock()
+	list, ok := f.services[service]
+	if ok {
+		if list.Remove(conn) < 1 {
+			delete(f.services, service)
+		}
+		conn.GetContextLogger().Debugf("removed service %s now %v", service, f.services)
+	} else {
+		conn.GetContextLogger().Debugf("remove service cannot find list of %s now %v", service, f.services)
+	}
 }

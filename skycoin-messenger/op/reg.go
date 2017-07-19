@@ -1,14 +1,14 @@
 package op
 
 import (
-	"github.com/skycoin/net/skycoin-messenger/msg"
 	"sync"
-	"github.com/skycoin/skycoin/src/cipher"
+
 	"github.com/skycoin/net/skycoin-messenger/factory"
+	"github.com/skycoin/net/skycoin-messenger/msg"
 )
 
 type Reg struct {
-	Address   string
+	Address string
 }
 
 func init() {

@@ -51,15 +51,8 @@ func (c *TCPConn) ReadLoop() (err error) {
 			seq := binary.BigEndian.Uint32(header[msg.MSG_SEQ_BEGIN:msg.MSG_SEQ_END])
 			c.DelMsg(seq)
 			c.UpdateLastAck(seq)
-		case msg.TYPE_PING:
-			reader.Discard(msg.MSG_TYPE_SIZE)
-			err = c.WriteBytes([]byte{msg.TYPE_PONG})
-			if err != nil {
-				return err
-			}
-			c.CTXLogger.Debug("recv ping")
 		case msg.TYPE_PONG:
-			reader.Discard(msg.MSG_TYPE_SIZE)
+			reader.Discard(msg.PING_MSG_HEADER_END)
 			c.CTXLogger.Debug("recv pong")
 		case msg.TYPE_NORMAL:
 			_, err = io.ReadAtLeast(reader, header, msg.MSG_HEADER_SIZE)
