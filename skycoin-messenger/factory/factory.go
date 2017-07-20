@@ -147,7 +147,7 @@ func (f *MessengerFactory) Connect(address string) (conn *Connection, err error)
 	if err != nil {
 		return nil, err
 	}
-	conn = NewConnection(c)
+	conn = NewClientConnection(c)
 	conn.SetContextLogger(conn.GetContextLogger().WithField("app", "messenger"))
 	err = conn.Reg()
 	return
@@ -158,7 +158,7 @@ func (f *MessengerFactory) Close() error {
 }
 
 func (f *MessengerFactory) addService(service string, conn *Connection) {
-	if len(conn.GetService()) < 1 {
+	if len(conn.GetService()) > 0 {
 		return
 	}
 	conn.SetService(service)

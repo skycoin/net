@@ -3,7 +3,6 @@ package main
 import (
 	log "github.com/sirupsen/logrus"
 	"github.com/skycoin/net/factory"
-	"time"
 )
 
 func main() {
@@ -22,4 +21,3 @@ func main() {
 		}
 	}
 }
-

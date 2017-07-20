@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	"github.com/skycoin/skycoin/src/cipher"
+	"github.com/sirupsen/logrus"
 )
 
 type ConnectionList struct {
@@ -40,6 +41,7 @@ func (l *ConnectionList) broadcastUpdate() {
 		}
 		result = append(result, c.GetKey())
 	}
+	logrus.Debugf("broadcastUpdate %v", result)
 	for e := l.Front(); e != nil; e = e.Next() {
 		c, ok := e.Value.(*Connection)
 		if !ok {
@@ -59,6 +61,7 @@ func (l *ConnectionList) Remove(conn *Connection) int {
 	if e != nil {
 		l.List.Remove(e)
 	}
+	l.broadcastUpdate()
 	return l.List.Len()
 }
 
