@@ -15,5 +15,6 @@ export class CreateChatDialogComponent implements OnInit {
     Validators.required]);
   constructor() { }
 
-  ngOnInit() { }
+  ngOnInit() {
+  }
 }

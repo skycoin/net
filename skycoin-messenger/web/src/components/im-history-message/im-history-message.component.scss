@@ -1,7 +1,6 @@
 app-im-history-message {
-  display: block;
-  min-height: 4rem;
-  margin: 1.5rem 0;
+  display: block; // min-height: 4rem;
+  margin: 1.1rem 0;
   .data {
     color: #999;
     font-size: 1rem;
@@ -22,7 +21,7 @@ app-im-history-message {
         word-wrap: break-word;
         max-width: 90%;
         margin-top: 1rem;
-        padding: 1rem;
+        padding: .5rem .8rem;
         border-radius: .5rem;
         .menu-focus {
           position: absolute;
