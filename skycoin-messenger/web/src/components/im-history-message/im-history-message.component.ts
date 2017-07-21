@@ -1,5 +1,6 @@
-import { Component, OnInit, ViewEncapsulation, Input } from '@angular/core';
+import { Component, OnInit, ViewEncapsulation, Input, ViewChild } from '@angular/core';
 import { ImHistoryMessage, SocketService } from '../../providers';
+import { MdMenuTrigger } from '@angular/material';
 
 @Component({
   selector: 'app-im-history-message',
@@ -9,13 +10,17 @@ import { ImHistoryMessage, SocketService } from '../../providers';
 })
 export class ImHistoryMessageComponent implements OnInit {
   selfId = '';
+  @ViewChild(MdMenuTrigger) contextMenu: MdMenuTrigger;
+  @Input() index: number;
   @Input() chat: ImHistoryMessage = null;
   constructor(private socket: SocketService) {
     this.selfId = this.socket.key;
   }
 
   ngOnInit() {
-    console.log('history message:', this.chat);
   }
-
+  rightClick(ev: Event) {
+    // ev.preventDefault();
+    // this.contextMenu.openMenu();
+  }
 }

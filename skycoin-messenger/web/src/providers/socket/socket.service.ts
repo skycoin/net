@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { ImHistoryMessage, RecentItem } from './msg';
 import { Subject } from 'rxjs/Subject';
+import * as Collections from 'typescript-collections';
 
 export enum OP { REG, SEND, ACK };
 export enum PUSH { ACK, REG, MSG };
@@ -16,14 +17,14 @@ export class SocketService {
   private seqId = 0;
   recent_list: Array<RecentItem> = [];
   // private history = new Collections.LinkedDictionary<string, Array<ImHistoryMessage>>()
-  private historySubject = new Subject<Map<string, Array<ImHistoryMessage>>>();
-  histories = new Map<string, Array<ImHistoryMessage>>();
+  private historySubject = new Subject<Map<string, Collections.LinkedList<ImHistoryMessage>>>();
+  histories = new Map<string, Collections.LinkedList<ImHistoryMessage>>();
   chatHistorys = this.historySubject.asObservable();
   constructor() {
-    this.historySubject.subscribe((data: Map<string, Array<ImHistoryMessage>>) => {
+    this.historySubject.subscribe((data: Map<string, Collections.LinkedList<ImHistoryMessage>>) => {
       data.forEach((value, key) => {
         const index = this.recent_list.findIndex(v => v.name === key);
-        const msg = value[0].Msg;
+        const msg = value.first().Msg;
         if (index <= -1) {
           this.recent_list.push({ name: key, last: msg, unRead: 1 });
         } else {
@@ -83,15 +84,15 @@ export class SocketService {
       case PUSH.MSG:
         let list = this.histories.get(json.From)
         if (list === undefined) {
-          list = [];
+          list = new Collections.LinkedList<ImHistoryMessage>();
         }
-        list.unshift({ From: json.From, Msg: json.Msg });
+        list.add({ From: json.From, Msg: json.Msg }, 0);
         this.saveHistorys(json.From, list);
         this.ack(op, this.getSeq(buf));
         break;
     }
   }
-  saveHistorys(key: string, msgList: Array<ImHistoryMessage>) {
+  saveHistorys(key: string, msgList: Collections.LinkedList<ImHistoryMessage>) {
     this.histories.set(key, msgList);
     this.historySubject.next(this.histories);
   }

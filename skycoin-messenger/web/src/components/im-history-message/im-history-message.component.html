@@ -1,26 +1,38 @@
 <div class="my-message" *ngIf="chat.From === selfId" fxLayout="row">
-  <div class="content">
+  <div class="content" fxFlex="auto">
     <p class="data">
-      <span class="name">{{chat.From}}</span>
+      <span class="name single-line">{{chat.From}}</span>
     </p>
-    <p class="bubble float-right">
+    <p class="bubble float-right" (contextmenu)="rightClick($event)">
       {{chat.Msg}}
+      <span [mdMenuTriggerFor]="contextMenu" class="menu-focus"></span>
     </p>
   </div>
-  <!-- <div class="action" fxFlexAlign="center">
-    <span class="fa-stack fa-lg">
-      <i class="fa fa-circle-self fa-stack-1x"></i>
-      <i class="fa fa-check-circle fa-stack-1x"></i>
-    </span>
+  <!-- <div class="action-box" fxFlex="10" fxLayoutAlign="center center">
+    <md-checkbox></md-checkbox>
   </div> -->
 </div>
 <div class="other-message" *ngIf="chat.From !== selfId" fxLayout="row">
-  <div class="content">
+  <div class="content" fxFlex="auto">
     <p class="data">
-      <span class="name">{{chat.From}}</span>
+      <span class="name  single-line">{{chat.From}}</span>
     </p>
-    <p class="bubble float-left">
+    <p class="bubble float-left" (contextmenu)="rightClick($event)">
       {{chat.Msg}}
+      <span [mdMenuTriggerFor]="contextMenu" class="menu-focus"></span>
     </p>
   </div>
+  <!-- <div class="action-box" fxFlex="10" fxLayoutAlign="center center">
+    <md-checkbox></md-checkbox>
+  </div> -->
 </div>
+<md-menu #contextMenu="mdMenu">
+  <button md-menu-item>
+    <md-icon>format_list_bulleted</md-icon>
+    <span>Multiple Choice</span>
+  </button>
+  <button md-menu-item>
+    <md-icon>delete</md-icon>
+    <span>Delete</span>
+  </button>
+</md-menu>

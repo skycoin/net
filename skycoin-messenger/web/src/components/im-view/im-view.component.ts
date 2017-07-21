@@ -1,6 +1,18 @@
-import { Component, OnInit, ViewEncapsulation, Input, OnChanges, SimpleChanges } from '@angular/core';
+import {
+  Component,
+  OnInit,
+  ViewEncapsulation,
+  Input,
+  OnChanges,
+  SimpleChanges,
+  ViewChild,
+  AfterViewChecked,
+  AfterViewInit
+} from '@angular/core';
 import { SocketService } from '../../providers';
 import { ImHistoryMessage } from '../../providers';
+import * as Collections from 'typescript-collections';
+import { ImHistoryViewComponent } from '../im-history-view/im-history-view.component';
 
 @Component({
   selector: 'app-im-view',
@@ -8,29 +20,27 @@ import { ImHistoryMessage } from '../../providers';
   styleUrls: ['./im-view.component.scss'],
   encapsulation: ViewEncapsulation.None
 })
-export class ImViewComponent implements OnInit, OnChanges {
-  chatList: Array<ImHistoryMessage>;
+export class ImViewComponent implements OnInit, AfterViewChecked {
+  chatList: Collections.LinkedList<ImHistoryMessage>;
   msg = '';
+  @ViewChild(ImHistoryViewComponent) historyView: ImHistoryViewComponent;
   @Input() chatting = '';
-  constructor(private socket: SocketService) { }
+  constructor(public socket: SocketService) { }
 
   ngOnInit() {
   }
 
-  ngOnChanges(changes: SimpleChanges) {
-    for (const propName in changes) {
-      if (changes.hasOwnProperty(propName)) {
-        const chng = changes[propName];
-        if (!this.socket.histories) {
-          continue;
-        }
-        const data = this.socket.histories.get((<string>chng.currentValue));
-        if (data) {
-          this.chatList = data;
-        } else {
-          this.chatList = [];
-        }
-      }
+  ngAfterViewChecked() {
+    if (!this.socket.histories) {
+      return;
+    }
+    const data = this.socket.histories.get(this.socket.chattingUser);
+    if (data) {
+      setTimeout(() => {
+        this.historyView.list = data.toArray();
+      }, 10)
+    } else {
+      this.chatList = new Collections.LinkedList<ImHistoryMessage>();
     }
   }
   send(ev: KeyboardEvent) {
@@ -45,10 +55,12 @@ export class ImViewComponent implements OnInit, OnChanges {
 
   addChat() {
     this.socket.msg(this.chatting, this.msg);
+    this.chatList = this.socket.histories.get(this.socket.chattingUser);
     if (this.chatList === undefined) {
-      this.chatList = [];
+      this.chatList = new Collections.LinkedList<ImHistoryMessage>();
     }
-    this.chatList.unshift({ From: this.socket.key, Msg: this.msg });
+    this.chatList.add({ From: this.socket.key, Msg: this.msg }, 0);
+    this.historyView.list = this.chatList.toArray();
     this.socket.saveHistorys(this.chatting, this.chatList);
     this.msg = '';
   }
