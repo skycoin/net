@@ -1,7 +1,8 @@
 /* You can add global styles to this file, and also import other style files */
-@import 'variables';
-@import '../node_modules/font-awesome/scss/font-awesome';
 
+@import 'variables';
+@import "~@angular/material/prebuilt-themes/indigo-pink.css";
+@import '../node_modules/font-awesome/scss/font-awesome';
 body {
   background-color: #d5f0f3;
   font-size: 62.5%;
@@ -25,4 +26,20 @@ body {
 
 .break-line {
   word-break: break-all;
+}
+
+.alert-dialog-panel {
+  .mat-dialog-container {
+    border-radius: .5rem;
+  }
+}
+
+
+.alert-backdrop {
+  background: transparent;
+}
+
+.flex-center {
+  justify-content: center;
+  align-items: center;
 }

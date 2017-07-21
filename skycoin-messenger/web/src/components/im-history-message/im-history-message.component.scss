@@ -6,26 +6,31 @@ app-im-history-message {
     color: #999;
     font-size: 1rem;
   }
-  .bubble {
-    word-wrap: break-word;
-    max-width: 90%;
-    margin-top: 1rem;
-    padding: 1rem;
-    border-radius: .5rem;
-    background-color: #eee;
-  }
   .my-message,
   .other-message {
-    .content {}
-    .action {
-      padding: .5em;
-      .fa-circle-self {
-        width: 1em;
-        height: 1em;
-        border-radius: 50%;
-        border: 1px solid #ccc;
+    width: 100%;
+    .content {
+      .data {
+        .name {
+          width: 5rem;
+          display: inline-block;
+        }
+      }
+      .bubble {
+        position: relative;
+        cursor: pointer;
+        word-wrap: break-word;
+        max-width: 90%;
+        margin-top: 1rem;
+        padding: 1rem;
+        border-radius: .5rem;
+        .menu-focus {
+          position: absolute;
+          top: 65%;
+        }
       }
     }
+    .action-box {}
   }
   .other-message {
     .bubble {

@@ -8,10 +8,22 @@ import {
   ImRecentItemComponent,
   ImHeadComponent,
   ImHistoryViewComponent,
-  ImHistoryMessageComponent
+  ImHistoryMessageComponent,
+  CreateChatDialogComponent,
+  AlertDialogComponent
 } from '../components';
-import { FormsModule } from '@angular/forms';
-import { SocketService } from '../providers';
+import { FormsModule, ReactiveFormsModule } from '@angular/forms';
+import { SocketService, ToolService } from '../providers';
+import {
+  MdCheckboxModule,
+  MdMenuModule,
+  MdIconModule,
+  MdDialogModule,
+  MdInputModule,
+  MdButtonModule,
+} from '@angular/material';
+import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
+import 'web-animations-js'
 
 
 @NgModule({
@@ -22,14 +34,28 @@ import { SocketService } from '../providers';
     ImRecentItemComponent,
     ImHeadComponent,
     ImHistoryViewComponent,
-    ImHistoryMessageComponent
+    ImHistoryMessageComponent,
+    CreateChatDialogComponent,
+    AlertDialogComponent
   ],
   imports: [
     FormsModule,
+    ReactiveFormsModule,
     BrowserModule,
     FlexLayoutModule,
+    BrowserAnimationsModule,
+    MdCheckboxModule,
+    MdMenuModule,
+    MdIconModule,
+    MdDialogModule,
+    MdInputModule,
+    MdButtonModule,
   ],
-  providers: [SocketService],
+  entryComponents: [
+    CreateChatDialogComponent,
+    AlertDialogComponent
+  ],
+  providers: [SocketService, ToolService],
   bootstrap: [AppComponent]
 })
 export class AppModule { }

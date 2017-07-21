@@ -1,2 +1,7 @@
 <app-im-recent-item *ngFor="let item of list" [info]="item" (onClick)="selectItem($event)"></app-im-recent-item>
-<div class="hint-box" *ngIf="list?.length <= 0">No Chat User</div>
+<div class="hint-box" *ngIf="list?.length <= 0">
+  No Chat User
+</div>
+<div class="create-chat-box">
+  <span class="create" (click)="openCreate($event)"><i class="fa fa-plus"></i>New Chat</span>
+</div>

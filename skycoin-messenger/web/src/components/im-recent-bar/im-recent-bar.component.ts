@@ -1,6 +1,8 @@
 import { Component, OnInit, ViewEncapsulation, Input, ViewChildren, QueryList, Output, EventEmitter } from '@angular/core';
 import { ImRecentItemComponent } from '../im-recent-item/im-recent-item.component';
 import { SocketService } from '../../providers';
+import { MdDialog } from '@angular/material';
+import { CreateChatDialogComponent } from '../create-chat-dialog/create-chat-dialog.component';
 
 @Component({
   selector: 'app-im-recent-bar',
@@ -12,7 +14,7 @@ export class ImRecentBarComponent implements OnInit {
   chatting = '';
   @ViewChildren(ImRecentItemComponent) items: QueryList<ImRecentItemComponent>;
   @Input() list = [];
-  constructor(private socket: SocketService) { }
+  constructor(private socket: SocketService, public dialog: MdDialog) { }
   ngOnInit() {
   }
 
@@ -27,5 +29,17 @@ export class ImRecentBarComponent implements OnInit {
     tmp.forEach(el => {
       el.active = false;
     });
+  }
+
+  openCreate(ev: Event) {
+    ev.stopImmediatePropagation();
+    ev.stopPropagation();
+    ev.preventDefault();
+    const def = this.dialog.open(CreateChatDialogComponent, { position: { top: '10%' }, width: '350px' });
+    def.afterClosed().subscribe(keys => {
+      if (keys !== '' && keys) {
+        this.socket.recent_list.push({ name: keys, last: '' });
+      }
+    })
   }
 }
