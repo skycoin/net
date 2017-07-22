@@ -1,9 +1,9 @@
 package factory
 
 import (
+	"github.com/skycoin/net/client"
 	"github.com/skycoin/net/server"
 	"net"
-	"github.com/skycoin/net/client"
 )
 
 type TCPFactory struct {
@@ -13,7 +13,7 @@ type TCPFactory struct {
 }
 
 func NewTCPFactory() *TCPFactory {
-	return &TCPFactory{FactoryCommonFields:NewFactoryCommonFields()}
+	return &TCPFactory{FactoryCommonFields: NewFactoryCommonFields()}
 }
 
 func (factory *TCPFactory) Listen(address string) error {
@@ -61,4 +61,3 @@ func (factory *TCPFactory) Connect(address string) (conn *Connection, err error)
 	factory.AddConn(conn)
 	return
 }
-

@@ -1,8 +1,8 @@
 package msg
 
 import (
-	"sync"
 	"github.com/skycoin/net/skycoin-messenger/factory"
+	"sync"
 )
 
 var (

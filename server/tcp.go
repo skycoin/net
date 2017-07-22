@@ -3,11 +3,11 @@ package server
 import (
 	"bufio"
 	"encoding/binary"
-	"io"
+	"fmt"
 	"github.com/skycoin/net/conn"
 	"github.com/skycoin/net/msg"
+	"io"
 	"net"
-	"fmt"
 )
 
 type ServerTCPConn struct {
@@ -15,7 +15,7 @@ type ServerTCPConn struct {
 }
 
 func NewServerTCPConn(c *net.TCPConn) *ServerTCPConn {
-	return &ServerTCPConn{TCPConn: conn.TCPConn{TcpConn: c, In: make(chan []byte), Out: make(chan []byte), ConnCommonFields:conn.NewConnCommonFileds()}}
+	return &ServerTCPConn{TCPConn: conn.TCPConn{TcpConn: c, In: make(chan []byte), Out: make(chan []byte), ConnCommonFields: conn.NewConnCommonFileds()}}
 }
 
 func (c *ServerTCPConn) ReadLoop() (err error) {
@@ -82,5 +82,4 @@ func (c *ServerTCPConn) ReadLoop() (err error) {
 
 		c.UpdateLastTime()
 	}
-	return nil
 }

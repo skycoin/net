@@ -1,16 +1,16 @@
 package conn
 
 import (
-	"sync"
-	"github.com/skycoin/net/msg"
-	"time"
-	"math/big"
 	"fmt"
 	log "github.com/sirupsen/logrus"
+	"github.com/skycoin/net/msg"
+	"math/big"
+	"sync"
+	"time"
 )
 
 type PendingMap struct {
-	Pending              map[uint32]*msg.Message
+	Pending map[uint32]*msg.Message
 	sync.RWMutex
 	ackedMessages        map[uint32]*msg.Message
 	ackedMessagesMutex   sync.RWMutex

@@ -1,9 +1,9 @@
 package op
 
 import (
-	"sync"
 	"github.com/skycoin/net/skycoin-messenger/msg"
 	"github.com/skycoin/skycoin/src/cipher"
+	"sync"
 )
 
 type Send struct {

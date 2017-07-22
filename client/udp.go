@@ -1,12 +1,12 @@
 package client
 
 import (
-	"time"
-	"net"
-	"github.com/skycoin/net/conn"
-	"github.com/skycoin/net/msg"
 	"encoding/binary"
 	"fmt"
+	"github.com/skycoin/net/conn"
+	"github.com/skycoin/net/msg"
+	"net"
+	"time"
 )
 
 type ClientUDPConn struct {
@@ -14,7 +14,7 @@ type ClientUDPConn struct {
 }
 
 func NewClientUDPConn(c *net.UDPConn) *ClientUDPConn {
-	return &ClientUDPConn{conn.UDPConn{UdpConn: c, In: make(chan []byte), Out: make(chan []byte), ConnCommonFields:conn.NewConnCommonFileds()}}
+	return &ClientUDPConn{conn.UDPConn{UdpConn: c, In: make(chan []byte), Out: make(chan []byte), ConnCommonFields: conn.NewConnCommonFileds()}}
 }
 
 func (c *ClientUDPConn) ReadLoop() (err error) {
@@ -55,7 +55,6 @@ func (c *ClientUDPConn) ReadLoop() (err error) {
 			return fmt.Errorf("not implemented msg type %d", t)
 		}
 	}
-	return nil
 }
 
 const (
@@ -116,4 +115,3 @@ func (c *ClientUDPConn) Ack(seq uint32) error {
 	binary.BigEndian.PutUint32(resp[msg.MSG_SEQ_BEGIN:], seq)
 	return c.WriteBytes(resp)
 }
-

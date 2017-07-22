@@ -2,9 +2,9 @@ package main
 
 import (
 	log "github.com/sirupsen/logrus"
-	"net/http"
-	"github.com/skycoin/net/skycoin-messenger/websocket"
 	"github.com/skycoin/net/skycoin-messenger/rpc"
+	"github.com/skycoin/net/skycoin-messenger/websocket"
+	"net/http"
 )
 
 func main() {

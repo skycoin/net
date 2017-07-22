@@ -1,9 +1,9 @@
 package rpc
 
 import (
+	"net"
 	"net/http"
 	"net/rpc"
-	"net"
 )
 
 func ServeRPC(address string) error {

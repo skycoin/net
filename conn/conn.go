@@ -1,10 +1,10 @@
 package conn
 
 import (
-	"sync"
 	log "github.com/sirupsen/logrus"
-	"time"
+	"sync"
 	"sync/atomic"
+	"time"
 )
 
 var (

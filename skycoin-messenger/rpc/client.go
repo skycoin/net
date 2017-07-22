@@ -59,7 +59,7 @@ func (c *Client) PushLoop(conn *factory.Connection) {
 				c.Push <- push
 			case factory.OP_REG:
 				key := conn.GetKey()
-				c.Push <- &msg.Reg{PublicKey:key.Hex()}
+				c.Push <- &msg.Reg{PublicKey: key.Hex()}
 			}
 		}
 	}

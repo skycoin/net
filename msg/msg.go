@@ -1,9 +1,9 @@
 package msg
 
 import (
-	"github.com/skycoin/skycoin/src/cipher"
 	"encoding/binary"
 	"fmt"
+	"github.com/skycoin/skycoin/src/cipher"
 	"sync"
 	"time"
 )

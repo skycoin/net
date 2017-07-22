@@ -1,8 +1,8 @@
 package websocket
 
 import (
-	"sync"
 	log "github.com/sirupsen/logrus"
+	"sync"
 )
 
 type PendingMap struct {

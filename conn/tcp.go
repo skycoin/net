@@ -1,14 +1,14 @@
 package conn
 
 import (
-	"net"
-	"github.com/skycoin/net/msg"
 	"bufio"
-	"io"
 	"encoding/binary"
-	"time"
-	"sync/atomic"
 	"fmt"
+	"github.com/skycoin/net/msg"
+	"io"
+	"net"
+	"sync/atomic"
+	"time"
 )
 
 const (
@@ -76,7 +76,6 @@ func (c *TCPConn) ReadLoop() (err error) {
 		}
 		c.UpdateLastTime()
 	}
-	return nil
 }
 
 func (c *TCPConn) WriteLoop() (err error) {

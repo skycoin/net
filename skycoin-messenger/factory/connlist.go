@@ -4,8 +4,8 @@ import (
 	"container/list"
 	"sync"
 
-	"github.com/skycoin/skycoin/src/cipher"
 	"github.com/sirupsen/logrus"
+	"github.com/skycoin/skycoin/src/cipher"
 )
 
 type ConnectionList struct {

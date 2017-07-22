@@ -85,5 +85,4 @@ func (c *ServerUDPConn) ReadLoop(fn func(c *net.UDPConn, addr *net.UDPAddr) *con
 
 		cc.UpdateLastTime()
 	}
-	return nil
 }

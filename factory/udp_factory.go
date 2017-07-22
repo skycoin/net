@@ -1,12 +1,12 @@
 package factory
 
 import (
-	"net"
-	"github.com/skycoin/net/server"
+	"github.com/skycoin/net/client"
 	"github.com/skycoin/net/conn"
+	"github.com/skycoin/net/server"
+	"net"
 	"sync"
 	"time"
-	"github.com/skycoin/net/client"
 )
 
 type UDPFactory struct {
@@ -21,7 +21,7 @@ type UDPFactory struct {
 }
 
 func NewUDPFactory() *UDPFactory {
-	udpFactory := &UDPFactory{stopGC: make(chan bool), FactoryCommonFields:NewFactoryCommonFields(), udpConnMap:make(map[string]*conn.UDPConn)}
+	udpFactory := &UDPFactory{stopGC: make(chan bool), FactoryCommonFields: NewFactoryCommonFields(), udpConnMap: make(map[string]*conn.UDPConn)}
 	go udpFactory.GC()
 	return udpFactory
 }

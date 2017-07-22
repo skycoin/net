@@ -104,7 +104,7 @@ func (c *Connection) preprocessor() error {
 					}
 					coworkers := make([]cipher.PubKey, kc)
 					for i := 0; i < kc; i++ {
-						key := cipher.NewPubKey(ks[i*MSG_PUBLIC_KEY_SIZE:(i+1)*MSG_PUBLIC_KEY_SIZE])
+						key := cipher.NewPubKey(ks[i*MSG_PUBLIC_KEY_SIZE : (i+1)*MSG_PUBLIC_KEY_SIZE])
 						coworkers[i] = key
 					}
 					c.fieldsMutex.Lock()

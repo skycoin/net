@@ -27,5 +27,4 @@ func (g *Gateway) Receive(option int, msgs *[]interface{}) error {
 			return nil
 		}
 	}
-	return nil
 }

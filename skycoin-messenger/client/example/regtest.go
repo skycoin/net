@@ -1,11 +1,11 @@
 package main
 
 import (
-	"github.com/skycoin/net/skycoin-messenger/factory"
 	log "github.com/sirupsen/logrus"
+	"github.com/skycoin/net/skycoin-messenger/factory"
 	"github.com/skycoin/skycoin/src/cipher"
-	_ "net/http/pprof"
 	"net/http"
+	_ "net/http/pprof"
 )
 
 func main() {

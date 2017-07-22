@@ -4,8 +4,8 @@ import (
 	"encoding/binary"
 	"github.com/skycoin/net/msg"
 	"net"
-	"time"
 	"sync/atomic"
+	"time"
 )
 
 const (
@@ -19,11 +19,11 @@ type UDPConn struct {
 	In      chan []byte
 	Out     chan []byte
 
-	lastTime    int64
+	lastTime int64
 }
 
 func NewUDPConn(c *net.UDPConn, addr *net.UDPAddr) *UDPConn {
-	return &UDPConn{UdpConn: c, addr: addr, lastTime: time.Now().Unix(), In: make(chan []byte), Out: make(chan []byte), ConnCommonFields:NewConnCommonFileds()}
+	return &UDPConn{UdpConn: c, addr: addr, lastTime: time.Now().Unix(), In: make(chan []byte), Out: make(chan []byte), ConnCommonFields: NewConnCommonFileds()}
 }
 
 func (c *UDPConn) ReadLoop() error {
