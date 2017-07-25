@@ -1,4 +1,7 @@
-import { Component, OnInit, ViewEncapsulation, Input } from '@angular/core';
+import { Component, OnInit, ViewEncapsulation, Input, HostListener } from '@angular/core';
+import { HeadColorMatch, SocketService } from '../../providers';
+import { MdDialog } from '@angular/material';
+import { ImInfoDialogComponent } from '../im-info-dialog/im-info-dialog.component';
 
 @Component({
   selector: 'app-im-head',
@@ -7,34 +10,41 @@ import { Component, OnInit, ViewEncapsulation, Input } from '@angular/core';
   encapsulation: ViewEncapsulation.None
 })
 export class ImHeadComponent implements OnInit {
-  @Input() name;
-  randomMatch: Array<HeadColorMatch> = [
-    { bg: '#fff', text: '#000' },
-    { bg: '#d05454', text: '#fff' },
-    { bg: '#6dd067', text: '#fff' },
-    { bg: '#676fd0', text: '#fff' },
-    { bg: '#e47ae1', text: '#fff' },
-    { bg: '#67c1d0', text: '#fff' },
-    { bg: '#000', text: '#fff' },
-    { bg: '#ffef2d', text: '#000' },
-    { bg: '#eaae27', text: '#fff' },
-    { bg: '#fbd1dc', text: '#000' },
-  ]
-  default: HeadColorMatch = { bg: '#fff', text: '#000' };
-  constructor() { }
+  @Input() key = '';
+  @Input() canClick = true;
+  name = '';
+  icon: HeadColorMatch = { bg: '#fff', color: '#000' };
+  constructor(private socket: SocketService, private dialog: MdDialog) { }
 
   ngOnInit() {
-    if (this.name !== '') {
-      this.name = this.name.substr(0, 1);
-      this.default = this.randomMatch[this.getRandomArbitrary(0, 9)];
+    if (this.key === '') {
+      this.name = '?';
+    } else {
+      this.name = this.key.substr(0, 1);
+    }
+    if (this.socket.userInfo.get(this.key) !== undefined) {
+      const icon = this.socket.userInfo.get(this.key).Icon;
+      if (icon !== undefined) {
+        this.icon = icon;
+      }
     }
   }
-  getRandomArbitrary(min, max) {
-    return Math.floor(Math.random() * (max - min) + min);
+
+  @HostListener('click', ['$event'])
+  _click(ev: Event) {
+    if (!this.canClick) {
+      return;
+    }
+    ev.stopImmediatePropagation();
+    ev.stopPropagation();
+    ev.preventDefault();
+    const ref = this.dialog.open(ImInfoDialogComponent, {
+      position: { top: '10%' },
+      // panelClass: 'alert-dialog-panel',
+      backdropClass: 'alert-backdrop',
+      width: '23rem'
+    });
+    ref.componentInstance.key = this.key;
   }
 }
 
-export interface HeadColorMatch {
-  bg?: string;
-  text?: string;
-}

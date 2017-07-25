@@ -2,7 +2,7 @@
 <md-dialog-content class="content">
   <form>
     <md-input-container class="full-input-container">
-      <input mdInput placeholder="Public Keys" [formControl]="keyFormControl">
+      <input mdInput placeholder="Public Keys" [formControl]="keyFormControl" (keyup.enter)="onKeyUpEnter($event)">
       <md-error *ngIf="keyFormControl.hasError('required')">
         Public Keys is <strong>required</strong>
       </md-error>
@@ -13,5 +13,5 @@
 <md-dialog-actions>
   <button md-raised-button [md-dialog-close]="false">Close</button>
   <!-- Can optionally provide a result for the closing dialog. -->
-  <button md-raised-button [md-dialog-close]="keyFormControl.value">Create</button>
+  <button md-raised-button [md-dialog-close]="keyFormControl.value" [disabled]="!keyFormControl.valid">Create</button>
 </md-dialog-actions>

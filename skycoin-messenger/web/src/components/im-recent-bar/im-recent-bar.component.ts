@@ -1,6 +1,6 @@
 import { Component, OnInit, ViewEncapsulation, Input, ViewChildren, QueryList, Output, EventEmitter } from '@angular/core';
 import { ImRecentItemComponent } from '../im-recent-item/im-recent-item.component';
-import { SocketService } from '../../providers';
+import { SocketService, UserService } from '../../providers';
 import { MdDialog } from '@angular/material';
 import { CreateChatDialogComponent } from '../create-chat-dialog/create-chat-dialog.component';
 
@@ -14,7 +14,7 @@ export class ImRecentBarComponent implements OnInit {
   chatting = '';
   @ViewChildren(ImRecentItemComponent) items: QueryList<ImRecentItemComponent>;
   @Input() list = [];
-  constructor(private socket: SocketService, public dialog: MdDialog) { }
+  constructor(private socket: SocketService, private user: UserService, private dialog: MdDialog) { }
   ngOnInit() {
   }
 
@@ -36,9 +36,11 @@ export class ImRecentBarComponent implements OnInit {
     ev.stopPropagation();
     ev.preventDefault();
     const def = this.dialog.open(CreateChatDialogComponent, { position: { top: '10%' }, width: '350px' });
-    def.afterClosed().subscribe(keys => {
-      if (keys !== '' && keys) {
-        this.socket.recent_list.push({ name: keys, last: '' });
+    def.afterClosed().subscribe(key => {
+      if (key !== '' && key) {
+        const icon = this.user.getRandomMatch();
+        this.socket.recent_list.push({ name: key, last: '', icon: icon });
+        this.socket.userInfo.set(key, { Icon: icon })
       }
     })
   }

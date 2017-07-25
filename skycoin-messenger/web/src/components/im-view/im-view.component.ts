@@ -48,18 +48,26 @@ export class ImViewComponent implements OnInit, AfterViewChecked {
     ev.stopPropagation();
     ev.returnValue = false;
     this.msg = this.msg.trim();
+    if (this.msg.length >= 250) {
+      console.log('max length 255');
+      return;
+    }
     if (this.msg.length > 0) {
       this.addChat();
     }
   }
 
   addChat() {
+    const now = new Date().getTime();
     this.socket.msg(this.chatting, this.msg);
     this.chatList = this.socket.histories.get(this.socket.chattingUser);
     if (this.chatList === undefined) {
       this.chatList = new Collections.LinkedList<ImHistoryMessage>();
     }
-    this.chatList.add({ From: this.socket.key, Msg: this.msg }, 0);
+    // if (this.chatList.first() !== undefined && (now - this.chatList.first().Timestamp) > (60 * 1000 * 15)) {
+    //   this.chatList.add({ Timestamp: now, IsTime: true }, 0);
+    // }
+    this.chatList.add({ From: this.socket.key, Msg: this.msg, Timestamp: now }, 0);
     this.historyView.list = this.chatList.toArray();
     this.socket.saveHistorys(this.chatting, this.chatList);
     this.msg = '';

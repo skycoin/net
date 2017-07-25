@@ -1,5 +1,6 @@
 import { Component, OnInit, ViewEncapsulation } from '@angular/core';
 import { FormControl, Validators } from '@angular/forms';
+import { MdDialogRef } from '@angular/material';
 
 @Component({
   // tslint:disable-next-line:component-selector
@@ -13,8 +14,17 @@ export class CreateChatDialogComponent implements OnInit {
   keys = '';
   keyFormControl = new FormControl('', [
     Validators.required]);
-  constructor() { }
+  constructor(private ref: MdDialogRef<CreateChatDialogComponent>) { }
 
   ngOnInit() {
+  }
+
+  onKeyUpEnter(ev: Event) {
+    ev.stopImmediatePropagation();
+    ev.stopPropagation();
+    ev.preventDefault();
+    if (this.keyFormControl.valid) {
+      this.ref.close(this.keyFormControl.value);
+    }
   }
 }
