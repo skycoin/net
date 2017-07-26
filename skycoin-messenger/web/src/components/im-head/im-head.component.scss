@@ -1,8 +1,9 @@
 app-im-head {
   display: inline-block;
+  cursor: pointer;
   min-width: 3.5rem;
   min-height: 3.5rem;
-  background-color: hsla(0, 0%, 100%, 0.5);
+  background-color: hsla(0, 2%, 77%, 0.5);
   border-radius: 50%;
   .inner {
     width: 3rem;

@@ -18,6 +18,7 @@ export class ImHistoryMessageComponent implements OnInit {
   }
 
   ngOnInit() {
+    console.log('chat:', this.chat);
   }
   rightClick(ev: Event) {
     // ev.preventDefault();

@@ -10,10 +10,12 @@ import {
   ImHistoryViewComponent,
   ImHistoryMessageComponent,
   CreateChatDialogComponent,
-  AlertDialogComponent
+  AlertDialogComponent,
+  ImInfoDialogComponent
 } from '../components';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
-import { SocketService, ToolService } from '../providers';
+import { SocketService, UserService } from '../providers';
+import { ToolService } from '../providers/tool/tool.service';
 import {
   MdCheckboxModule,
   MdMenuModule,
@@ -36,7 +38,8 @@ import 'web-animations-js'
     ImHistoryViewComponent,
     ImHistoryMessageComponent,
     CreateChatDialogComponent,
-    AlertDialogComponent
+    AlertDialogComponent,
+    ImInfoDialogComponent
   ],
   imports: [
     FormsModule,
@@ -53,9 +56,10 @@ import 'web-animations-js'
   ],
   entryComponents: [
     CreateChatDialogComponent,
-    AlertDialogComponent
+    AlertDialogComponent,
+    ImInfoDialogComponent
   ],
-  providers: [SocketService, ToolService],
+  providers: [SocketService, UserService, ToolService],
   bootstrap: [AppComponent]
 })
 export class AppModule { }

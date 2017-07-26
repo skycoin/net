@@ -1,81 +1,129 @@
 app-im-history-message {
   display: block; // min-height: 4rem;
-  margin: 1.1rem 0;
-  .data {
+  margin: .5rem 0;
+  .history-time {
+    margin: 2rem 0;
+    text-align: center;
     color: #999;
-    font-size: 1rem;
+    .time {
+      background-color: hsla(200, 4%, 84%, 0.45);
+      border-radius: .5rem;
+      padding: .1rem 1rem;
+    }
   }
   .my-message,
   .other-message {
     width: 100%;
     .content {
-      .data {
-        .name {
-          width: 5rem;
-          display: inline-block;
-        }
+      .icon-box-left,
+      .icon-box-right {
+        width: 10%;
       }
-      .bubble {
-        position: relative;
-        cursor: pointer;
-        word-wrap: break-word;
-        max-width: 90%;
-        margin-top: 1rem;
-        padding: .5rem .8rem;
-        border-radius: .5rem;
-        .menu-focus {
-          position: absolute;
-          top: 65%;
+      .icon-box-right {
+        text-align: right;
+      }
+      .icon-box-left {
+        text-align: left;
+      }
+      .msg-box {
+        max-width: 80%;
+        .bubble {
+          position: relative;
+          max-width: 100%;
+          font-size: 1rem;
+          cursor: pointer;
+          border-radius: .5rem;
+          word-wrap: break-word;
+          padding: .5rem 1rem;
+          margin-top: .75rem;
+          .msg {
+            display: block;
+          }
+          .menu-focus {
+            position: absolute;
+            top: 65%;
+          }
+        }
+        .time {
+          display: block;
+          clear: both;
+          color: #999;
+          font-size: .75rem;
+          .fa {
+            margin-right: 5px;
+          }
         }
       }
     }
     .action-box {}
   }
   .other-message {
-    .bubble {
-      color: #fff;
-      background-color: #86BB71;
+    .msg-box {
+      float: left;
+      .bubble {
+        color: #fff;
+        background-color: #86BB71;
+      }
+      .time {
+        text-align: left;
+        margin-left: .5rem;
+      }
     }
   }
   .my-message {
+    .msg-box {
+      float: right;
+      .bubble {
+        color: #fff;
+        background-color: #94C2ED;
+        .time {
+          text-align: right;
+        }
+      }
+      .time {
+        text-align: right;
+        margin-right: .5rem;
+      }
+    }
     .data {
       text-align: right;
-    }
-    .bubble {
-      color: #fff;
-      background-color: #94C2ED;
     }
   }
   .float-right {
     float: right;
+  }
+  .bubble-right {
     position: relative;
     &::after {
       position: absolute;
-      right: 5%;
-      bottom: 95%;
+      top: .75rem;
+      right: -.5rem;
+      content: " ";
+      pointer-events: none;
+      width: 0;
+      height: 0;
+      border-width: .5rem 0 0.5rem .85rem;
+      border-style: solid;
+      border-color: transparent transparent transparent #94c2ed;
+    }
+  }
+  .bubble-left {
+    position: relative;
+    &::after {
+      position: absolute;
+      top: .75rem;
+      left: -.5rem;
       content: " ";
       border: solid transparent;
       pointer-events: none;
       width: 0;
       height: 0;
-      border-bottom-color: #94C2ED;
-      border-width: .75rem;
+      border-width: .5rem .85rem .5rem 0;
+      border-style: solid;
+      border-color: transparent #86BB71 transparent transparent;
     }
   }
   .float-left {
-    position: relative;
     float: left;
-    &::after {
-      position: absolute;
-      left: 5%;
-      bottom: 95%;
-      content: " ";
-      border: solid transparent;
-      pointer-events: none;
-      width: 0;
-      height: 0;
-      border-bottom-color: #86BB71;
-      border-width: .75rem;
-    }
   }
 }

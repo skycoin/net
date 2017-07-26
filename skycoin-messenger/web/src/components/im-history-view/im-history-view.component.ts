@@ -11,7 +11,7 @@ export class ImHistoryViewComponent implements OnInit {
   list: Array<ImHistoryMessage>;
   constructor() { }
   ngOnInit() {
-
+    console.log('check chat list:', this.list);
   }
 
 }

@@ -1,8 +1,8 @@
 import { Injectable } from '@angular/core';
-import { ImHistoryMessage, RecentItem } from './msg';
+import { ImHistoryMessage, RecentItem, UserInfo } from './msg';
 import { Subject } from 'rxjs/Subject';
 import * as Collections from 'typescript-collections';
-
+import { UserService } from '../user/user.service';
 export enum OP { REG, SEND, ACK };
 export enum PUSH { ACK, REG, MSG };
 
@@ -19,14 +19,17 @@ export class SocketService {
   // private history = new Collections.LinkedDictionary<string, Array<ImHistoryMessage>>()
   private historySubject = new Subject<Map<string, Collections.LinkedList<ImHistoryMessage>>>();
   histories = new Map<string, Collections.LinkedList<ImHistoryMessage>>();
+  userInfo = new Map<string, UserInfo>();
   chatHistorys = this.historySubject.asObservable();
-  constructor() {
+  constructor(private user: UserService) {
     this.historySubject.subscribe((data: Map<string, Collections.LinkedList<ImHistoryMessage>>) => {
       data.forEach((value, key) => {
         const index = this.recent_list.findIndex(v => v.name === key);
         const msg = value.first().Msg;
         if (index <= -1) {
-          this.recent_list.push({ name: key, last: msg, unRead: 1 });
+          const icon = this.user.getRandomMatch();
+          this.recent_list.push({ name: key, last: msg, unRead: 1, icon: icon });
+          this.userInfo.set(key, { Icon: icon });
         } else {
           // tslint:disable-next-line:no-unused-expression
           if (this.chattingUser !== key) {
@@ -78,15 +81,21 @@ export class SocketService {
         this.ack(op, this.getSeq(buf));
         break;
       case PUSH.REG:
+        console.log('json:', json);
         this.key = json.PublicKey;
+        this.userInfo.set(this.key, { Icon: this.user.getRandomMatch() });
         console.log('reg keys:', json.PublicKey);
         break;
       case PUSH.MSG:
+        const now = new Date().getTime();
         let list = this.histories.get(json.From)
         if (list === undefined) {
           list = new Collections.LinkedList<ImHistoryMessage>();
         }
-        list.add({ From: json.From, Msg: json.Msg }, 0);
+        // if (list.first() !== undefined && (now - list.first().Timestamp) > (60 * 1000 * 15)) {
+        //   list.add({ Timestamp: now, IsTime: true }, 0);
+        // }
+        list.add({ From: json.From, Msg: json.Msg, Timestamp: now }, 0);
         this.saveHistorys(json.From, list);
         this.ack(op, this.getSeq(buf));
         break;

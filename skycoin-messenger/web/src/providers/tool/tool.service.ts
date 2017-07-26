@@ -4,9 +4,7 @@ import { AlertDialogComponent } from '../../components';
 
 @Injectable()
 export class ToolService {
-
   constructor(private dialog: MdDialog) { }
-
   alert(title: string, message: string = '', type: string = 'info') {
     const ref = this.dialog.open(
       AlertDialogComponent,

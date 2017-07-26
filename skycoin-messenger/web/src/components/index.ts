@@ -8,3 +8,4 @@ export * from './im-history-message/im-history-message.component';
 
 export * from './create-chat-dialog/create-chat-dialog.component';
 export * from './alert-dialog/alert-dialog.component';
+export * from './im-info-dialog/im-info-dialog.component';
