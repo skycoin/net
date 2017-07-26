@@ -8,7 +8,7 @@ import { ImHistoryMessage } from '../../providers';
   encapsulation: ViewEncapsulation.None
 })
 export class ImHistoryViewComponent implements OnInit {
-  list: Array<ImHistoryMessage>;
+  @Input() list: Array<ImHistoryMessage>;
   constructor() { }
   ngOnInit() {
     console.log('check chat list:', this.list);

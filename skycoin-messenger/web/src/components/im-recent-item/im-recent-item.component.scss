@@ -1,11 +1,9 @@
 app-im-recent-item {
   &:hover {
-    background-color: hsla(0, 0%, 0%, 0.5);
+    background-color: #363942;
   }
   cursor: pointer;
   display: block;
-  min-height: 4rem;
-  margin: .5rem 0;
   padding: .5rem;
   .head,
   .content,
@@ -42,5 +40,5 @@ app-im-recent-item {
 }
 
 .item-active {
-  background-color: #000;
+  background-color: #363942;
 }

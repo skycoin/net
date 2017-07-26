@@ -23,25 +23,21 @@ export class SocketService {
   chatHistorys = this.historySubject.asObservable();
   constructor(private user: UserService) {
     this.historySubject.subscribe((data: Map<string, Collections.LinkedList<ImHistoryMessage>>) => {
-      data.forEach((value, key) => {
-        const index = this.recent_list.findIndex(v => v.name === key);
-        const msg = value.first().Msg;
-        if (index <= -1) {
-          const icon = this.user.getRandomMatch();
-          this.recent_list.push({ name: key, last: msg, unRead: 1, icon: icon });
-          this.userInfo.set(key, { Icon: icon });
-        } else {
-          // tslint:disable-next-line:no-unused-expression
-          if (this.chattingUser !== key) {
-            this.recent_list[index].unRead += 1;
-          }
-          this.recent_list[index].last = msg;
-        }
-      })
       this.histories = data;
     })
   }
-
+  addHint(key, msg: string) {
+    const index = this.recent_list.findIndex(v => v.name === key);
+    if (index <= -1) {
+      const icon = this.user.getRandomMatch();
+      this.recent_list.push({ name: key, last: msg, unRead: 1, icon: icon });
+      this.userInfo.set(key, { Icon: icon });
+    } else {
+      if (key !== this.chattingUser) {
+        this.recent_list[index].unRead += 1;
+      }
+    }
+  }
   start() {
     this.ws = new WebSocket(this.url);
     this.ws.binaryType = 'arraybuffer';
@@ -77,11 +73,9 @@ export class SocketService {
     }
     switch (op) {
       case PUSH.ACK:
-        console.log('send successful');
         this.ack(op, this.getSeq(buf));
         break;
       case PUSH.REG:
-        console.log('json:', json);
         this.key = json.PublicKey;
         this.userInfo.set(this.key, { Icon: this.user.getRandomMatch() });
         console.log('reg keys:', json.PublicKey);
@@ -96,6 +90,7 @@ export class SocketService {
         //   list.add({ Timestamp: now, IsTime: true }, 0);
         // }
         list.add({ From: json.From, Msg: json.Msg, Timestamp: now }, 0);
+        this.addHint(json.From, json.Msg);
         this.saveHistorys(json.From, list);
         this.ack(op, this.getSeq(buf));
         break;

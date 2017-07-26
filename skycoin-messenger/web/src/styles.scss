@@ -27,15 +27,24 @@ body {
 .break-line {
   word-break: break-all;
 }
+
 .break-word {
   word-wrap: break-word;
 }
+
 .alert-dialog-panel {
   .mat-dialog-container {
     border-radius: .5rem;
   }
 }
 
+.float-right {
+  float: right;
+}
+
+.float-left {
+  float: left;
+}
 
 .alert-backdrop {
   background: transparent;

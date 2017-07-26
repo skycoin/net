@@ -4,7 +4,7 @@
     <p class="head-name single-line">{{chatting}}</p>
   </div>
   <div class="message-box">
-    <app-im-history-view fxLayout="column-reverse"></app-im-history-view>
+    <app-im-history-view fxLayout="column-reverse" [list]="chatList.toArray()"></app-im-history-view>
   </div>
   <div class="send-box">
     <textarea autofocus="autofocus" [(ngModel)]="msg" rows="4" (keyup.enter)="send($event)"></textarea>

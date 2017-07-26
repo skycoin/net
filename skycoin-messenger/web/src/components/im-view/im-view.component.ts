@@ -3,11 +3,10 @@ import {
   OnInit,
   ViewEncapsulation,
   Input,
-  OnChanges,
   SimpleChanges,
   ViewChild,
   AfterViewChecked,
-  AfterViewInit
+  OnChanges
 } from '@angular/core';
 import { SocketService } from '../../providers';
 import { ImHistoryMessage } from '../../providers';
@@ -20,7 +19,7 @@ import { ImHistoryViewComponent } from '../im-history-view/im-history-view.compo
   styleUrls: ['./im-view.component.scss'],
   encapsulation: ViewEncapsulation.None
 })
-export class ImViewComponent implements OnInit, AfterViewChecked {
+export class ImViewComponent implements OnInit, OnChanges {
   chatList: Collections.LinkedList<ImHistoryMessage>;
   msg = '';
   @ViewChild(ImHistoryViewComponent) historyView: ImHistoryViewComponent;
@@ -29,20 +28,24 @@ export class ImViewComponent implements OnInit, AfterViewChecked {
 
   ngOnInit() {
   }
-
-  ngAfterViewChecked() {
-    if (!this.socket.histories) {
-      return;
-    }
-    const data = this.socket.histories.get(this.socket.chattingUser);
-    if (data) {
-      setTimeout(() => {
-        this.historyView.list = data.toArray();
-      }, 10)
-    } else {
-      this.chatList = new Collections.LinkedList<ImHistoryMessage>();
+  ngOnChanges(changes: SimpleChanges) {
+    const previousValue = changes.chatting.previousValue;
+    if (this.chatting !== previousValue) {
+      if (this.historyView && this.historyView.list) {
+        this.historyView.list = [];
+      }
+      if (!this.socket.histories) {
+        return;
+      }
+      const data = this.socket.histories.get(this.socket.chattingUser);
+      if (data) {
+        this.chatList = data;
+      } else {
+        this.chatList = new Collections.LinkedList<ImHistoryMessage>();
+      }
     }
   }
+
   send(ev: KeyboardEvent) {
     ev.stopImmediatePropagation();
     ev.stopPropagation();
@@ -64,11 +67,7 @@ export class ImViewComponent implements OnInit, AfterViewChecked {
     if (this.chatList === undefined) {
       this.chatList = new Collections.LinkedList<ImHistoryMessage>();
     }
-    // if (this.chatList.first() !== undefined && (now - this.chatList.first().Timestamp) > (60 * 1000 * 15)) {
-    //   this.chatList.add({ Timestamp: now, IsTime: true }, 0);
-    // }
     this.chatList.add({ From: this.socket.key, Msg: this.msg, Timestamp: now }, 0);
-    this.historyView.list = this.chatList.toArray();
     this.socket.saveHistorys(this.chatting, this.chatList);
     this.msg = '';
   }
