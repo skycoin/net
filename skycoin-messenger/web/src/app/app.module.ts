@@ -14,7 +14,8 @@ import {
   ImInfoDialogComponent
 } from '../components';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
-import { SocketService, ToolService, UserService } from '../providers';
+import { SocketService, UserService } from '../providers';
+import { ToolService } from '../providers/tool/tool.service';
 import {
   MdCheckboxModule,
   MdMenuModule,
