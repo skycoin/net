@@ -49,7 +49,7 @@ func (factory *TCPFactory) createConn(c *net.TCPConn) *Connection {
 	conn := &Connection{Connection: tcpConn, factory: factory}
 	conn.SetContextLogger(conn.GetContextLogger().WithField("type", "tcp"))
 	factory.AddConn(conn)
-	factory.AcceptedCallback(conn)
+	go factory.AcceptedCallback(conn)
 	return conn
 }
 

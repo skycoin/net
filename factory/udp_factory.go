@@ -66,8 +66,7 @@ func (factory *UDPFactory) createConn(c *net.UDPConn, addr *net.UDPAddr) *conn.U
 	connection := &Connection{Connection: udpConn, factory: factory}
 	connection.SetContextLogger(connection.GetContextLogger().WithField("type", "udp"))
 	factory.AddConn(connection)
-	factory.AcceptedCallback(connection)
-
+	go factory.AcceptedCallback(connection)
 	return udpConn
 }
 

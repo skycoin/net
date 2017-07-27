@@ -20,7 +20,7 @@ func main() {
 			}
 			log.Printf("in %x", m)
 			if m[factory.MSG_OP_BEGIN] == factory.OP_OFFER_SERVICE {
-				log.Printf("update coworkers %v", conn.GetCoworkers())
+				log.Printf("offer services %v", conn.GetServices())
 			}
 		}
 	}

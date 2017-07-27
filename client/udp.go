@@ -14,7 +14,7 @@ type ClientUDPConn struct {
 }
 
 func NewClientUDPConn(c *net.UDPConn) *ClientUDPConn {
-	return &ClientUDPConn{conn.UDPConn{UdpConn: c, In: make(chan []byte), Out: make(chan []byte), ConnCommonFields: conn.NewConnCommonFileds()}}
+	return &ClientUDPConn{conn.UDPConn{UdpConn: c, ConnCommonFields: conn.NewConnCommonFileds()}}
 }
 
 func (c *ClientUDPConn) ReadLoop() (err error) {

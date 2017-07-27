@@ -10,10 +10,10 @@ func GenRegMsg() []byte {
 	return result
 }
 
-func GenOfferServiceMsg(service string) []byte {
-	result := make([]byte, MSG_HEADER_END+len(service))
+func GenOfferServiceMsg(sub []byte) []byte {
+	result := make([]byte, MSG_HEADER_END+len(sub))
 	result[MSG_OP_BEGIN] = OP_OFFER_SERVICE
-	copy(result[MSG_HEADER_END:], service)
+	copy(result[MSG_HEADER_END:], sub)
 	return result
 }
 
@@ -33,6 +33,13 @@ func GenCustomMsg(msg []byte) []byte {
 	return result
 }
 
+func GenGetServiceNodesMsg(sub []byte) []byte {
+	result := make([]byte, MSG_HEADER_END+len(sub))
+	result[MSG_OP_BEGIN] = OP_GET_SERVICE_NODES
+	copy(result[MSG_HEADER_END:], sub)
+	return result
+}
+
 // Server side
 
 func GenRegRespMsg(key cipher.PubKey) []byte {
@@ -42,9 +49,9 @@ func GenRegRespMsg(key cipher.PubKey) []byte {
 	return result
 }
 
-func GenOfferServiceRespMsg(keys []cipher.PubKey) []byte {
+func GenGetServiceNodesRespMsg(keys []cipher.PubKey) []byte {
 	result := make([]byte, MSG_HEADER_END+len(keys)*MSG_PUBLIC_KEY_SIZE)
-	result[MSG_OP_BEGIN] = OP_OFFER_SERVICE
+	result[MSG_OP_BEGIN] = OP_GET_SERVICE_NODES
 	for i, k := range keys {
 		copy(result[MSG_HEADER_END+i*MSG_PUBLIC_KEY_SIZE:], k[:])
 	}
