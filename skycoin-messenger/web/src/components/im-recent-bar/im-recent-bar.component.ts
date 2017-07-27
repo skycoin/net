@@ -3,6 +3,8 @@ import { ImRecentItemComponent } from '../im-recent-item/im-recent-item.componen
 import { SocketService, UserService } from '../../providers';
 import { MdDialog } from '@angular/material';
 import { CreateChatDialogComponent } from '../create-chat-dialog/create-chat-dialog.component';
+import { PerfectScrollbarConfigInterface } from 'ngx-perfect-scrollbar';
+import { ImInfoDialogComponent } from '../im-info-dialog/im-info-dialog.component';
 
 @Component({
   selector: 'app-im-recent-bar',
@@ -11,10 +13,11 @@ import { CreateChatDialogComponent } from '../create-chat-dialog/create-chat-dia
   encapsulation: ViewEncapsulation.None
 })
 export class ImRecentBarComponent implements OnInit {
+  config: PerfectScrollbarConfigInterface = {};
   chatting = '';
   @ViewChildren(ImRecentItemComponent) items: QueryList<ImRecentItemComponent>;
   @Input() list = [];
-  constructor(private socket: SocketService, private user: UserService, private dialog: MdDialog) { }
+  constructor(public socket: SocketService, private user: UserService, private dialog: MdDialog) { }
   ngOnInit() {
   }
 
@@ -43,5 +46,26 @@ export class ImRecentBarComponent implements OnInit {
         this.socket.userInfo.set(key, { Icon: icon })
       }
     })
+  }
+
+  info(ev: Event) {
+    ev.stopImmediatePropagation();
+    ev.stopPropagation();
+    ev.preventDefault();
+    const input = document.createElement('input');
+    document.body.appendChild(input);
+    // tslint:disable-next-line:no-unused-expression
+    input['value'] = this.socket.key;
+    input.select();
+    const successful = document.execCommand('copy');
+    input.remove();
+    const ref = this.dialog.open(ImInfoDialogComponent, {
+      position: { top: '10%' },
+      // panelClass: 'alert-dialog-panel',
+      backdropClass: 'alert-backdrop',
+      width: '23rem'
+    });
+    ref.componentInstance.key = this.socket.key;
+    ref.componentInstance.hint = successful;
   }
 }

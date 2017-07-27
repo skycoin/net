@@ -16,8 +16,42 @@ export class UserService {
     { bg: '#fbd1dc', color: '#000' },
   ]
   constructor() { }
+  // getRandomColor() {
+  //   return '#' + ('00000' + ((Math.random() * 16777215 + 0.5) >> 0).toString(16)).slice(-6);
+  // }
+  padZero(str: string, len?: number) {
+    len = len || 2;
+    const zeros = new Array(len).join('0');
+    return (zeros + str).slice(-len);
+  }
 
+  getRandomColor() {
+    const color = Math.round(Math.random() * 0x1000000).toString(16);
+    return '#' + this.padZero(color, 6);
+  }
+  invertColor(hex: string, bw: boolean = true) {
+    if (hex.indexOf('#') === 0) {
+      hex = hex.slice(1);
+    }
+    // convert 3-digit hex to 6-digits.
+    if (hex.length === 3) {
+      hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
+    }
+    if (hex.length !== 6) {
+      throw new Error('Invalid HEX color.');
+    }
+    const r = parseInt(hex.slice(0, 2), 16),
+      g = parseInt(hex.slice(2, 4), 16),
+      b = parseInt(hex.slice(4, 6), 16);
+    if (bw) {
+      return (r * 0.299 + g * 0.587 + b * 0.114) > 186
+        ? '#000000'
+        : '#FFFFFF';
+    }
+    return '#' + this.padZero((255 - r).toString(16)) + this.padZero((255 - g).toString(16)) + this.padZero((255 - b).toString(16));
+  }
   getRandomMatch() {
-    return this.randomMatch[Math.floor(Math.random() * (9 - 0) + 0)];
+    const bg = this.getRandomColor();
+    return { bg: bg, color: this.invertColor(bg) };
   }
 }

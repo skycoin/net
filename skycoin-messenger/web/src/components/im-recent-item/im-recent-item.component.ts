@@ -9,7 +9,7 @@ import { RecentItem, HeadColorMatch } from '../../providers';
 export class ImRecentItemComponent implements OnInit {
   // @Input() name = 'General User';
   @Input() info: RecentItem = { name: 'General User', last: '', icon: {} };
-  @HostBinding('class.item-active') active = false;
+  @HostBinding('class.active') active = false;
   @Output('onClick') onClick: EventEmitter<ImRecentItemComponent> = new EventEmitter();
   constructor() { }
 

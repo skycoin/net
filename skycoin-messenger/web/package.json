@@ -26,6 +26,7 @@
     "@angular/router": "^4.0.0",
     "core-js": "^2.4.1",
     "font-awesome": "^4.7.0",
+    "ngx-perfect-scrollbar": "^4.5.2",
     "rxjs": "^5.1.0",
     "typescript-collections": "^1.2.3",
     "web-animations-js": "^2.3.1",

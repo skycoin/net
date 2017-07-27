@@ -13,6 +13,8 @@ import { ImHistoryMessage } from '../../providers';
 import * as Collections from 'typescript-collections';
 import { ImHistoryViewComponent } from '../im-history-view/im-history-view.component';
 
+declare const Buffer
+
 @Component({
   selector: 'app-im-view',
   templateUrl: './im-view.component.html',
@@ -51,8 +53,8 @@ export class ImViewComponent implements OnInit, OnChanges {
     ev.stopPropagation();
     ev.returnValue = false;
     this.msg = this.msg.trim();
-    if (this.msg.length >= 250) {
-      console.log('max length 255');
+    if (Buffer.byteLength(this.msg, 'utf8') >= 500) {
+      console.log('max length 500');
       return;
     }
     if (this.msg.length > 0) {
