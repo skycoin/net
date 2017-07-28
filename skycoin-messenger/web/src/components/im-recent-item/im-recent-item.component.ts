@@ -1,4 +1,4 @@
-import { Component, OnInit, Input, ViewEncapsulation, HostListener, HostBinding, Output, EventEmitter } from '@angular/core';
+import { Component, Input, ViewEncapsulation, HostListener, HostBinding, Output, EventEmitter } from '@angular/core';
 import { RecentItem, HeadColorMatch } from '../../providers';
 @Component({
   selector: 'app-im-recent-item',
@@ -6,15 +6,12 @@ import { RecentItem, HeadColorMatch } from '../../providers';
   styleUrls: ['./im-recent-item.component.scss'],
   encapsulation: ViewEncapsulation.None
 })
-export class ImRecentItemComponent implements OnInit {
+export class ImRecentItemComponent {
   // @Input() name = 'General User';
   @Input() info: RecentItem = { name: 'General User', last: '', icon: {} };
-  @HostBinding('class.item-active') active = false;
+  @HostBinding('class.active') active = false;
   @Output('onClick') onClick: EventEmitter<ImRecentItemComponent> = new EventEmitter();
   constructor() { }
-
-  ngOnInit() {
-  }
   @HostListener('click', ['$event'])
   _click(ev: Event) {
     ev.stopImmediatePropagation();

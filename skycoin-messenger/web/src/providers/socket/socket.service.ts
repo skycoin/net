@@ -23,25 +23,28 @@ export class SocketService {
   chatHistorys = this.historySubject.asObservable();
   constructor(private user: UserService) {
     this.historySubject.subscribe((data: Map<string, Collections.LinkedList<ImHistoryMessage>>) => {
-      data.forEach((value, key) => {
-        const index = this.recent_list.findIndex(v => v.name === key);
-        const msg = value.first().Msg;
-        if (index <= -1) {
-          const icon = this.user.getRandomMatch();
-          this.recent_list.push({ name: key, last: msg, unRead: 1, icon: icon });
-          this.userInfo.set(key, { Icon: icon });
-        } else {
-          // tslint:disable-next-line:no-unused-expression
-          if (this.chattingUser !== key) {
-            this.recent_list[index].unRead += 1;
-          }
-          this.recent_list[index].last = msg;
-        }
-      })
       this.histories = data;
     })
   }
-
+  getRencentListIndex(key: string) {
+    return this.recent_list.findIndex(v => v.name === key);
+  }
+  addHint(key, msg: string) {
+    const index = this.getRencentListIndex(key);
+    if (index <= -1) {
+      console.log('add new item', key);
+      const icon = this.user.getRandomMatch();
+      this.recent_list.push({ name: key, last: msg, unRead: 1, icon: icon });
+      this.userInfo.set(key, { Icon: icon });
+    } else {
+      if (key !== this.chattingUser) {
+        console.log('add un read:', this.recent_list[index]);
+        this.recent_list[index].unRead += 1;
+      }
+      // tslint:disable-next-line:no-unused-expression
+      this.recent_list[index].last = msg;
+    }
+  }
   start() {
     this.ws = new WebSocket(this.url);
     this.ws.binaryType = 'arraybuffer';
@@ -77,14 +80,11 @@ export class SocketService {
     }
     switch (op) {
       case PUSH.ACK:
-        console.log('send successful');
         this.ack(op, this.getSeq(buf));
         break;
       case PUSH.REG:
-        console.log('json:', json);
         this.key = json.PublicKey;
         this.userInfo.set(this.key, { Icon: this.user.getRandomMatch() });
-        console.log('reg keys:', json.PublicKey);
         break;
       case PUSH.MSG:
         const now = new Date().getTime();
@@ -92,10 +92,8 @@ export class SocketService {
         if (list === undefined) {
           list = new Collections.LinkedList<ImHistoryMessage>();
         }
-        // if (list.first() !== undefined && (now - list.first().Timestamp) > (60 * 1000 * 15)) {
-        //   list.add({ Timestamp: now, IsTime: true }, 0);
-        // }
         list.add({ From: json.From, Msg: json.Msg, Timestamp: now }, 0);
+        this.addHint(json.From, json.Msg);
         this.saveHistorys(json.From, list);
         this.ack(op, this.getSeq(buf));
         break;
@@ -124,8 +122,8 @@ export class SocketService {
     let buf: Uint8Array;
     let uintjson: Uint8Array;
     if (json) {
-      console.log('send json:', json);
-      console.log('send seq:', seq);
+      // console.log('send json:', json);
+      // console.log('send seq:', seq);
       uintjson = this.stringToUint8(json);
       buf = new Uint8Array(uintjson.length + 5);
       for (let i = 5; i < buf.byteLength; i++) {
@@ -149,7 +147,7 @@ export class SocketService {
   }
 
   ack(op: any, seq: number) {
-    console.log('op:%s seq:%d', op, seq);
+    // console.log('op:%s seq:%d', op, seq);
     this.sendWithSeq(OP.ACK, seq);
   }
 

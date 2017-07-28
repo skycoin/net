@@ -1,7 +1,16 @@
-<app-im-recent-item *ngFor="let item of list" [info]="item" (onClick)="selectItem($event)"></app-im-recent-item>
+<perfect-scrollbar class="container contact-box" [config]="config" *ngIf="list?.length > 0">
+  <ul>
+    <li *ngFor="let item of list">
+      <app-im-recent-item [info]="item" (onClick)="selectItem($event)"></app-im-recent-item>
+    </li>
+  </ul>
+</perfect-scrollbar>
 <div class="hint-box" *ngIf="list?.length <= 0">
   No Chat User
 </div>
 <div class="create-chat-box">
-  <span class="create" (click)="openCreate($event)"><i class="fa fa-plus"></i>New Chat</span>
+  <p>
+    <span class="create" (click)="openCreate($event)"><i class="fa fa-plus"></i>New Chat</span>
+    <span class="info" (click)="info($event)"><i class="fa fa-question-circle"></i></span>
+  </p>
 </div>
