@@ -3,6 +3,8 @@ import { ImHistoryMessage, RecentItem, UserInfo } from './msg';
 import { Subject } from 'rxjs/Subject';
 import * as Collections from 'typescript-collections';
 import { UserService } from '../user/user.service';
+import { environment } from '../../environments/environment';
+
 export enum OP { REG, SEND, ACK };
 export enum PUSH { ACK, REG, MSG };
 
@@ -22,6 +24,9 @@ export class SocketService {
   userInfo = new Map<string, UserInfo>();
   chatHistorys = this.historySubject.asObservable();
   constructor(private user: UserService) {
+    if (environment.production) {
+      this.url = 'ws://yiqishare.com:8082/ws';
+    }
     this.historySubject.subscribe((data: Map<string, Collections.LinkedList<ImHistoryMessage>>) => {
       this.histories = data;
     })
@@ -56,7 +61,7 @@ export class SocketService {
       this.handle(event.data);
     }
     this.ws.onerror = (error) => {
-      console.error('ws error:', error);
+      console.error('-----ws error-------', error);
     }
     this.ws.onclose = (res) => {
       console.log('-------ws close-------', res);
