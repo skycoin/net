@@ -1,4 +1,4 @@
-import { Component, OnInit, ViewEncapsulation, Input } from '@angular/core';
+import { Component, ViewEncapsulation, Input } from '@angular/core';
 import { ImHistoryMessage } from '../../providers';
 
 @Component({
@@ -7,11 +7,8 @@ import { ImHistoryMessage } from '../../providers';
   styleUrls: ['./im-history-view.component.scss'],
   encapsulation: ViewEncapsulation.None
 })
-export class ImHistoryViewComponent implements OnInit {
+export class ImHistoryViewComponent {
   @Input() list: Array<ImHistoryMessage>;
   constructor() { }
-  ngOnInit() {
-    console.log('check chat list:', this.list);
-  }
 
 }

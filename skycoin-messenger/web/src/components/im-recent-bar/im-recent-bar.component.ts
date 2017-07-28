@@ -17,12 +17,15 @@ export class ImRecentBarComponent implements OnInit {
   chatting = '';
   @ViewChildren(ImRecentItemComponent) items: QueryList<ImRecentItemComponent>;
   @Input() list = [];
-  constructor(public socket: SocketService, private user: UserService, private dialog: MdDialog) { }
+  constructor(private socket: SocketService, private user: UserService, private dialog: MdDialog) { }
   ngOnInit() {
   }
 
   selectItem(item: ImRecentItemComponent) {
-    // this.chatting.emit(item);
+    if (item.active) {
+      this.chatting = '';
+      return;
+    }
     item.info.unRead = 0;
     this.chatting = item.info.name;
     this.socket.chattingUser = item.info.name;
@@ -41,8 +44,16 @@ export class ImRecentBarComponent implements OnInit {
     const def = this.dialog.open(CreateChatDialogComponent, { position: { top: '10%' }, width: '350px' });
     def.afterClosed().subscribe(key => {
       if (key !== '' && key) {
+        this.items.forEach(el => {
+          el.active = false;
+        })
         const icon = this.user.getRandomMatch();
         this.socket.recent_list.push({ name: key, last: '', icon: icon });
+        this.chatting = key;
+        this.socket.chattingUser = key;
+        setTimeout(() => {
+          this.items.last.active = true;
+        }, 10);
         this.socket.userInfo.set(key, { Icon: icon })
       }
     })

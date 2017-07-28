@@ -2,8 +2,10 @@ app-im-recent-item {
   display: inline-block;
   width: 100%;
   .contact {
+    position: relative;
     display: inline-block;
     text-decoration: none;
+    outline: none;
     color: #fff;
     width: 100%;
     padding: .75rem;
@@ -24,14 +26,14 @@ app-im-recent-item {
         margin-bottom: .5rem;
       }
       .last {
-        font-size: 1rem;
+        font-size: .75rem;
         color: #ccc;
       }
     }
     .badges {
       position: absolute;
       right: 5%;
-      top: 5%;
+      top: 30%;
       width: 24px;
       height: 24px;
       line-height: 24px;

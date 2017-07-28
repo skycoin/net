@@ -8,7 +8,7 @@ import { ImRecentItemComponent } from '../components';
   styleUrls: ['./app.component.scss']
 })
 export class AppComponent implements OnInit {
-  constructor(private socket: SocketService) {
+  constructor(public socket: SocketService) {
   }
   ngOnInit(): void {
     this.socket.start();

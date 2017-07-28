@@ -8,8 +8,8 @@ import {
   AfterViewChecked,
   OnChanges
 } from '@angular/core';
-import { SocketService } from '../../providers';
-import { ImHistoryMessage } from '../../providers';
+import { SocketService, ImHistoryMessage } from '../../providers';
+import { ToolService } from '../../providers/tool/tool.service';
 import * as Collections from 'typescript-collections';
 import { ImHistoryViewComponent } from '../im-history-view/im-history-view.component';
 
@@ -26,7 +26,7 @@ export class ImViewComponent implements OnInit, OnChanges {
   msg = '';
   @ViewChild(ImHistoryViewComponent) historyView: ImHistoryViewComponent;
   @Input() chatting = '';
-  constructor(public socket: SocketService) { }
+  constructor(public socket: SocketService, private tool: ToolService) { }
 
   ngOnInit() {
   }
@@ -51,10 +51,13 @@ export class ImViewComponent implements OnInit, OnChanges {
   send(ev: KeyboardEvent) {
     ev.stopImmediatePropagation();
     ev.stopPropagation();
+    ev.preventDefault();
     ev.returnValue = false;
     this.msg = this.msg.trim();
+    console.log('size:', Buffer.byteLength(this.msg, 'utf8'));
     if (Buffer.byteLength(this.msg, 'utf8') >= 500) {
       console.log('max length 500');
+      this.tool.ShowDangerAlert('Danger', 'The maximum length of 500');
       return;
     }
     if (this.msg.length > 0) {
@@ -71,6 +74,8 @@ export class ImViewComponent implements OnInit, OnChanges {
     }
     this.chatList.add({ From: this.socket.key, Msg: this.msg, Timestamp: now }, 0);
     this.socket.saveHistorys(this.chatting, this.chatList);
+    // tslint:disable-next-line:no-unused-expression
+    this.socket.recent_list[this.socket.getRencentListIndex(this.chatting)].last = this.msg;
     this.msg = '';
   }
 }
