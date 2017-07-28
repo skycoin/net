@@ -9,17 +9,19 @@ type Factory interface {
 type FactoryCommonFields struct {
 	AcceptedCallback func(connection *Connection)
 
-	connections      map[*Connection]bool
+	connections      map[*Connection]struct{}
 	connectionsMutex sync.RWMutex
+
+	fieldsMutex sync.RWMutex
 }
 
 func NewFactoryCommonFields() FactoryCommonFields {
-	return FactoryCommonFields{connections: make(map[*Connection]bool)}
+	return FactoryCommonFields{connections: make(map[*Connection]struct{})}
 }
 
 func (f *FactoryCommonFields) AddConn(conn *Connection) {
 	f.connectionsMutex.Lock()
-	f.connections[conn] = true
+	f.connections[conn] = struct{}{}
 	f.connectionsMutex.Unlock()
 	go func() {
 		conn.WriteLoop()

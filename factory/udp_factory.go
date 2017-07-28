@@ -35,13 +35,17 @@ func (factory *UDPFactory) Listen(address string) error {
 	if err != nil {
 		return err
 	}
+	factory.fieldsMutex.Lock()
 	factory.listener = udp
+	factory.fieldsMutex.Unlock()
 	udpc := server.NewServerUDPConn(udp)
 	return udpc.ReadLoop(factory.createConn)
 }
 
 func (factory *UDPFactory) Close() error {
 	factory.stopGC <- true
+	factory.fieldsMutex.RLock()
+	defer factory.fieldsMutex.RUnlock()
 	return factory.listener.Close()
 }
 

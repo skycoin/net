@@ -22,6 +22,9 @@ func NewByHeader(header []byte) *Message {
 	m.Type = uint8(header[0])
 	m.Seq = binary.BigEndian.Uint32(header[MSG_SEQ_BEGIN:MSG_SEQ_END])
 	m.Len = binary.BigEndian.Uint32(header[MSG_LEN_BEGIN:MSG_LEN_END])
+	if m.Len > MAX_MESSAGE_SIZE {
+		panic(fmt.Errorf("msg len(%d) >  max len(%d)", m.Len, MAX_MESSAGE_SIZE))
+	}
 
 	m.Body = make([]byte, m.Len)
 

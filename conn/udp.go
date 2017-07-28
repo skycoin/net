@@ -2,14 +2,15 @@ package conn
 
 import (
 	"encoding/binary"
-	"github.com/skycoin/net/msg"
 	"net"
 	"sync/atomic"
 	"time"
+
+	"github.com/skycoin/net/msg"
 )
 
 const (
-	MAX_UDP_PACKAGE_SIZE = 1024
+	MAX_UDP_PACKAGE_SIZE = msg.MAX_MESSAGE_SIZE
 )
 
 type UDPConn struct {

@@ -25,7 +25,9 @@ func (factory *TCPFactory) Listen(address string) error {
 	if err != nil {
 		return err
 	}
+	factory.fieldsMutex.Lock()
 	factory.listener = ln
+	factory.fieldsMutex.Unlock()
 	for {
 		c, err := ln.AcceptTCP()
 		if err != nil {
@@ -36,6 +38,8 @@ func (factory *TCPFactory) Listen(address string) error {
 }
 
 func (factory *TCPFactory) Close() error {
+	factory.fieldsMutex.RLock()
+	defer factory.fieldsMutex.RUnlock()
 	return factory.listener.Close()
 }
 

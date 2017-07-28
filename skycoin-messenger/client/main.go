@@ -4,12 +4,13 @@ import (
 	"flag"
 	"net/http"
 
+	"fmt"
+	"net"
+
 	log "github.com/sirupsen/logrus"
 	"github.com/skycoin/net/skycoin-messenger/rpc"
 	"github.com/skycoin/net/skycoin-messenger/websocket"
-	"net"
 	"github.com/skycoin/skycoin/src/util/browser"
-	"fmt"
 )
 
 var (
@@ -47,9 +48,11 @@ func main() {
 		log.Fatal("net.Listen: ", err)
 	}
 
-	go func() {
-		browser.Open(fmt.Sprintf("http://%s", webSocketAddress))
-	}()
+	if openBrowser {
+		go func() {
+			browser.Open(fmt.Sprintf("http://%s", webSocketAddress))
+		}()
+	}
 	err = http.Serve(ln, http.DefaultServeMux)
 	if err != nil {
 		log.Fatal("http.Serve: ", err)
