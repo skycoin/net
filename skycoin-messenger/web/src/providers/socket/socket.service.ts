@@ -1,9 +1,17 @@
 import { Injectable } from '@angular/core';
 import { ImHistoryMessage, RecentItem, UserInfo } from './msg';
 import { Subject } from 'rxjs/Subject';
+import { Observable } from 'rxjs/Observable';
+import { Observer } from 'rxjs/Observer';
 import * as Collections from 'typescript-collections';
 import { UserService } from '../user/user.service';
 import { environment } from '../../environments/environment';
+import 'rxjs/add/operator/map';
+import 'rxjs/add/operator/retryWhen';
+import 'rxjs/add/operator/mergeMap'
+import 'rxjs/add/operator/take'
+import 'rxjs/add/observable/fromEvent'
+import 'rxjs/add/observable/timer'
 
 export enum OP { REG, SEND, ACK };
 export enum PUSH { ACK, REG, MSG };
@@ -17,6 +25,7 @@ export class SocketService {
   key = ''
   chattingUser = '';
   private seqId = 0;
+  socket: Subject<any>;
   recent_list: Array<RecentItem> = [];
   // private history = new Collections.LinkedDictionary<string, Array<ImHistoryMessage>>()
   private historySubject = new Subject<Map<string, Collections.LinkedList<ImHistoryMessage>>>();
@@ -30,6 +39,28 @@ export class SocketService {
     this.historySubject.subscribe((data: Map<string, Collections.LinkedList<ImHistoryMessage>>) => {
       this.histories = data;
     })
+    this.socket = this.fromWebSocket(this.url, {
+      next: () => { this.send(OP.REG, JSON.stringify({ Address: 'localhost:8080' })) },
+      error: err => { console.error('Connection Failed:', err) },
+      complete: () => { if (!environment.production) { console.log('----connection succeeded----') } }
+    }
+    );
+    const RETRY_DELAY = 200;
+    this.socket
+      .retryWhen(errors => errors.mergeMap(error => {
+        if (window.navigator.onLine) {
+          console.warn(`Retrying in ${RETRY_DELAY}ms.`);
+          return Observable.timer(RETRY_DELAY);
+        } else {
+          return Observable.fromEvent(window, 'online').take(1);
+        }
+      }))
+      .map((res: any) => res.data)
+      .subscribe(data => {
+        this.handle(data);
+      }, err => {
+        console.log('-----------err------------', err);
+      })
   }
   getRencentListIndex(key: string) {
     return this.recent_list.findIndex(v => v.name === key);
@@ -37,7 +68,6 @@ export class SocketService {
   addHint(key, msg: string) {
     const index = this.getRencentListIndex(key);
     if (index <= -1) {
-      console.log('add new item', key);
       const icon = this.user.getRandomMatch();
       this.recent_list.push({ name: key, last: msg, unRead: 1, icon: icon });
       this.userInfo.set(key, { Icon: icon });
@@ -50,23 +80,41 @@ export class SocketService {
       this.recent_list[index].last = msg;
     }
   }
-  start() {
-    this.ws = new WebSocket(this.url);
-    this.ws.binaryType = 'arraybuffer';
-    this.ws.onopen = () => {
-      this.send(OP.REG, JSON.stringify({ Address: 'localhost:8080' }));
-      // this.send(OP.REG);
+
+  fromWebSocket(address: string, openObserver: Observer<any>) {
+    const ws = new WebSocket(address);
+    ws.binaryType = 'arraybuffer';
+    const observer = {
+      next: (data: any) => {
+        if (ws.readyState === WebSocket.OPEN) {
+          ws.send(data);
+        } else if (ws.readyState === WebSocket.CLOSING || ws.readyState === WebSocket.CLOSED) {
+          ws.close();
+          console.error('CLOSING OR CLOSED');
+          // this.fromWebSocket(address, openObserver);
+        }
+      }
     }
-    this.ws.onmessage = (event) => {
-      this.handle(event.data);
-    }
-    this.ws.onerror = (error) => {
-      console.error('-----ws error-------', error);
-    }
-    this.ws.onclose = (res) => {
-      console.log('-------ws close-------', res);
-    }
+    const observable = Observable.create(
+      (obs: Observer<any>) => {
+        if (openObserver) {
+          ws.onopen = (e) => {
+            openObserver.next(e);
+            openObserver.complete();
+          };
+        }
+        ws.onmessage = obs.next.bind(obs);
+        ws.onerror = (err) => {
+          console.error('SOCKET ERROR:', err);
+          obs.error.bind(obs)
+        };
+        ws.onclose = obs.complete.bind(obs);
+        return ws.close.bind(ws);
+      });
+
+    return Subject.create(observer, observable);
   }
+
   private getRandomInt(min, max) {
     return Math.floor(Math.random() * (max - min + 1) + min);
   }
@@ -147,7 +195,8 @@ export class SocketService {
     buf[4] = 0xff & seq;
 
     // this.waitForConnection(() => {
-    this.ws.send(buf);
+    // this.ws.send(buf);
+    this.socket.next(buf);
     // }, 1000);
   }
 

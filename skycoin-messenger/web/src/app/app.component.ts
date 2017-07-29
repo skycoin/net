@@ -1,4 +1,4 @@
-import { Component, OnInit, ViewChild } from '@angular/core';
+import { Component, OnInit, ViewChild, OnDestroy } from '@angular/core';
 import { SocketService } from '../providers';
 import { ImRecentItemComponent } from '../components';
 
@@ -7,11 +7,11 @@ import { ImRecentItemComponent } from '../components';
   templateUrl: './app.component.html',
   styleUrls: ['./app.component.scss']
 })
-export class AppComponent implements OnInit {
-  constructor(public socket: SocketService) {
-  }
-  ngOnInit(): void {
-    this.socket.start();
+export class AppComponent implements OnDestroy {
+  constructor(public ws: SocketService) {
   }
 
+  ngOnDestroy() {
+    this.ws.socket.unsubscribe();
+  }
 }

@@ -3,7 +3,7 @@
 </div>
 <div class="container" *ngIf="chatting">
   <div class="message-box-head">
-    <p class="head-name single-line">{{chatting}}</p>
+    <a href="javascript:void(0);" class="head-name tooltip" [attr.aria-label]="chatting">{{chatting}}</a>
   </div>
   <perfect-scrollbar class="container message-box" [config]="config">
     <app-im-history-view fxLayout="column-reverse" [list]="chatList.toArray()"></app-im-history-view>

@@ -54,7 +54,6 @@ export class ImViewComponent implements OnInit, OnChanges {
     ev.preventDefault();
     ev.returnValue = false;
     this.msg = this.msg.trim();
-    console.log('size:', Buffer.byteLength(this.msg, 'utf8'));
     if (Buffer.byteLength(this.msg, 'utf8') >= 500) {
       console.log('max length 500');
       this.tool.ShowDangerAlert('Danger', 'The maximum length of 500');
