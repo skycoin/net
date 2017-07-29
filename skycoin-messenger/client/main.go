@@ -7,6 +7,9 @@ import (
 	"fmt"
 	"net"
 
+	"os"
+	"os/signal"
+
 	log "github.com/sirupsen/logrus"
 	"github.com/skycoin/net/skycoin-messenger/rpc"
 	"github.com/skycoin/net/skycoin-messenger/websocket"
@@ -30,22 +33,28 @@ func parseFlags() {
 
 func main() {
 	parseFlags()
+
+	osSignal := make(chan os.Signal, 1)
+	signal.Notify(osSignal, os.Interrupt, os.Kill)
+
 	go func() {
-		log.Println("listening rpc")
+		log.Debug("listening rpc")
 		err := rpc.ServeRPC(rpcAddress)
 		if err != nil {
-			log.Fatal("rpc.ServeRPC: ", err)
+			log.Error("rpc.ServeRPC: ", err)
+			os.Exit(1)
 		}
 	}()
 
-	log.Println("listening web")
+	log.Debug("listening web")
 	http.Handle("/", http.FileServer(http.Dir(webDir)))
 	http.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
 		websocket.ServeWs(w, r)
 	})
 	ln, err := net.Listen("tcp", webSocketAddress)
 	if err != nil {
-		log.Fatal("net.Listen: ", err)
+		log.Error("net.Listen: ", err)
+		os.Exit(1)
 	}
 
 	if openBrowser {
@@ -53,8 +62,21 @@ func main() {
 			browser.Open(fmt.Sprintf("http://%s", webSocketAddress))
 		}()
 	}
-	err = http.Serve(ln, http.DefaultServeMux)
-	if err != nil {
-		log.Fatal("http.Serve: ", err)
+	go func() {
+		err := http.Serve(ln, http.DefaultServeMux)
+		if err != nil {
+			log.Error("http.Serve: ", err)
+			os.Exit(1)
+		}
+	}()
+
+	select {
+	case signal := <-osSignal:
+		if signal == os.Interrupt {
+			log.Debugln("exit by signal Interrupt")
+		} else if signal == os.Kill {
+			log.Debugln("exit by signal Kill")
+		}
 	}
+
 }

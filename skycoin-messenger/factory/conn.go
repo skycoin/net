@@ -43,9 +43,13 @@ func (c *Connection) SetKey(key cipher.PubKey) {
 	c.key = key
 	c.keySet = true
 	c.fieldsMutex.Unlock()
-	c.fieldsMutex.RLock()
 	c.keySetCond.Broadcast()
-	c.fieldsMutex.RUnlock()
+}
+
+func (c *Connection) IsKeySet() bool {
+	c.fieldsMutex.Lock()
+	defer c.fieldsMutex.Unlock()
+	return c.keySet
 }
 
 func (c *Connection) GetKey() cipher.PubKey {

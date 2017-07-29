@@ -62,7 +62,7 @@ func (f *MessengerFactory) acceptedCallback(connection *factory.Connection) {
 			op := m[MSG_OP_BEGIN]
 			switch op {
 			case OP_REG:
-				if conn.GetKey() != EMPTY_KEY {
+				if conn.IsKeySet() {
 					conn.GetContextLogger().Infof("reg %s already", conn.key.Hex())
 					continue
 				}

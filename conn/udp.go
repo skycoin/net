@@ -96,3 +96,12 @@ func (c *UDPConn) UpdateLastTime() {
 func (c *UDPConn) GetNextSeq() uint32 {
 	return atomic.AddUint32(&c.seq, 1)
 }
+
+func (c *UDPConn) Close() {
+	c.fieldsMutex.Lock()
+	if c.UdpConn != nil {
+		c.UdpConn.Close()
+	}
+	c.fieldsMutex.Unlock()
+	c.ConnCommonFields.Close()
+}

@@ -1,9 +1,10 @@
 package factory
 
 import (
+	"net"
+
 	"github.com/skycoin/net/client"
 	"github.com/skycoin/net/server"
-	"net"
 )
 
 type TCPFactory struct {
@@ -28,18 +29,24 @@ func (factory *TCPFactory) Listen(address string) error {
 	factory.fieldsMutex.Lock()
 	factory.listener = ln
 	factory.fieldsMutex.Unlock()
-	for {
-		c, err := ln.AcceptTCP()
-		if err != nil {
-			return err
+	go func() {
+		for {
+			c, err := ln.AcceptTCP()
+			if err != nil {
+				return
+			}
+			factory.createConn(c)
 		}
-		factory.createConn(c)
-	}
+	}()
+	return nil
 }
 
 func (factory *TCPFactory) Close() error {
 	factory.fieldsMutex.RLock()
 	defer factory.fieldsMutex.RUnlock()
+	if factory.listener == nil {
+		return nil
+	}
 	return factory.listener.Close()
 }
 

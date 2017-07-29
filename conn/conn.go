@@ -98,6 +98,7 @@ func (c *ConnCommonFields) Close() {
 	}
 	c.closed = true
 	c.fieldsMutex.Unlock()
+
 	close(c.In)
 	close(c.Out)
 }

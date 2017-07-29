@@ -1,12 +1,13 @@
 package factory
 
 import (
-	"github.com/skycoin/net/client"
-	"github.com/skycoin/net/conn"
-	"github.com/skycoin/net/server"
 	"net"
 	"sync"
 	"time"
+
+	"github.com/skycoin/net/client"
+	"github.com/skycoin/net/conn"
+	"github.com/skycoin/net/server"
 )
 
 type UDPFactory struct {
@@ -38,14 +39,20 @@ func (factory *UDPFactory) Listen(address string) error {
 	factory.fieldsMutex.Lock()
 	factory.listener = udp
 	factory.fieldsMutex.Unlock()
-	udpc := server.NewServerUDPConn(udp)
-	return udpc.ReadLoop(factory.createConn)
+	go func() {
+		udpc := server.NewServerUDPConn(udp)
+		udpc.ReadLoop(factory.createConn)
+	}()
+	return nil
 }
 
 func (factory *UDPFactory) Close() error {
 	factory.stopGC <- true
 	factory.fieldsMutex.RLock()
 	defer factory.fieldsMutex.RUnlock()
+	if factory.listener == nil {
+		return nil
+	}
 	return factory.listener.Close()
 }
 

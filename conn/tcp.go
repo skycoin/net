@@ -145,3 +145,12 @@ func (c *TCPConn) GetChanIn() <-chan []byte {
 func (c *TCPConn) UpdateLastTime() {
 	c.TcpConn.SetReadDeadline(getTCPReadDeadline())
 }
+
+func (c *TCPConn) Close() {
+	c.fieldsMutex.Lock()
+	if c.TcpConn != nil {
+		c.TcpConn.Close()
+	}
+	c.fieldsMutex.Unlock()
+	c.ConnCommonFields.Close()
+}
