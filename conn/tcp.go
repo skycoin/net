@@ -18,8 +18,6 @@ const (
 type TCPConn struct {
 	ConnCommonFields
 	TcpConn net.Conn
-	In      chan []byte
-	Out     chan []byte
 }
 
 func (c *TCPConn) ReadLoop() (err error) {
@@ -101,12 +99,6 @@ func (c *TCPConn) WriteLoop() (err error) {
 	}
 }
 
-func (c *TCPConn) IsClosed() bool {
-	c.fieldsMutex.RLock()
-	defer c.fieldsMutex.RUnlock()
-	return c.closed
-}
-
 func getTCPReadDeadline() time.Time {
 	return time.Now().Add(time.Second * TCP_READ_TIMEOUT)
 }
@@ -150,23 +142,15 @@ func (c *TCPConn) GetChanIn() <-chan []byte {
 	return c.In
 }
 
-func (c *TCPConn) Close() {
-	defer func() {
-		if err := recover(); err != nil {
-			c.CTXLogger.Debug("closing closed udpconn")
-		}
-	}()
-	c.fieldsMutex.Lock()
-	if c.closed {
-		c.fieldsMutex.Unlock()
-		return
-	}
-	c.closed = true
-	c.fieldsMutex.Unlock()
-	close(c.In)
-	close(c.Out)
-}
-
 func (c *TCPConn) UpdateLastTime() {
 	c.TcpConn.SetReadDeadline(getTCPReadDeadline())
+}
+
+func (c *TCPConn) Close() {
+	c.fieldsMutex.Lock()
+	if c.TcpConn != nil {
+		c.TcpConn.Close()
+	}
+	c.fieldsMutex.Unlock()
+	c.ConnCommonFields.Close()
 }

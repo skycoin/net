@@ -2,28 +2,27 @@ package conn
 
 import (
 	"encoding/binary"
-	"github.com/skycoin/net/msg"
 	"net"
 	"sync/atomic"
 	"time"
+
+	"github.com/skycoin/net/msg"
 )
 
 const (
-	MAX_UDP_PACKAGE_SIZE = 1024
+	MAX_UDP_PACKAGE_SIZE = msg.MAX_MESSAGE_SIZE
 )
 
 type UDPConn struct {
 	ConnCommonFields
 	UdpConn *net.UDPConn
 	addr    *net.UDPAddr
-	In      chan []byte
-	Out     chan []byte
 
 	lastTime int64
 }
 
 func NewUDPConn(c *net.UDPConn, addr *net.UDPAddr) *UDPConn {
-	return &UDPConn{UdpConn: c, addr: addr, lastTime: time.Now().Unix(), In: make(chan []byte), Out: make(chan []byte), ConnCommonFields: NewConnCommonFileds()}
+	return &UDPConn{UdpConn: c, addr: addr, lastTime: time.Now().Unix(), ConnCommonFields: NewConnCommonFileds()}
 }
 
 func (c *UDPConn) ReadLoop() error {
@@ -82,12 +81,6 @@ func (c *UDPConn) GetChanIn() <-chan []byte {
 	return c.In
 }
 
-func (c *UDPConn) IsClosed() bool {
-	c.fieldsMutex.RLock()
-	defer c.fieldsMutex.RUnlock()
-	return c.closed
-}
-
 func (c *UDPConn) GetLastTime() int64 {
 	c.fieldsMutex.RLock()
 	defer c.fieldsMutex.RUnlock()
@@ -100,19 +93,15 @@ func (c *UDPConn) UpdateLastTime() {
 	c.fieldsMutex.Unlock()
 }
 
-func (c *UDPConn) Close() {
-	defer func() {
-		if err := recover(); err != nil {
-			c.CTXLogger.Debug("closing closed udpconn")
-		}
-	}()
-	c.fieldsMutex.Lock()
-	c.closed = true
-	c.fieldsMutex.Unlock()
-	close(c.In)
-	close(c.Out)
-}
-
 func (c *UDPConn) GetNextSeq() uint32 {
 	return atomic.AddUint32(&c.seq, 1)
+}
+
+func (c *UDPConn) Close() {
+	c.fieldsMutex.Lock()
+	if c.UdpConn != nil {
+		c.UdpConn.Close()
+	}
+	c.fieldsMutex.Unlock()
+	c.ConnCommonFields.Close()
 }

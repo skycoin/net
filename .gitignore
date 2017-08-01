@@ -107,3 +107,6 @@ src/gui/static/dist
 
 .idea/
 net
+skycoin-messenger/dist
+push.sh
+restart.sh

@@ -3,9 +3,11 @@
 ## How to test
 
 `cd skycoin-messenger/server`
+
 `go run main.go`
 
 `cd skycoin-messenger/client`
+
 `go run main.go`
 
 ## Client Websocket Protocol

@@ -15,7 +15,7 @@ type ServerTCPConn struct {
 }
 
 func NewServerTCPConn(c *net.TCPConn) *ServerTCPConn {
-	return &ServerTCPConn{TCPConn: conn.TCPConn{TcpConn: c, In: make(chan []byte), Out: make(chan []byte), ConnCommonFields: conn.NewConnCommonFileds()}}
+	return &ServerTCPConn{TCPConn: conn.TCPConn{TcpConn: c, ConnCommonFields: conn.NewConnCommonFileds()}}
 }
 
 func (c *ServerTCPConn) ReadLoop() (err error) {

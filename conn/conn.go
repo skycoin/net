@@ -34,6 +34,8 @@ type ConnCommonFields struct {
 	Status int // STATUS_CONNECTING, STATUS_CONNECTED, STATUS_ERROR
 	Err    error
 
+	In          chan []byte
+	Out         chan []byte
 	closed      bool
 	fieldsMutex sync.RWMutex
 	writeMutex  sync.Mutex
@@ -45,7 +47,7 @@ func NewConnCommonFileds() ConnCommonFields {
 	entry := log.WithField("ctxId", atomic.AddUint32(&ctxId, 1))
 	return ConnCommonFields{
 		CTXLogger:  entry,
-		PendingMap: NewPendingMap(entry)}
+		PendingMap: NewPendingMap(entry), In: make(chan []byte), Out: make(chan []byte)}
 }
 
 func (c *ConnCommonFields) SetStatusToConnected() {
@@ -81,4 +83,28 @@ func (c *ConnCommonFields) SetContextLogger(l *log.Entry) {
 	c.fieldsMutex.Lock()
 	c.CTXLogger = l
 	c.fieldsMutex.Unlock()
+}
+
+func (c *ConnCommonFields) Close() {
+	defer func() {
+		if err := recover(); err != nil {
+			c.CTXLogger.Debug("closing closed udpconn")
+		}
+	}()
+	c.fieldsMutex.Lock()
+	if c.closed {
+		c.fieldsMutex.Unlock()
+		return
+	}
+	c.closed = true
+	c.fieldsMutex.Unlock()
+
+	close(c.In)
+	close(c.Out)
+}
+
+func (c *ConnCommonFields) IsClosed() bool {
+	c.fieldsMutex.RLock()
+	defer c.fieldsMutex.RUnlock()
+	return c.closed
 }

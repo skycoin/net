@@ -47,7 +47,7 @@ func (l *ConnectionList) broadcastUpdate() {
 		if !ok {
 			continue
 		}
-		err := c.Write(GenOfferServiceRespMsg(result))
+		err := c.Write(GenGetServiceNodesRespMsg(result))
 		if err != nil {
 			c.GetContextLogger().Errorf("write GenOfferServiceRespMsg failed: %v", err)
 		}
@@ -61,7 +61,6 @@ func (l *ConnectionList) Remove(conn *Connection) int {
 	if e != nil {
 		l.List.Remove(e)
 	}
-	l.broadcastUpdate()
 	return l.List.Len()
 }
 
@@ -72,7 +71,6 @@ func (l *ConnectionList) PushBack(conn *Connection) {
 		return
 	}
 	l.List.PushBack(conn)
-	l.broadcastUpdate()
 }
 
 func (l *ConnectionList) Len() int {
