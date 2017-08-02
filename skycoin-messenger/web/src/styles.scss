@@ -3,7 +3,7 @@
 @import 'variables';
 @import "~@angular/material/prebuilt-themes/indigo-pink.css";
 @import '../node_modules/font-awesome/scss/font-awesome';
-
+@import '../node_modules/emojione-assets/sprites/emojione-sprite-32.css';
 body {
   background-color: #d5f0f3;
   font-size: 62.5%;
@@ -54,4 +54,51 @@ body {
 .flex-center {
   justify-content: center;
   align-items: center;
+}
+
+.tooltip-top[aria-label],
+.tooltip[aria-label] {
+  position: relative;
+  &:after {
+    content: attr(aria-label);
+    display: none;
+    position: absolute;
+    pointer-events: none;
+    padding: .75rem 1rem;
+    line-height: .75rem;
+    white-space: nowrap;
+    text-decoration: none;
+    text-indent: 0;
+    overflow: visible;
+    font-size: .9em;
+    font-weight: normal;
+    color: #fff; // text-shadow: 1px 0 1px #888;
+    background-color: rgba(27, 31, 35, 0.8);
+    border-radius: 2px;
+    box-shadow: 1px 2px 6px rgba(0, 0, 0, 0.3);
+  }
+  &:hover:after,
+  &:focus:after {
+    display: block;
+  }
+}
+
+.tooltip-top[aria-label] {
+  &:after {
+    bottom: 150%;
+    right: -100%;
+  }
+}
+
+.tooltip[aria-label] {
+  &:after {
+    top: 110%;
+    left: 10%;
+  }
+}
+
+img.emojione {
+  width: 22px;
+  margin: 0 2px;
+  vertical-align: bottom;
 }

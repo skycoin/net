@@ -7,8 +7,8 @@
       <app-im-head [key]="chat.From"></app-im-head>
     </div>
     <div class="msg-box">
-      <p class="bubble float-right bubble-right" (contextmenu)="rightClick($event)">
-        {{chat.Msg}}
+      <p class="bubble float-right bubble-right" (contextmenu)="rightClick($event)" [innerHTML]="chat.Msg">
+
         <span [mdMenuTriggerFor]="contextMenu" class="menu-focus"></span>
       </p>
       <small class="time"><i class="fa fa-clock-o"></i>{{chat.Timestamp | date:'shortTime'}}</small>
@@ -24,8 +24,7 @@
       <app-im-head [key]="chat.From"></app-im-head>
     </div>
     <div class="msg-box">
-      <p class="bubble float-left bubble-left" (contextmenu)="rightClick($event)">
-        {{chat.Msg}}
+      <p class="bubble float-left bubble-left" (contextmenu)="rightClick($event)" [innerHTML]="chat.Msg">
         <span [mdMenuTriggerFor]="contextMenu" class="menu-focus"></span>
       </p>
       <small class="time"><i class="fa fa-clock-o"></i>{{chat.Timestamp | date:'shortTime'}}</small>

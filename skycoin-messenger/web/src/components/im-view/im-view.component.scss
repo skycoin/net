@@ -36,8 +36,11 @@ app-im-view {
       border-radius: .5rem .5rem 0 0;
       background-color: inherit;
       border-bottom: 1px solid hsla(0, 0%, 80%, 0.3);
+      
       .head-name {
         width: 10rem;
+        text-decoration: none;
+        color: #000;
       }
     }
     .message-box {
@@ -49,7 +52,7 @@ app-im-view {
     }
     .send-box {
       height: 20%;
-      padding: .5rem 1rem;
+      // padding: .5rem 1rem;
       textarea {
         font-size: 1.1rem;
         background-color: inherit;
@@ -61,8 +64,7 @@ app-im-view {
         transition: box-shadow .1s;
         &:focus {
           border: none;
-          outline: none;
-          // box-shadow: .1rem .2rem .75rem hsla(210, 75%, 52%, 0.6), -.1rem -.2rem .75rem hsla(210, 75%, 52%, 0.6);
+          outline: none; // box-shadow: .1rem .2rem .75rem hsla(210, 75%, 52%, 0.6), -.1rem -.2rem .75rem hsla(210, 75%, 52%, 0.6);
         }
       }
       .more-box {

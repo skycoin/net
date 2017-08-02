@@ -1,6 +1,7 @@
 import { Component, OnInit, ViewEncapsulation, Input, ViewChildren, QueryList, Output, EventEmitter } from '@angular/core';
 import { ImRecentItemComponent } from '../im-recent-item/im-recent-item.component';
 import { SocketService, UserService } from '../../providers';
+import { ToolService } from '../../providers/tool/tool.service';
 import { MdDialog } from '@angular/material';
 import { CreateChatDialogComponent } from '../create-chat-dialog/create-chat-dialog.component';
 import { PerfectScrollbarConfigInterface } from 'ngx-perfect-scrollbar';
@@ -17,7 +18,7 @@ export class ImRecentBarComponent implements OnInit {
   chatting = '';
   @ViewChildren(ImRecentItemComponent) items: QueryList<ImRecentItemComponent>;
   @Input() list = [];
-  constructor(private socket: SocketService, private user: UserService, private dialog: MdDialog) { }
+  constructor(private socket: SocketService, private user: UserService, private dialog: MdDialog, private tool: ToolService) { }
   ngOnInit() {
   }
 
@@ -42,6 +43,7 @@ export class ImRecentBarComponent implements OnInit {
     ev.stopPropagation();
     ev.preventDefault();
     const def = this.dialog.open(CreateChatDialogComponent, { position: { top: '10%' }, width: '350px' });
+    // const def = this.dialog.open(ImEmojiComponent, { position: { top: '10%' }, width: '350px' });
     def.afterClosed().subscribe(key => {
       if (key !== '' && key) {
         this.items.forEach(el => {
@@ -63,6 +65,10 @@ export class ImRecentBarComponent implements OnInit {
     ev.stopImmediatePropagation();
     ev.stopPropagation();
     ev.preventDefault();
+    if (this.socket.key === '') {
+      this.tool.ShowDangerAlert('Faild', 'The server failed to get the key failed');
+      return;
+    }
     const input = document.createElement('input');
     document.body.appendChild(input);
     // tslint:disable-next-line:no-unused-expression

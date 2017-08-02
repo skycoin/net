@@ -20,7 +20,8 @@ export class ImHeadComponent implements OnInit {
     if (this.key === '') {
       this.name = '?';
     } else {
-      this.name = this.key.substr(0, 1).toUpperCase();
+      const size = this.key.length;
+      this.name = this.key.substr(size - 1, size).toUpperCase();
     }
     if (this.socket.userInfo.get(this.key) !== undefined) {
       const icon = this.socket.userInfo.get(this.key).Icon;
