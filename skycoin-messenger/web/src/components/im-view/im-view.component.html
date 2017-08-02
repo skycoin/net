@@ -9,6 +9,7 @@
     <app-im-history-view fxLayout="column-reverse" [list]="chatList.toArray()"></app-im-history-view>
   </perfect-scrollbar>
   <div class="send-box">
-    <textarea autofocus="autofocus" [(ngModel)]="msg" rows="4" (keyup.enter)="send($event)" [perfect-scrollbar]="config"></textarea>
+    <app-editor (onEnter)="send($event)"></app-editor>
+    <!-- <textarea autofocus="autofocus" [(ngModel)]="msg" rows="4" (keyup.enter)="send($event)" [perfect-scrollbar]="config" appEmoji></textarea> -->
   </div>
 </div>

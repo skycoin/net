@@ -1,6 +1,5 @@
 import { Injectable } from '@angular/core';
 import { HeadColorMatch } from '../socket/msg'
-
 @Injectable()
 export class UserService {
   randomMatch: Array<HeadColorMatch> = [
@@ -16,9 +15,6 @@ export class UserService {
     { bg: '#fbd1dc', color: '#000' },
   ]
   constructor() { }
-  // getRandomColor() {
-  //   return '#' + ('00000' + ((Math.random() * 16777215 + 0.5) >> 0).toString(16)).slice(-6);
-  // }
   padZero(str: string, len?: number) {
     len = len || 2;
     const zeros = new Array(len).join('0');

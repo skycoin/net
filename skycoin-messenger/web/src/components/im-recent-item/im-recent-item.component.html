@@ -11,7 +11,7 @@
   <app-im-head [key]="info.name" class="head"></app-im-head>
   <div class="text-box">
     <p class="name single-line">{{info.name}}</p>
-    <p class="last">{{info.last}}</p>
+    <p class="last single-line" [innerHTML]="info.last"></p>
   </div>
   <span class="badges" *ngIf="info.unRead">{{info.unRead}}</span>
 </a>

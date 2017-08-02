@@ -28,6 +28,8 @@ import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 import 'web-animations-js'
 import { PerfectScrollbarModule } from 'ngx-perfect-scrollbar';
 import { PerfectScrollbarConfigInterface } from 'ngx-perfect-scrollbar';
+import { HttpModule } from '@angular/http';
+import { EditorModule } from '../components/editor/editor.module'
 
 const PERFECT_SCROLLBAR_CONFIG: PerfectScrollbarConfigInterface = {
   suppressScrollX: true
@@ -44,9 +46,10 @@ const PERFECT_SCROLLBAR_CONFIG: PerfectScrollbarConfigInterface = {
     ImHistoryMessageComponent,
     CreateChatDialogComponent,
     AlertDialogComponent,
-    ImInfoDialogComponent
+    ImInfoDialogComponent,
   ],
   imports: [
+    HttpModule,
     FormsModule,
     ReactiveFormsModule,
     BrowserModule,
@@ -58,8 +61,8 @@ const PERFECT_SCROLLBAR_CONFIG: PerfectScrollbarConfigInterface = {
     MdDialogModule,
     MdInputModule,
     MdButtonModule,
-    PerfectScrollbarModule.forRoot(PERFECT_SCROLLBAR_CONFIG)
-
+    PerfectScrollbarModule.forRoot(PERFECT_SCROLLBAR_CONFIG),
+    EditorModule,
   ],
   entryComponents: [
     CreateChatDialogComponent,

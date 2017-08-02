@@ -3,6 +3,7 @@
 @import 'variables';
 @import "~@angular/material/prebuilt-themes/indigo-pink.css";
 @import '../node_modules/font-awesome/scss/font-awesome';
+@import '../node_modules/emojione-assets/sprites/emojione-sprite-32.css';
 body {
   background-color: #d5f0f3;
   font-size: 62.5%;
@@ -94,4 +95,10 @@ body {
     top: 110%;
     left: 10%;
   }
+}
+
+img.emojione {
+  width: 22px;
+  margin: 0 2px;
+  vertical-align: bottom;
 }

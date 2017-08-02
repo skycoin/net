@@ -1,5 +1,5 @@
 import { Component, OnInit, ViewChild, OnDestroy } from '@angular/core';
-import { SocketService } from '../providers';
+import { SocketService, UserService } from '../providers';
 import { ImRecentItemComponent } from '../components';
 
 @Component({
@@ -8,7 +8,7 @@ import { ImRecentItemComponent } from '../components';
   styleUrls: ['./app.component.scss']
 })
 export class AppComponent implements OnDestroy {
-  constructor(public ws: SocketService) {
+  constructor(public ws: SocketService, private user: UserService) {
   }
 
   ngOnDestroy() {

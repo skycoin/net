@@ -12,6 +12,7 @@ import 'rxjs/add/operator/mergeMap'
 import 'rxjs/add/operator/take'
 import 'rxjs/add/observable/fromEvent'
 import 'rxjs/add/observable/timer'
+import * as emojione from 'emojione';
 
 export enum OP { REG, SEND, ACK };
 export enum PUSH { ACK, REG, MSG };
@@ -77,7 +78,7 @@ export class SocketService {
         this.recent_list[index].unRead += 1;
       }
       // tslint:disable-next-line:no-unused-expression
-      this.recent_list[index].last = msg;
+      this.recent_list[index].last = emojione.shortnameToImage(msg);
     }
   }
 
