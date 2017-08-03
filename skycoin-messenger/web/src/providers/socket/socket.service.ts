@@ -12,8 +12,7 @@ import 'rxjs/add/operator/mergeMap'
 import 'rxjs/add/operator/take'
 import 'rxjs/add/observable/fromEvent'
 import 'rxjs/add/observable/timer'
-import * as emojione from 'emojione';
-
+import { EmojiService } from '../emoji/emoji.service'
 export enum OP { REG, SEND, ACK };
 export enum PUSH { ACK, REG, MSG };
 
@@ -33,7 +32,7 @@ export class SocketService {
   histories = new Map<string, Collections.LinkedList<ImHistoryMessage>>();
   userInfo = new Map<string, UserInfo>();
   chatHistorys = this.historySubject.asObservable();
-  constructor(private user: UserService) {
+  constructor(private user: UserService, private emoji: EmojiService) {
     if (environment.production) {
       this.url = 'ws://yiqishare.com:8082/ws';
     }
@@ -74,11 +73,10 @@ export class SocketService {
       this.userInfo.set(key, { Icon: icon });
     } else {
       if (key !== this.chattingUser) {
-        console.log('add un read:', this.recent_list[index]);
         this.recent_list[index].unRead += 1;
       }
       // tslint:disable-next-line:no-unused-expression
-      this.recent_list[index].last = emojione.shortnameToImage(msg);
+      this.recent_list[index].last = this.emoji.toImage(msg);
     }
   }
 

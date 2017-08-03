@@ -39,6 +39,14 @@ body {
   }
 }
 
+.create-backdrop {
+  .cdk-overlay-pane {
+    md-dialog-container {
+      border-radius: .5rem !important;
+    }
+  }
+}
+
 .float-right {
   float: right;
 }
@@ -100,5 +108,9 @@ body {
 img.emojione {
   width: 22px;
   margin: 0 2px;
-  vertical-align: bottom;
+  vertical-align: middle;
+}
+
+.mat-dialog-container {
+  border-radius: .5rem;
 }

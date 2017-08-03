@@ -15,13 +15,13 @@ app-im-recent-bar {
     width: 100%;
     height: 100%;
     color: #999;
+    text-align: center;
   }
   .contact-box {
     height: 90%;
     ul {
       height: 100%;
       list-style: none;
-      
     }
   }
   .create-chat-box {
@@ -48,6 +48,27 @@ app-im-recent-bar {
     }
     .fa {
       margin-right: 5px;
+    }
+  }
+}
+
+@media screen and (max-width: 768px) {
+  app-im-recent-bar {
+    .create-chat-box {
+      .create {
+        .text {
+          display: none;
+        }
+      }
+      .info {
+        .tooltip-top[aria-label] {
+          &:hover:after,
+          &:focus:after {
+            display: none;
+          }
+        }
+        float: none;
+      }
     }
   }
 }

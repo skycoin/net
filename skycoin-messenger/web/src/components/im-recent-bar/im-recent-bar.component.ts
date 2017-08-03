@@ -25,6 +25,7 @@ export class ImRecentBarComponent implements OnInit {
   selectItem(item: ImRecentItemComponent) {
     if (item.active) {
       this.chatting = '';
+      this.socket.chattingUser = '';
       return;
     }
     item.info.unRead = 0;
@@ -43,7 +44,6 @@ export class ImRecentBarComponent implements OnInit {
     ev.stopPropagation();
     ev.preventDefault();
     const def = this.dialog.open(CreateChatDialogComponent, { position: { top: '10%' }, width: '350px' });
-    // const def = this.dialog.open(ImEmojiComponent, { position: { top: '10%' }, width: '350px' });
     def.afterClosed().subscribe(key => {
       if (key !== '' && key) {
         this.items.forEach(el => {

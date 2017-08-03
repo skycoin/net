@@ -3,10 +3,10 @@
     <div class="overlay" (click)="close($event)" *ngIf="emojiBox"></div>
     <div class="emoji-box" *ngIf="emojiBox">
       <ul>
-        <li *ngFor="let emoji of emojis" [attr.aria-label]="emoji?.desc" title="{{emoji?.desc}}">
-          <a href="javascript:void(0);" (click)="selectEmoji($event,emoji.short)">
+        <li *ngFor="let data of emoji.baseEmojis" [attr.aria-label]="data?.desc" title="{{data?.desc}}" (click)="selectEmoji($event,data)" [innerHTML]="data?.code">
+          <!-- <a href="javascript:void(0);" >
             <span class="emojione emojione-32-people" ngClass="_{{emoji?.code}}">&#x1f433;</span>
-          </a>
+          </a> -->
       </li>
       </ul>
     </div>

@@ -1,7 +1,6 @@
 import { Component, ViewEncapsulation, Input, ViewChild, OnInit } from '@angular/core';
-import { ImHistoryMessage, SocketService } from '../../providers';
+import { ImHistoryMessage, SocketService, EmojiService } from '../../providers';
 import { MdMenuTrigger } from '@angular/material';
-import * as emojione from 'emojione';
 
 @Component({
   selector: 'app-im-history-message',
@@ -14,11 +13,11 @@ export class ImHistoryMessageComponent implements OnInit {
   @ViewChild(MdMenuTrigger) contextMenu: MdMenuTrigger;
   @Input() index: number;
   @Input() chat: ImHistoryMessage = null;
-  constructor(private socket: SocketService) {
+  constructor(private socket: SocketService, private emoji: EmojiService) {
     this.selfId = this.socket.key;
   }
   ngOnInit() {
-    this.chat.Msg = emojione.shortnameToImage(this.chat.Msg);
+    this.chat.Msg = this.emoji.toImage(this.chat.Msg);
   }
   rightClick(ev: Event) {
     // ev.preventDefault();
