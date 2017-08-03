@@ -40,7 +40,10 @@ func (c *Client) readLoop() {
 				c.Logger.Errorf("error: %v", err)
 			}
 			c.Logger.Errorf("error: %v", err)
-			break
+			return
+		}
+		if len(m) < msg.MSG_HEADER_END {
+			return
 		}
 		c.Logger.Debugf("recv %x", m)
 		opn := int(m[msg.MSG_OP_BEGIN])
@@ -51,7 +54,7 @@ func (c *Client) readLoop() {
 		op := msg.GetOP(opn)
 		if op == nil {
 			c.Logger.Errorf("op not found, %d", opn)
-			continue
+			return
 		}
 
 		c.ack(m[msg.MSG_OP_BEGIN:msg.MSG_SEQ_END])
@@ -60,7 +63,7 @@ func (c *Client) readLoop() {
 		if err == nil {
 			err = op.Execute(c)
 			if err != nil {
-				c.Logger.Errorf("websocket readLoop executed err: %v", err)
+				c.Logger.Errorf("websocket readLoop execute err: %v", err)
 			}
 		} else {
 			c.Logger.Errorf("websocket readLoop json Unmarshal err: %v", err)
