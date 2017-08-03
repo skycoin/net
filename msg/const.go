@@ -5,7 +5,7 @@ const (
 	MSG_SEQ_SIZE  = 4
 	MSG_LEN_SIZE  = 4
 
-	MAX_MESSAGE_SIZE = 1024
+	MAX_MESSAGE_SIZE = 10240
 )
 
 const (
