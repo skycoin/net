@@ -11,10 +11,11 @@ import {
   ImHistoryMessageComponent,
   CreateChatDialogComponent,
   AlertDialogComponent,
-  ImInfoDialogComponent
+  ImInfoDialogComponent,
+  EditorComponent
 } from '../components';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
-import { SocketService, UserService } from '../providers';
+import { SocketService, UserService, EmojiService } from '../providers';
 import { ToolService } from '../providers/tool/tool.service';
 import {
   MdCheckboxModule,
@@ -29,7 +30,6 @@ import 'web-animations-js'
 import { PerfectScrollbarModule } from 'ngx-perfect-scrollbar';
 import { PerfectScrollbarConfigInterface } from 'ngx-perfect-scrollbar';
 import { HttpModule } from '@angular/http';
-import { EditorModule } from '../components/editor/editor.module'
 
 const PERFECT_SCROLLBAR_CONFIG: PerfectScrollbarConfigInterface = {
   suppressScrollX: true
@@ -47,6 +47,7 @@ const PERFECT_SCROLLBAR_CONFIG: PerfectScrollbarConfigInterface = {
     CreateChatDialogComponent,
     AlertDialogComponent,
     ImInfoDialogComponent,
+    EditorComponent
   ],
   imports: [
     HttpModule,
@@ -61,15 +62,14 @@ const PERFECT_SCROLLBAR_CONFIG: PerfectScrollbarConfigInterface = {
     MdDialogModule,
     MdInputModule,
     MdButtonModule,
-    PerfectScrollbarModule.forRoot(PERFECT_SCROLLBAR_CONFIG),
-    EditorModule,
+    PerfectScrollbarModule.forRoot(PERFECT_SCROLLBAR_CONFIG)
   ],
   entryComponents: [
     CreateChatDialogComponent,
     AlertDialogComponent,
     ImInfoDialogComponent
   ],
-  providers: [SocketService, UserService, ToolService],
+  providers: [SocketService, UserService, ToolService, EmojiService],
   bootstrap: [AppComponent]
 })
 export class AppModule { }

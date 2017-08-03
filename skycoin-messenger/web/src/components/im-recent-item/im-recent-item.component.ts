@@ -7,8 +7,7 @@ import {
   EventEmitter,
   OnInit
 } from '@angular/core';
-import { RecentItem, HeadColorMatch } from '../../providers';
-import * as emojione from 'emojione';
+import { RecentItem, HeadColorMatch, EmojiService } from '../../providers';
 
 @Component({
   selector: 'app-im-recent-item',
@@ -20,9 +19,9 @@ export class ImRecentItemComponent implements OnInit {
   @Input() info: RecentItem;
   @HostBinding('class.active') active = false;
   @Output('onClick') onClick: EventEmitter<ImRecentItemComponent> = new EventEmitter();
-  constructor() { }
+  constructor(private emoji: EmojiService) { }
   ngOnInit() {
-    this.info.last = emojione.shortnameToImage(this.info.last);
+    this.info.last = this.emoji.toImage(this.info.last);
   }
   @HostListener('click', ['$event'])
   _click(ev: Event) {
