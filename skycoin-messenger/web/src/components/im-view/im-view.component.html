@@ -2,14 +2,13 @@
   <p>The chat record is empty</p>
 </div>
 <div class="container" *ngIf="chatting">
-  <div class="message-box-head">
-    <a href="javascript:void(0);" class="head-name tooltip" [attr.aria-label]="chatting">{{chatting}}</a>
+  <div class="message-box-head tooltip " [attr.aria-label]="chatting">
+    <a href="javascript:void(0);" class="head-name single-line">{{chatting}}</a>
   </div>
   <perfect-scrollbar class="container message-box" [config]="config">
     <app-im-history-view fxLayout="column-reverse" [list]="chatList.toArray()"></app-im-history-view>
   </perfect-scrollbar>
   <div class="send-box">
     <app-editor (onEnter)="send($event)"></app-editor>
-    <!-- <textarea autofocus="autofocus" [(ngModel)]="msg" rows="4" (keyup.enter)="send($event)" [perfect-scrollbar]="config" appEmoji></textarea> -->
   </div>
 </div>

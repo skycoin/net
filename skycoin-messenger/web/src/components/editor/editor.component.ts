@@ -1,4 +1,4 @@
-import { Component, OnInit, ViewEncapsulation, ViewChild, ElementRef, Output, EventEmitter } from '@angular/core';
+import { Component, OnInit, ViewEncapsulation, ViewChild, ElementRef, Output, EventEmitter, OnDestroy } from '@angular/core';
 import 'rxjs/add/operator/map'
 import { EmojiService } from '../../providers'
 
@@ -10,18 +10,21 @@ declare const Buffer
   styleUrls: ['./editor.components.scss'],
   encapsulation: ViewEncapsulation.None
 })
-export class EditorComponent implements OnInit {
-  ;
+export class EditorComponent implements OnInit, OnDestroy {
   emojiBox = false;
   @Output() onEnter = new EventEmitter<string>();
   @ViewChild('editor') editor: ElementRef;
   constructor(public emoji: EmojiService) {
   }
-
   ngOnInit() {
     this.editor.nativeElement.focus();
-    this.emoji.getPeopleList()
-    // console.log('people:', this.emoji.getPeopleList());
+  }
+  clear() {
+    this.editor.nativeElement.innerHTML = '';
+  }
+
+  ngOnDestroy() {
+    this.clear();
   }
   openEmoji(ev: Event) {
     ev.stopImmediatePropagation();
@@ -35,6 +38,15 @@ export class EditorComponent implements OnInit {
     ev.preventDefault();
     if (data.short === '') {
       return;
+    }
+    const nodes: NodeList = this.editor.nativeElement.childNodes;
+    console.log('nodes length:', nodes.length);
+    if (nodes.length > 0) {
+      for (let index = 0; index < nodes.length; index++) {
+        if (nodes.item(index).nodeName.toUpperCase() === 'BR') {
+          this.editor.nativeElement.removeChild(nodes.item(index));
+        }
+      }
     }
     this.edit(data.code);
   }

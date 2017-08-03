@@ -12,7 +12,7 @@ import { SocketService, ImHistoryMessage, EmojiService } from '../../providers';
 import { ToolService } from '../../providers/tool/tool.service';
 import * as Collections from 'typescript-collections';
 import { ImHistoryViewComponent } from '../im-history-view/im-history-view.component';
-
+import { EditorComponent } from '../editor/editor.component'
 
 @Component({
   selector: 'app-im-view',
@@ -24,6 +24,7 @@ export class ImViewComponent implements OnInit, OnChanges {
   chatList: Collections.LinkedList<ImHistoryMessage>;
   msg = '';
   @ViewChild(ImHistoryViewComponent) historyView: ImHistoryViewComponent;
+  @ViewChild(EditorComponent) editor: EditorComponent;
   @Input() chatting = '';
   constructor(public socket: SocketService, private tool: ToolService, private emoji: EmojiService) { }
 
@@ -32,6 +33,9 @@ export class ImViewComponent implements OnInit, OnChanges {
   ngOnChanges(changes: SimpleChanges) {
     const previousValue = changes.chatting.previousValue;
     if (this.chatting !== previousValue) {
+      if (this.editor) {
+        this.editor.clear();
+      }
       if (this.historyView && this.historyView.list) {
         this.historyView.list = [];
       }
