@@ -15,6 +15,7 @@ app-im-history-message {
   .other-message {
     width: 100%;
     .content {
+      overflow: hidden;
       .icon-box-left,
       .icon-box-right {
         width: 10%;
@@ -26,7 +27,7 @@ app-im-history-message {
         text-align: left;
       }
       .msg-box {
-        max-width: 80%;
+        max-width: 65%;
         .bubble {
           position: relative;
           max-width: 100%;
@@ -59,6 +60,7 @@ app-im-history-message {
   }
   .other-message {
     .msg-box {
+      margin-left: 1rem;
       float: left;
       .bubble {
         color: #fff;
@@ -73,6 +75,7 @@ app-im-history-message {
   .my-message {
     .msg-box {
       float: right;
+      margin-right: 1rem;
       .bubble {
         color: #fff;
         background-color: #94C2ED;

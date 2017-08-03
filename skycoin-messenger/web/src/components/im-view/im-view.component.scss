@@ -28,6 +28,7 @@ app-im-view {
     .tooltip[aria-label] {
       &:after {
         top: 90%;
+        left: 5%;
       }
     }
     .message-box-head {
@@ -86,6 +87,21 @@ app-im-view {
           &:active {
             background-color: #0a0aad;
           }
+        }
+      }
+    }
+  }
+}
+
+@media screen and (max-width:768px) {
+  app-im-view {
+    .container {
+      .tooltip[aria-label] {
+        &:after {
+          width: 15rem;
+          word-break: break-all;
+          white-space: normal;
+          line-height: 1.2em;
         }
       }
     }

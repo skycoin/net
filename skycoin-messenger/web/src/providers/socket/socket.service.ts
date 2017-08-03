@@ -73,7 +73,6 @@ export class SocketService {
       this.userInfo.set(key, { Icon: icon });
     } else {
       if (key !== this.chattingUser) {
-        console.log('add un read:', this.recent_list[index]);
         this.recent_list[index].unRead += 1;
       }
       // tslint:disable-next-line:no-unused-expression
