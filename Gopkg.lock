@@ -16,8 +16,8 @@
 [[projects]]
   name = "github.com/sirupsen/logrus"
   packages = ["."]
-  revision = "418b41d23a1bf978c06faea5313ba194650ac088"
-  version = "v0.8.7"
+  revision = "a3f95b5c423586578a4e099b11a46c2479628cac"
+  version = "1.0.2"
 
 [[projects]]
   name = "github.com/skycoin/skycoin"
@@ -31,9 +31,15 @@
   revision = "21fc9f95c83442fd164094666f7cb4f9fdd56cd6"
   version = "v1.0"
 
+[[projects]]
+  branch = "master"
+  name = "golang.org/x/sys"
+  packages = ["unix"]
+  revision = "d8f5ea21b9295e315e612b4bcf4bedea93454d4d"
+
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "9f0053040024c78cdfafef116c7a32f0c5c874ac1fe6f082e8d69722d1963071"
+  inputs-digest = "01b72f53d2ce3e24b19eefafcceb77d03cc6638d6433d424072efc21015e015b"
   solver-name = "gps-cdcl"
   solver-version = 1
