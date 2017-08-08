@@ -92,15 +92,17 @@ func (c *ConnCommonFields) Close() {
 		}
 	}()
 	c.fieldsMutex.Lock()
+	defer c.fieldsMutex.Unlock()
+
 	if c.closed {
-		c.fieldsMutex.Unlock()
 		return
 	}
 	c.closed = true
-	c.fieldsMutex.Unlock()
 
 	close(c.In)
+	c.In = nil
 	close(c.Out)
+	c.Out = nil
 }
 
 func (c *ConnCommonFields) IsClosed() bool {

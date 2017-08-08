@@ -83,7 +83,7 @@ func (c *Connection) OfferService(attr ...string) error {
 
 func (c *Connection) UpdateServices(services []*Service) error {
 	if len(services) < 1 {
-		return errors.New("len(services) < 1")
+		return errors.New("len(Services) < 1")
 	}
 	js, err := json.Marshal(services)
 	if err != nil {
@@ -126,44 +126,45 @@ func (c *Connection) SendCustom(msg []byte) error {
 	return c.Write(GenCustomMsg(msg))
 }
 
-func (c *Connection) preprocessor() error {
+func (c *Connection) preprocessor() (err error) {
 	defer func() {
 		if e := recover(); e != nil {
 			c.GetContextLogger().Debugf("panic in preprocessor %v", e)
+		}
+		if err != nil {
+			c.GetContextLogger().Debugf("preprocessor err %v", err)
 		}
 	}()
 	for {
 		select {
 		case m, ok := <-c.Connection.GetChanIn():
 			if !ok {
-				return nil
+				return
 			}
 			c.GetContextLogger().Debugf("read %x", m)
-			if len(m) >= MSG_HEADER_END {
-				switch m[MSG_OP_BEGIN] {
-				case OP_REG:
-					reg := m[MSG_HEADER_END:]
-					if len(reg) < MSG_PUBLIC_KEY_SIZE {
-						continue
+			if len(m) < MSG_HEADER_END {
+				return
+			}
+			opn := m[MSG_OP_BEGIN]
+			if opn&RESP_PREFIX > 0 {
+				i := int(opn &^ RESP_PREFIX)
+				r := getResp(i)
+				if r != nil {
+					body := m[MSG_HEADER_END:]
+					if len(body) > 0 {
+						err = json.Unmarshal(body, r)
+						if err != nil {
+							return
+						}
 					}
-					key := cipher.NewPubKey(reg[:MSG_PUBLIC_KEY_SIZE])
-					c.SetKey(key)
-					c.SetContextLogger(c.GetContextLogger().WithField("pubkey", key.Hex()))
-				case OP_GET_SERVICE_NODES:
-					ks := m[MSG_HEADER_END:]
-					kc := len(ks) / MSG_PUBLIC_KEY_SIZE
-					if len(ks)%MSG_PUBLIC_KEY_SIZE != 0 || kc < 1 {
-						continue
+					err = r.Execute(c)
+					if err != nil {
+						return
 					}
-					keys := make([]cipher.PubKey, kc)
-					for i := 0; i < kc; i++ {
-						key := cipher.NewPubKey(ks[i*MSG_PUBLIC_KEY_SIZE : (i+1)*MSG_PUBLIC_KEY_SIZE])
-						keys[i] = key
-					}
-					c.getServicesChan <- keys
-					continue
+					putResp(i, r)
 				}
 			}
+
 			c.in <- m
 		}
 	}
@@ -184,9 +185,19 @@ func (c *Connection) Close() {
 	}
 	if c.in != nil {
 		close(c.in)
+		c.in = nil
 	}
 	if c.getServicesChan != nil {
 		close(c.getServicesChan)
+		c.getServicesChan = nil
 	}
 	c.Connection.Close()
+	c.keySetCond.Broadcast()
+}
+
+func (c *Connection) WriteOP(op byte, body []byte) error {
+	data := make([]byte, MSG_HEADER_END+len(body))
+	data[MSG_OP_BEGIN] = op
+	copy(data[MSG_HEADER_END:], body)
+	return c.Write(data)
 }

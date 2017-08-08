@@ -4,6 +4,7 @@ import (
 	"sync"
 
 	"encoding/json"
+
 	log "github.com/sirupsen/logrus"
 	"github.com/skycoin/net/factory"
 	"github.com/skycoin/skycoin/src/cipher"
@@ -33,8 +34,6 @@ func (f *MessengerFactory) Listen(address string) error {
 	return tcpFactory.Listen(address)
 }
 
-var EMPTY_KEY = cipher.PubKey{}
-
 func (f *MessengerFactory) acceptedCallback(connection *factory.Connection) {
 	var err error
 	conn := newConnection(connection)
@@ -59,67 +58,41 @@ func (f *MessengerFactory) acceptedCallback(connection *factory.Connection) {
 			if len(m) < MSG_HEADER_END {
 				return
 			}
-			op := m[MSG_OP_BEGIN]
-			switch op {
-			case OP_REG:
-				if conn.IsKeySet() {
-					conn.GetContextLogger().Infof("reg %s already", conn.key.Hex())
-					continue
-				}
-				key, _ := cipher.GenerateKeyPair()
-				conn.SetKey(key)
-				conn.SetContextLogger(conn.GetContextLogger().WithField("pubkey", key.Hex()))
-				f.register(key, conn)
-				err = conn.Write(GenRegRespMsg(key))
-				if err != nil {
-					return
-				}
-			case OP_SEND:
-				if len(m) < SEND_MSG_TO_PUBLIC_KEY_END {
-					return
-				}
-				key := cipher.NewPubKey(m[SEND_MSG_TO_PUBLIC_KEY_BEGIN:SEND_MSG_TO_PUBLIC_KEY_END])
-				f.regConnectionsMutex.RLock()
-				c, ok := f.regConnections[key]
-				f.regConnectionsMutex.RUnlock()
-				if !ok {
-					conn.GetContextLogger().Infof("Key %s not found", key.Hex())
-					continue
-				}
-				err = c.Write(m)
-				if err != nil {
-					conn.GetContextLogger().Errorf("forward to Key %s err %v", key.Hex(), err)
-					c.GetContextLogger().Errorf("write %x err %v", m, err)
-					c.Close()
-				}
-			case OP_CUSTOM:
-				if f.CustomMsgHandler != nil {
-					f.CustomMsgHandler(conn, m[MSG_HEADER_END:])
-				}
-			case OP_OFFER_SERVICE:
-				var services []*Service
-				err = json.Unmarshal(m[MSG_HEADER_END:], services)
-				if err != nil {
-					return
-				}
-				f.serviceDiscovery.register(conn, services)
-			case OP_GET_SERVICE_NODES:
-				var service *Service
-				err = json.Unmarshal(m[MSG_HEADER_END:], service)
-				if err != nil {
-					return
-				}
-				if len(service.Attributes) > 0 {
-					err = conn.Write(GenGetServiceNodesRespMsg(f.serviceDiscovery.findByAttributes(service.Attributes)))
-				} else {
-					err = conn.Write(GenGetServiceNodesRespMsg(f.serviceDiscovery.find(service.Key)))
-				}
-				if err != nil {
-					return
-				}
-			default:
-				conn.GetContextLogger().Errorf("not implemented op %d", op)
+			opn := m[MSG_OP_BEGIN]
+			op := getOP(int(opn))
+			if op == nil {
+				continue
 			}
+			var rb []byte
+			if sop, ok := op.(simpleOP); ok {
+				body := m[MSG_HEADER_END:]
+				if len(body) > 0 {
+					err = json.Unmarshal(m[MSG_HEADER_END:], sop)
+					if err != nil {
+						return
+					}
+				}
+				var r resp
+				r, err = sop.Execute(f, conn)
+				if err != nil {
+					return
+				}
+				if r != nil {
+					rb, err = json.Marshal(r)
+				}
+			} else {
+				rb, err = op.RawExecute(f, conn, m)
+			}
+			if err != nil {
+				return
+			}
+			if rb != nil {
+				err = conn.WriteOP(opn|RESP_PREFIX, rb)
+				if err != nil {
+					return
+				}
+			}
+			putOP(int(opn), op)
 		}
 	}
 }
