@@ -40,6 +40,8 @@ func (c *Client) PushLoop(conn *factory.Connection) {
 			c.Logger.Errorf("PushLoop recovered err %v", err)
 		}
 	}()
+	key := conn.GetKey()
+	c.Push <- &msg.Reg{PublicKey: key.Hex()}
 	push := &msg.PushMsg{}
 	for {
 		select {
@@ -57,9 +59,6 @@ func (c *Client) PushLoop(conn *factory.Connection) {
 				push.From = key.Hex()
 				push.Msg = string(m[factory.SEND_MSG_META_END:])
 				c.Push <- push
-			case factory.OP_REG:
-				key := conn.GetKey()
-				c.Push <- &msg.Reg{PublicKey: key.Hex()}
 			}
 		}
 	}
