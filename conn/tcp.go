@@ -154,3 +154,7 @@ func (c *TCPConn) Close() {
 	c.fieldsMutex.Unlock()
 	c.ConnCommonFields.Close()
 }
+
+func (c *TCPConn) GetRemoteAddr() net.Addr {
+	return c.TcpConn.RemoteAddr()
+}

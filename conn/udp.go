@@ -21,6 +21,7 @@ type UDPConn struct {
 	lastTime int64
 }
 
+// used for server spawn udp conn
 func NewUDPConn(c *net.UDPConn, addr *net.UDPAddr) *UDPConn {
 	return &UDPConn{UdpConn: c, addr: addr, lastTime: time.Now().Unix(), ConnCommonFields: NewConnCommonFileds()}
 }
@@ -104,4 +105,8 @@ func (c *UDPConn) Close() {
 	}
 	c.fieldsMutex.Unlock()
 	c.ConnCommonFields.Close()
+}
+
+func (c *UDPConn) GetRemoteAddr() net.Addr {
+	return c.UdpConn.RemoteAddr()
 }

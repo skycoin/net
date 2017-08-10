@@ -21,23 +21,21 @@ func init() {
 
 type query struct {
 	abstractJsonOP
-	Service *Service
+	Keys []cipher.PubKey
 }
 
 func (query *query) Execute(f *MessengerFactory, conn *Connection) (r resp, err error) {
-	if len(query.Service.Attributes) > 0 {
-		r = &queryResp{PubKeys: f.findByAttributes(query.Service.Attributes)}
-	} else {
-		r = &queryResp{PubKeys: f.find(query.Service.Key)}
-	}
+	r = &queryResp{Result: f.findServiceAddresses(query.Keys, conn.GetKey())}
 	return
 }
 
 type queryResp struct {
-	PubKeys []cipher.PubKey
+	Result map[string][]string
 }
 
 func (resp *queryResp) Execute(conn *Connection) (err error) {
-	conn.getServicesChan <- resp.PubKeys
+	if conn.findServiceNodesCallback != nil {
+		conn.findServiceNodesCallback(resp.Result)
+	}
 	return
 }

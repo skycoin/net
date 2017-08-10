@@ -33,27 +33,9 @@ func GenCustomMsg(msg []byte) []byte {
 	return result
 }
 
-func GenGetServiceNodesMsg(sub []byte) []byte {
-	result := make([]byte, MSG_HEADER_END+len(sub))
+func GenGetServiceNodesMsg(data []byte) []byte {
+	result := make([]byte, MSG_HEADER_END+len(data))
 	result[MSG_OP_BEGIN] = OP_GET_SERVICE_NODES
-	copy(result[MSG_HEADER_END:], sub)
-	return result
-}
-
-// Server side
-
-func GenRegRespMsg(key cipher.PubKey) []byte {
-	result := make([]byte, MSG_HEADER_END+MSG_PUBLIC_KEY_SIZE)
-	result[MSG_OP_BEGIN] = OP_REG
-	copy(result[MSG_HEADER_END:], key[:])
-	return result
-}
-
-func GenGetServiceNodesRespMsg(keys []cipher.PubKey) []byte {
-	result := make([]byte, MSG_HEADER_END+len(keys)*MSG_PUBLIC_KEY_SIZE)
-	result[MSG_OP_BEGIN] = OP_GET_SERVICE_NODES
-	for i, k := range keys {
-		copy(result[MSG_HEADER_END+i*MSG_PUBLIC_KEY_SIZE:], k[:])
-	}
+	copy(result[MSG_HEADER_END:], data)
 	return result
 }

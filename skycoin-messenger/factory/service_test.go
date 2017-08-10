@@ -92,7 +92,7 @@ func TestRegisterAndFind(t *testing.T) {
 	if len(service.attribute2Keys) != 0 {
 		t.Fatal(service.attribute2Keys)
 	}
-	if len(service.keys2Attributes) != 0 {
-		t.Fatal(service.keys2Attributes)
+	if len(service.key2Attributes) != 0 {
+		t.Fatal(service.key2Attributes)
 	}
 }

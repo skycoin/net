@@ -8,6 +8,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/skycoin/net/factory"
 	"github.com/skycoin/skycoin/src/cipher"
+	"time"
 )
 
 func init() {
@@ -21,6 +22,8 @@ type MessengerFactory struct {
 	CustomMsgHandler    func(*Connection, []byte)
 
 	serviceDiscovery
+
+	fieldsMutex sync.RWMutex
 }
 
 func NewMessengerFactory() *MessengerFactory {
@@ -29,7 +32,9 @@ func NewMessengerFactory() *MessengerFactory {
 
 func (f *MessengerFactory) Listen(address string) error {
 	tcpFactory := factory.NewTCPFactory()
+	f.fieldsMutex.Lock()
 	f.factory = tcpFactory
+	f.fieldsMutex.Unlock()
 	tcpFactory.AcceptedCallback = f.acceptedCallback
 	return tcpFactory.Listen(address)
 }
@@ -133,17 +138,53 @@ func (f *MessengerFactory) unregister(key cipher.PubKey, connection *Connection)
 }
 
 func (f *MessengerFactory) Connect(address string) (conn *Connection, err error) {
-	tcpFactory := factory.NewTCPFactory()
-	c, err := tcpFactory.Connect(address)
+	return f.ConnectWithConfig(address, nil)
+}
+
+func (f *MessengerFactory) ConnectWithConfig(address string, config *ConnConfig) (conn *Connection, err error) {
+	f.fieldsMutex.Lock()
+	if f.factory == nil {
+		tcpFactory := factory.NewTCPFactory()
+		f.factory = tcpFactory
+	}
+	f.fieldsMutex.Unlock()
+	c, err := f.factory.Connect(address)
 	if err != nil {
 		return nil, err
 	}
 	conn = newClientConnection(c)
 	conn.SetContextLogger(conn.GetContextLogger().WithField("app", "messenger"))
 	err = conn.Reg()
+	if config != nil {
+		conn.findServiceNodesCallback = config.FindServiceNodesCallback
+		if config.OnConnected != nil {
+			config.OnConnected(conn)
+		}
+		if config.Reconnect {
+			go func() {
+				conn.WaitForDisconnected()
+				time.Sleep(config.ReconnectWait)
+				f.ConnectWithConfig(address, config)
+			}()
+		}
+	}
 	return
 }
 
 func (f *MessengerFactory) Close() error {
 	return f.factory.Close()
+}
+
+func (f *MessengerFactory) ForEachConn(fn func(connection *Connection)) {
+	for _, conn := range f.factory.GetConns() {
+		real := conn.RealObject
+		if real == nil {
+			continue
+		}
+		c, ok := real .(*Connection)
+		if !ok {
+			continue
+		}
+		fn(c)
+	}
 }

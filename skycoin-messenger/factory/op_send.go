@@ -9,15 +9,15 @@ import (
 func init() {
 	ops[OP_SEND] = &sync.Pool{
 		New: func() interface{} {
-			return new(Send)
+			return new(send)
 		},
 	}
 }
 
-type Send struct {
+type send struct {
 }
 
-func (send *Send) RawExecute(f *MessengerFactory, conn *Connection, m []byte) (rb []byte, err error) {
+func (send *send) RawExecute(f *MessengerFactory, conn *Connection, m []byte) (rb []byte, err error) {
 	if len(m) < SEND_MSG_TO_PUBLIC_KEY_END {
 		return
 	}

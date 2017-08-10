@@ -15,27 +15,40 @@ type Connection struct {
 	key         cipher.PubKey
 	keySetCond  *sync.Cond
 	keySet      bool
-	services    []*Service
+	services    *NodeServices
 	fieldsMutex sync.RWMutex
 
-	in chan []byte
+	in           chan []byte
+	disconnected chan struct{}
 
-	getServicesChan chan []cipher.PubKey
+	// callbacks
+
+	// call after received response for FindServiceNodesByKeys
+	findServiceNodesCallback func(map[string][]string)
 }
 
 // Used by factory to spawn connections for server side
 func newConnection(c *factory.Connection) *Connection {
 	connection := &Connection{Connection: c}
+	c.RealObject = connection
 	connection.keySetCond = sync.NewCond(connection.fieldsMutex.RLocker())
 	return connection
 }
 
 // Used by factory to spawn connections for client side
 func newClientConnection(c *factory.Connection) *Connection {
-	connection := &Connection{Connection: c, in: make(chan []byte), getServicesChan: make(chan []cipher.PubKey)}
+	connection := &Connection{Connection: c, in: make(chan []byte), disconnected: make(chan struct{})}
+	c.RealObject = connection
 	connection.keySetCond = sync.NewCond(connection.fieldsMutex.RLocker())
-	go connection.preprocessor()
+	go func() {
+		connection.preprocessor()
+		close(connection.disconnected)
+	}()
 	return connection
+}
+
+func (c *Connection) WaitForDisconnected() {
+	<-c.disconnected
 }
 
 func (c *Connection) SetKey(key cipher.PubKey) {
@@ -61,13 +74,13 @@ func (c *Connection) GetKey() cipher.PubKey {
 	return c.key
 }
 
-func (c *Connection) setServices(s []*Service) {
+func (c *Connection) setServices(s *NodeServices) {
 	c.fieldsMutex.Lock()
 	defer c.fieldsMutex.Unlock()
 	c.services = s
 }
 
-func (c *Connection) GetServices() []*Service {
+func (c *Connection) GetServices() *NodeServices {
 	c.fieldsMutex.RLock()
 	defer c.fieldsMutex.RUnlock()
 	return c.services
@@ -77,15 +90,11 @@ func (c *Connection) Reg() error {
 	return c.Write(GenRegMsg())
 }
 
-func (c *Connection) OfferService(attr ...string) error {
-	return c.UpdateServices([]*Service{{Key: c.GetKey(), Attributes: attr}})
-}
-
-func (c *Connection) UpdateServices(services []*Service) error {
-	if len(services) < 1 {
+func (c *Connection) UpdateServices(ns *NodeServices) error {
+	if len(ns.Services) < 1 {
 		return errors.New("len(Services) < 1")
 	}
-	js, err := json.Marshal(services)
+	js, err := json.Marshal(ns)
 	if err != nil {
 		return err
 	}
@@ -93,28 +102,16 @@ func (c *Connection) UpdateServices(services []*Service) error {
 	if err != nil {
 		return err
 	}
-	c.setServices(services)
+	c.setServices(ns)
 	return nil
 }
 
-func (c *Connection) GetServiceNodes(attr ...string) (result []cipher.PubKey, err error) {
-	return c.getServiceNodes(&Service{Attributes: attr})
-}
-
-func (c *Connection) GetServiceNodesByKey(key cipher.PubKey) (result []cipher.PubKey, err error) {
-	return c.getServiceNodes(&Service{Key: key})
-}
-
-func (c *Connection) getServiceNodes(service *Service) (result []cipher.PubKey, err error) {
-	js, err := json.Marshal(service)
+func (c *Connection) FindServiceNodesByKeys(keys []cipher.PubKey) (err error) {
+	js, err := json.Marshal(&query{Keys: keys})
 	if err != nil {
 		return
 	}
 	err = c.Write(GenGetServiceNodesMsg(js))
-	if err != nil {
-		return
-	}
-	result = <-c.getServicesChan
 	return
 }
 
@@ -134,6 +131,7 @@ func (c *Connection) preprocessor() (err error) {
 		if err != nil {
 			c.GetContextLogger().Debugf("preprocessor err %v", err)
 		}
+		c.Close()
 	}()
 	for {
 		select {
@@ -162,6 +160,7 @@ func (c *Connection) preprocessor() (err error) {
 						return
 					}
 					putResp(i, r)
+					continue
 				}
 			}
 
@@ -178,21 +177,14 @@ func (c *Connection) GetChanIn() <-chan []byte {
 }
 
 func (c *Connection) Close() {
+	c.keySetCond.Broadcast()
 	c.fieldsMutex.Lock()
 	defer c.fieldsMutex.Unlock()
-	if c.IsClosed() {
-		return
-	}
 	if c.in != nil {
 		close(c.in)
 		c.in = nil
 	}
-	if c.getServicesChan != nil {
-		close(c.getServicesChan)
-		c.getServicesChan = nil
-	}
 	c.Connection.Close()
-	c.keySetCond.Broadcast()
 }
 
 func (c *Connection) WriteOP(op byte, body []byte) error {

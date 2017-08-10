@@ -5,6 +5,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+	"net"
 )
 
 var (
@@ -22,6 +23,8 @@ type Connection interface {
 
 	GetContextLogger() *log.Entry
 	SetContextLogger(*log.Entry)
+
+	GetRemoteAddr() net.Addr
 }
 
 type ConnCommonFields struct {
