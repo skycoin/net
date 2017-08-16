@@ -138,7 +138,7 @@ func (sd *serviceDiscovery) find(key cipher.PubKey) []cipher.PubKey {
 	return keys
 }
 
-// find service address of nodes by subscription key
+// internal method without lock - find service address of nodes by subscription key
 func (sd *serviceDiscovery) _findServiceAddress(key cipher.PubKey, exclude cipher.PubKey) []string {
 	m, ok := sd.subscription2Subscriber[key]
 	if !ok {
@@ -155,7 +155,11 @@ func (sd *serviceDiscovery) _findServiceAddress(key cipher.PubKey, exclude ciphe
 	return result
 }
 
+// find service address of nodes by subscription key
 func (sd *serviceDiscovery) findServiceAddresses(keys []cipher.PubKey, exclude cipher.PubKey) (result map[string][]string) {
+	if len(keys) < 1 {
+		return nil
+	}
 	sd.subscription2SubscriberMutex.RLock()
 	defer sd.subscription2SubscriberMutex.RUnlock()
 
@@ -169,7 +173,7 @@ func (sd *serviceDiscovery) findServiceAddresses(keys []cipher.PubKey, exclude c
 
 // find public keys of nodes by subscription attrs
 // return intersect slice
-func (sd *serviceDiscovery) findByAttributes(attrs []string) []cipher.PubKey {
+func (sd *serviceDiscovery) findByAttributes(attrs ...string) []cipher.PubKey {
 	if len(attrs) < 1 {
 		return nil
 	}

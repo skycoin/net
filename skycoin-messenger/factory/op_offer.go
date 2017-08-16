@@ -30,14 +30,16 @@ func (offer *offer) UnmarshalJSON(data []byte) (err error) {
 }
 
 func (offer *offer) Execute(f *MessengerFactory, conn *Connection) (r resp, err error) {
-	remote := conn.GetRemoteAddr().String()
-	addr := remote[:strings.LastIndex(remote, ":")]
-	lastIndex := strings.LastIndex(offer.Services.ServiceAddress, ":")
-	if lastIndex < 0 {
-		return
+	if len(offer.Services.ServiceAddress) > 0 {
+		remote := conn.GetRemoteAddr().String()
+		addr := remote[:strings.LastIndex(remote, ":")]
+		lastIndex := strings.LastIndex(offer.Services.ServiceAddress, ":")
+		if lastIndex < 0 {
+			return
+		}
+		addr += offer.Services.ServiceAddress[lastIndex:]
+		offer.Services.ServiceAddress = addr
 	}
-	addr += offer.Services.ServiceAddress[lastIndex:]
-	offer.Services.ServiceAddress = addr
 	f.serviceDiscovery.register(conn, offer.Services)
 	return
 }

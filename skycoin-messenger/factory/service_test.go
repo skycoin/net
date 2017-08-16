@@ -18,14 +18,14 @@ func TestRegisterAndFind(t *testing.T) {
 		{Key: cipher.PubKey([33]byte{0xf2}), Attributes: []string{"vpn"}}}
 	conn1.SetKey(connkey1)
 	service := newServiceDiscovery()
-	service.register(conn1, subs1)
+	service.register(conn1, &NodeServices{Services:subs1})
 
 	var result []cipher.PubKey
 	result = service.find(key1)
 	if len(result) != 1 || result[0] != connkey1 {
 		t.Fatalf("len(result) != 1 || result[0] != connkey1 %v", result)
 	}
-	result = service.findByAttributes([]string{"vpn"})
+	result = service.findByAttributes("vpn")
 	if len(result) != 1 || result[0] != connkey1 {
 		t.Fatalf("len(result) != 1 || result[0] != connkey1 %v", result)
 	}
@@ -37,21 +37,21 @@ func TestRegisterAndFind(t *testing.T) {
 		{Key: key1, Attributes: []string{"ss"}}}
 	conn2.SetKey(connkey2)
 
-	service.register(conn2, subs2)
+	service.register(conn2, &NodeServices{Services:subs2})
 
 	result = service.find(key1)
 	if len(result) != 2 {
 		t.Fatalf("len(result) != 2 %v", result)
 	}
-	result = service.findByAttributes([]string{"a"})
+	result = service.findByAttributes("a")
 	if len(result) != 0 {
 		t.Fatalf("len(result) != 0 %v", result)
 	}
-	result = service.findByAttributes([]string{"vpn"})
+	result = service.findByAttributes("vpn")
 	if len(result) != 2 {
 		t.Fatalf("len(result) != 2 %v", result)
 	}
-	result = service.findByAttributes([]string{"ss"})
+	result = service.findByAttributes("ss")
 	if len(result) != 2 {
 		t.Fatalf("len(result) != 2 %v", result)
 	}
@@ -62,14 +62,14 @@ func TestRegisterAndFind(t *testing.T) {
 		{Key: cipher.PubKey([33]byte{0xff}), Attributes: []string{"vpn"}}}
 	conn3.SetKey(connkey3)
 
-	service.register(conn3, subs3)
+	service.register(conn3, &NodeServices{Services:subs3})
 
-	result = service.findByAttributes([]string{"vpn"})
+	result = service.findByAttributes("vpn")
 	if len(result) != 3 {
 		t.Fatalf("len(result) != 3 %v", result)
 	}
 
-	result = service.findByAttributes([]string{"vpn", "a"})
+	result = service.findByAttributes("vpn", "a")
 	if len(result) != 0 {
 		t.Fatalf("len(result) != 0 %v", result)
 	}
