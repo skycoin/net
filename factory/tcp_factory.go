@@ -42,6 +42,7 @@ func (factory *TCPFactory) Listen(address string) error {
 }
 
 func (factory *TCPFactory) Close() error {
+	factory.FactoryCommonFields.Close()
 	factory.fieldsMutex.RLock()
 	defer factory.fieldsMutex.RUnlock()
 	if factory.listener == nil {

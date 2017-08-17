@@ -42,6 +42,7 @@ type regResp struct {
 
 func (resp *regResp) Execute(conn *Connection) (err error) {
 	conn.SetKey(resp.PubKey)
+	conn.factory.register(resp.PubKey, conn)
 	conn.SetContextLogger(conn.GetContextLogger().WithField("pubkey", resp.PubKey.Hex()))
 	return
 }

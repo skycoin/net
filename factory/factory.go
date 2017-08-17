@@ -50,3 +50,15 @@ func (f *FactoryCommonFields) RemoveConn(conn *Connection) {
 	delete(f.connections, conn)
 	f.connectionsMutex.Unlock()
 }
+
+func (f *FactoryCommonFields) Close() (err error) {
+	f.connectionsMutex.RLock()
+	defer f.connectionsMutex.RUnlock()
+	if len(f.connections) < 1 {
+		return
+	}
+	for k := range f.connections {
+		k.Close()
+	}
+	return
+}

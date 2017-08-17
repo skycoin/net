@@ -48,6 +48,7 @@ func (factory *UDPFactory) Listen(address string) error {
 
 func (factory *UDPFactory) Close() error {
 	factory.stopGC <- true
+	factory.FactoryCommonFields.Close()
 	factory.fieldsMutex.RLock()
 	defer factory.fieldsMutex.RUnlock()
 	if factory.listener == nil {

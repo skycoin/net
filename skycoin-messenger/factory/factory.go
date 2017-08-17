@@ -5,10 +5,11 @@ import (
 
 	"encoding/json"
 
+	"time"
+
 	log "github.com/sirupsen/logrus"
 	"github.com/skycoin/net/factory"
 	"github.com/skycoin/skycoin/src/cipher"
-	"time"
 )
 
 func init() {
@@ -41,7 +42,7 @@ func (f *MessengerFactory) Listen(address string) error {
 
 func (f *MessengerFactory) acceptedCallback(connection *factory.Connection) {
 	var err error
-	conn := newConnection(connection)
+	conn := newConnection(connection, f)
 	conn.SetContextLogger(conn.GetContextLogger().WithField("app", "messenger"))
 	defer func() {
 		if e := recover(); e != nil {
@@ -152,11 +153,12 @@ func (f *MessengerFactory) ConnectWithConfig(address string, config *ConnConfig)
 	if err != nil {
 		return nil, err
 	}
-	conn = newClientConnection(c)
+	conn = newClientConnection(c, f)
 	conn.SetContextLogger(conn.GetContextLogger().WithField("app", "messenger"))
 	err = conn.Reg()
 	if config != nil {
-		conn.findServiceNodesCallback = config.FindServiceNodesCallback
+		conn.findServiceNodesByKeysCallback = config.FindServiceNodesByKeysCallback
+		conn.findServiceNodesByAttributesCallback = config.FindServiceNodesByAttributesCallback
 		if config.OnConnected != nil {
 			config.OnConnected(conn)
 		}
@@ -181,7 +183,7 @@ func (f *MessengerFactory) ForEachConn(fn func(connection *Connection)) {
 		if real == nil {
 			continue
 		}
-		c, ok := real .(*Connection)
+		c, ok := real.(*Connection)
 		if !ok {
 			continue
 		}

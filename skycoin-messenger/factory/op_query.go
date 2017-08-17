@@ -7,14 +7,25 @@ import (
 )
 
 func init() {
-	ops[OP_GET_SERVICE_NODES] = &sync.Pool{
+	ops[OP_QUERY_SERVICE_NODES] = &sync.Pool{
 		New: func() interface{} {
 			return new(query)
 		},
 	}
-	resps[OP_GET_SERVICE_NODES] = &sync.Pool{
+	resps[OP_QUERY_SERVICE_NODES] = &sync.Pool{
 		New: func() interface{} {
 			return new(queryResp)
+		},
+	}
+
+	ops[OP_QUERY_BY_ATTRS] = &sync.Pool{
+		New: func() interface{} {
+			return new(queryByAttrs)
+		},
+	}
+	resps[OP_QUERY_BY_ATTRS] = &sync.Pool{
+		New: func() interface{} {
+			return new(queryByAttrsResp)
 		},
 	}
 }
@@ -34,8 +45,30 @@ type queryResp struct {
 }
 
 func (resp *queryResp) Execute(conn *Connection) (err error) {
-	if conn.findServiceNodesCallback != nil {
-		conn.findServiceNodesCallback(resp.Result)
+	if conn.findServiceNodesByKeysCallback != nil {
+		conn.findServiceNodesByKeysCallback(resp.Result)
+	}
+	return
+}
+
+// query nodes by attributes
+type queryByAttrs struct {
+	abstractJsonOP
+	Attrs []string
+}
+
+func (query *queryByAttrs) Execute(f *MessengerFactory, conn *Connection) (r resp, err error) {
+	r = &queryByAttrsResp{Result: f.findByAttributes(query.Attrs...)}
+	return
+}
+
+type queryByAttrsResp struct {
+	Result []cipher.PubKey
+}
+
+func (resp *queryByAttrsResp) Execute(conn *Connection) (err error) {
+	if conn.findServiceNodesByKeysCallback != nil {
+		conn.findServiceNodesByAttributesCallback(resp.Result)
 	}
 	return
 }

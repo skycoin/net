@@ -12,6 +12,7 @@ import (
 
 type Connection struct {
 	*factory.Connection
+	factory *MessengerFactory
 	key         cipher.PubKey
 	keySetCond  *sync.Cond
 	keySet      bool
@@ -24,20 +25,23 @@ type Connection struct {
 	// callbacks
 
 	// call after received response for FindServiceNodesByKeys
-	findServiceNodesCallback func(map[string][]string)
+	findServiceNodesByKeysCallback func(map[string][]string)
+
+	// call after received response for FindServiceNodesByAttributes
+	findServiceNodesByAttributesCallback func([]cipher.PubKey)
 }
 
 // Used by factory to spawn connections for server side
-func newConnection(c *factory.Connection) *Connection {
-	connection := &Connection{Connection: c}
+func newConnection(c *factory.Connection, factory *MessengerFactory) *Connection {
+	connection := &Connection{Connection: c, factory:factory}
 	c.RealObject = connection
 	connection.keySetCond = sync.NewCond(connection.fieldsMutex.RLocker())
 	return connection
 }
 
 // Used by factory to spawn connections for client side
-func newClientConnection(c *factory.Connection) *Connection {
-	connection := &Connection{Connection: c, in: make(chan []byte), disconnected: make(chan struct{})}
+func newClientConnection(c *factory.Connection, factory *MessengerFactory) *Connection {
+	connection := &Connection{Connection: c, factory:factory, in: make(chan []byte), disconnected: make(chan struct{})}
 	c.RealObject = connection
 	connection.keySetCond = sync.NewCond(connection.fieldsMutex.RLocker())
 	go func() {
@@ -98,7 +102,7 @@ func (c *Connection) UpdateServices(ns *NodeServices) error {
 	if err != nil {
 		return err
 	}
-	err = c.Write(GenOfferServiceMsg(js))
+	err = c.WriteOP(OP_OFFER_SERVICE, js)
 	if err != nil {
 		return err
 	}
@@ -106,12 +110,25 @@ func (c *Connection) UpdateServices(ns *NodeServices) error {
 	return nil
 }
 
+func (c *Connection) OfferService(attr string) error {
+	return c.UpdateServices(&NodeServices{Services: []*Service{{Key: c.GetKey(), Attributes: []string{attr}}}})
+}
+
+func (c *Connection) FindServiceNodesByAttributes(attrs ...string) (err error) {
+	js, err := json.Marshal(&queryByAttrs{Attrs: attrs})
+	if err != nil {
+		return
+	}
+	err = c.WriteOP(OP_QUERY_BY_ATTRS, js)
+	return
+}
+
 func (c *Connection) FindServiceNodesByKeys(keys []cipher.PubKey) (err error) {
 	js, err := json.Marshal(&query{Keys: keys})
 	if err != nil {
 		return
 	}
-	err = c.Write(GenGetServiceNodesMsg(js))
+	err = c.WriteOP(OP_QUERY_SERVICE_NODES, js)
 	return
 }
 
@@ -120,7 +137,7 @@ func (c *Connection) Send(to cipher.PubKey, msg []byte) error {
 }
 
 func (c *Connection) SendCustom(msg []byte) error {
-	return c.Write(GenCustomMsg(msg))
+	return c.WriteOP(OP_CUSTOM, msg)
 }
 
 func (c *Connection) preprocessor() (err error) {
@@ -180,6 +197,9 @@ func (c *Connection) Close() {
 	c.keySetCond.Broadcast()
 	c.fieldsMutex.Lock()
 	defer c.fieldsMutex.Unlock()
+	if c.keySet {
+		c.factory.unregister(c.key, c)
+	}
 	if c.in != nil {
 		close(c.in)
 		c.in = nil
