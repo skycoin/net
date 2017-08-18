@@ -18,7 +18,7 @@ func TestRegisterAndFind(t *testing.T) {
 		{Key: cipher.PubKey([33]byte{0xf2}), Attributes: []string{"vpn"}}}
 	conn1.SetKey(connkey1)
 	service := newServiceDiscovery()
-	service.register(conn1, &NodeServices{Services:subs1})
+	service.register(conn1, &NodeServices{Services: subs1})
 
 	var result []cipher.PubKey
 	result = service.find(key1)
@@ -37,7 +37,7 @@ func TestRegisterAndFind(t *testing.T) {
 		{Key: key1, Attributes: []string{"ss"}}}
 	conn2.SetKey(connkey2)
 
-	service.register(conn2, &NodeServices{Services:subs2})
+	service.register(conn2, &NodeServices{Services: subs2})
 
 	result = service.find(key1)
 	if len(result) != 2 {
@@ -62,7 +62,7 @@ func TestRegisterAndFind(t *testing.T) {
 		{Key: cipher.PubKey([33]byte{0xff}), Attributes: []string{"vpn"}}}
 	conn3.SetKey(connkey3)
 
-	service.register(conn3, &NodeServices{Services:subs3})
+	service.register(conn3, &NodeServices{Services: subs3})
 
 	result = service.findByAttributes("vpn")
 	if len(result) != 3 {

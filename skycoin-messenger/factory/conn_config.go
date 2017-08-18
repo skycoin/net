@@ -1,8 +1,8 @@
 package factory
 
 import (
-	"time"
 	"github.com/skycoin/skycoin/src/cipher"
+	"time"
 )
 
 type ConnConfig struct {

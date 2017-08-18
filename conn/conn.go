@@ -2,10 +2,10 @@ package conn
 
 import (
 	log "github.com/sirupsen/logrus"
+	"net"
 	"sync"
 	"sync/atomic"
 	"time"
-	"net"
 )
 
 var (

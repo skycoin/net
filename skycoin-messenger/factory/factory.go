@@ -12,10 +12,6 @@ import (
 	"github.com/skycoin/skycoin/src/cipher"
 )
 
-func init() {
-	log.SetLevel(log.DebugLevel)
-}
-
 type MessengerFactory struct {
 	factory             factory.Factory
 	regConnections      map[cipher.PubKey]*Connection

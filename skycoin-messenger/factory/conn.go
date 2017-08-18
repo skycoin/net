@@ -12,7 +12,7 @@ import (
 
 type Connection struct {
 	*factory.Connection
-	factory *MessengerFactory
+	factory     *MessengerFactory
 	key         cipher.PubKey
 	keySetCond  *sync.Cond
 	keySet      bool
@@ -33,7 +33,7 @@ type Connection struct {
 
 // Used by factory to spawn connections for server side
 func newConnection(c *factory.Connection, factory *MessengerFactory) *Connection {
-	connection := &Connection{Connection: c, factory:factory}
+	connection := &Connection{Connection: c, factory: factory}
 	c.RealObject = connection
 	connection.keySetCond = sync.NewCond(connection.fieldsMutex.RLocker())
 	return connection
@@ -41,7 +41,7 @@ func newConnection(c *factory.Connection, factory *MessengerFactory) *Connection
 
 // Used by factory to spawn connections for client side
 func newClientConnection(c *factory.Connection, factory *MessengerFactory) *Connection {
-	connection := &Connection{Connection: c, factory:factory, in: make(chan []byte), disconnected: make(chan struct{})}
+	connection := &Connection{Connection: c, factory: factory, in: make(chan []byte), disconnected: make(chan struct{})}
 	c.RealObject = connection
 	connection.keySetCond = sync.NewCond(connection.fieldsMutex.RLocker())
 	go func() {
@@ -95,8 +95,8 @@ func (c *Connection) Reg() error {
 }
 
 func (c *Connection) UpdateServices(ns *NodeServices) error {
-	if len(ns.Services) < 1 {
-		return errors.New("len(Services) < 1")
+	if ns == nil || len(ns.Services) < 1 {
+		return errors.New("invalid arguments")
 	}
 	js, err := json.Marshal(ns)
 	if err != nil {

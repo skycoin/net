@@ -1,9 +1,9 @@
 package factory
 
 import (
+	"encoding/json"
 	"strings"
 	"sync"
-	"encoding/json"
 )
 
 func init() {
