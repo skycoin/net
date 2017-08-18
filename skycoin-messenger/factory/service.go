@@ -38,6 +38,25 @@ func newServiceDiscovery() serviceDiscovery {
 	}
 }
 
+func (sd *serviceDiscovery) pack() *NodeServices {
+	sd.subscription2SubscriberMutex.RLock()
+	defer sd.subscription2SubscriberMutex.RUnlock()
+	if len(sd.key2Attributes) < 1 {
+		return nil
+	}
+	ss := make([]*Service, 0, len(sd.key2Attributes))
+	for k, v := range sd.key2Attributes {
+		attrs := make([]string, 0, len(v))
+		for attr := range v {
+			attrs = append(attrs, attr)
+		}
+		s := &Service{Key: k, Attributes: attrs}
+		ss = append(ss, s)
+	}
+	ns := &NodeServices{Services: ss}
+	return ns
+}
+
 func (sd *serviceDiscovery) register(conn *Connection, ns *NodeServices) {
 	if len(ns.Services) < 1 {
 		return

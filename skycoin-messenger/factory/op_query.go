@@ -36,7 +36,10 @@ type query struct {
 }
 
 func (query *query) Execute(f *MessengerFactory, conn *Connection) (r resp, err error) {
-	r = &queryResp{Result: f.findServiceAddresses(query.Keys, conn.GetKey())}
+	result, ok := f.findServiceAddresses(query.Keys, conn.GetKey())
+	if ok {
+		r = &queryResp{Result: result}
+	}
 	return
 }
 
@@ -58,7 +61,10 @@ type queryByAttrs struct {
 }
 
 func (query *queryByAttrs) Execute(f *MessengerFactory, conn *Connection) (r resp, err error) {
-	r = &queryByAttrsResp{Result: f.findByAttributes(query.Attrs...)}
+	result, ok := f.findByAttributes(query.Attrs...)
+	if ok {
+		r = &queryByAttrsResp{Result: result}
+	}
 	return
 }
 

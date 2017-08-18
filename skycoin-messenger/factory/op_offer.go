@@ -40,6 +40,6 @@ func (offer *offer) Execute(f *MessengerFactory, conn *Connection) (r resp, err 
 		addr += offer.Services.ServiceAddress[lastIndex:]
 		offer.Services.ServiceAddress = addr
 	}
-	f.serviceDiscovery.register(conn, offer.Services)
+	f.discoveryRegister(conn, offer.Services)
 	return
 }

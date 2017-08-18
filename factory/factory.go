@@ -5,6 +5,7 @@ import "sync"
 type Factory interface {
 	Connect(address string) (conn *Connection, err error)
 	GetConns() (result []*Connection)
+	ForEachConn(fn func(connection *Connection))
 	Close() error
 }
 
@@ -43,6 +44,17 @@ func (f *FactoryCommonFields) GetConns() (result []*Connection) {
 		result = append(result, k)
 	}
 	return
+}
+
+func (f *FactoryCommonFields) ForEachConn(fn func(connection *Connection)) {
+	f.connectionsMutex.RLock()
+	defer f.connectionsMutex.RUnlock()
+	if len(f.connections) < 1 {
+		return
+	}
+	for k := range f.connections {
+		fn(k)
+	}
 }
 
 func (f *FactoryCommonFields) RemoveConn(conn *Connection) {

@@ -20,7 +20,12 @@ type MessengerFactory struct {
 	factory             factory.Factory
 	regConnections      map[cipher.PubKey]*Connection
 	regConnectionsMutex sync.RWMutex
-	CustomMsgHandler    func(*Connection, []byte)
+
+	// custom msg callback
+	CustomMsgHandler func(*Connection, []byte)
+
+	// service discovery data will update forward to this parent factory connections
+	ServiceDiscoveryParent *MessengerFactory
 
 	serviceDiscovery
 
@@ -52,7 +57,7 @@ func (f *MessengerFactory) acceptedCallback(connection *factory.Connection) {
 			conn.GetContextLogger().Errorf("acceptedCallback err %v", err)
 		}
 		f.unregister(conn.GetKey(), conn)
-		f.serviceDiscovery.unregister(conn)
+		f.discoveryUnregister(conn)
 		conn.Close()
 	}()
 	for {
@@ -156,6 +161,30 @@ func (f *MessengerFactory) ConnectWithConfig(address string, config *ConnConfig)
 	conn = newClientConnection(c, f)
 	conn.SetContextLogger(conn.GetContextLogger().WithField("app", "messenger"))
 	err = conn.Reg()
+	if f.ServiceDiscoveryParent != nil {
+		conn.findServiceNodesByKeysCallback = func(result map[string][]string) {
+			q := &queryResp{Result: result}
+			rb, err := json.Marshal(q)
+			if err != nil {
+				conn.GetContextLogger().Debugf("findServiceNodesByKeysCallback json err: %v", err)
+			}
+			err = conn.WriteOP(OP_QUERY_SERVICE_NODES|RESP_PREFIX, rb)
+			if err != nil {
+				conn.GetContextLogger().Debugf("findServiceNodesByKeysCallback write err: %v", err)
+			}
+		}
+		conn.findServiceNodesByAttributesCallback = func(keys []cipher.PubKey) {
+			q := &queryByAttrsResp{Result: keys}
+			rb, err := json.Marshal(q)
+			if err != nil {
+				conn.GetContextLogger().Debugf("findServiceNodesByAttributesCallback json err: %v", err)
+			}
+			err = conn.WriteOP(OP_QUERY_BY_ATTRS|RESP_PREFIX, rb)
+			if err != nil {
+				conn.GetContextLogger().Debugf("findServiceNodesByAttributesCallback write err: %v", err)
+			}
+		}
+	}
 	if config != nil {
 		conn.findServiceNodesByKeysCallback = config.FindServiceNodesByKeysCallback
 		conn.findServiceNodesByAttributesCallback = config.FindServiceNodesByAttributesCallback
@@ -178,15 +207,59 @@ func (f *MessengerFactory) Close() error {
 }
 
 func (f *MessengerFactory) ForEachConn(fn func(connection *Connection)) {
-	for _, conn := range f.factory.GetConns() {
+	f.factory.ForEachConn(func(conn *factory.Connection) {
 		real := conn.RealObject
 		if real == nil {
-			continue
+			return
 		}
 		c, ok := real.(*Connection)
 		if !ok {
-			continue
+			return
 		}
 		fn(c)
+	})
+}
+
+func (f *MessengerFactory) discoveryRegister(conn *Connection, ns *NodeServices) {
+	f.serviceDiscovery.register(conn, ns)
+	if f.ServiceDiscoveryParent != nil {
+		nodeServices := f.pack()
+		f.ServiceDiscoveryParent.ForEachConn(func(connection *Connection) {
+			connection.UpdateServices(nodeServices)
+		})
 	}
+}
+
+func (f *MessengerFactory) discoveryUnregister(conn *Connection) {
+	f.serviceDiscovery.unregister(conn)
+	if f.ServiceDiscoveryParent != nil {
+		nodeServices := f.pack()
+		f.ServiceDiscoveryParent.ForEachConn(func(connection *Connection) {
+			connection.UpdateServices(nodeServices)
+		})
+	}
+}
+
+func (f *MessengerFactory) findServiceAddresses(keys []cipher.PubKey, exclude cipher.PubKey) (result map[string][]string, ok bool) {
+	if f.ServiceDiscoveryParent == nil {
+		result = f.serviceDiscovery.findServiceAddresses(keys, exclude)
+		ok = true
+	} else {
+		f.ServiceDiscoveryParent.ForEachConn(func(connection *Connection) {
+			connection.FindServiceNodesByKeys(keys)
+		})
+	}
+	return
+}
+
+func (f *MessengerFactory) findByAttributes(attrs ...string) (result []cipher.PubKey, ok bool) {
+	if f.ServiceDiscoveryParent == nil {
+		result = f.serviceDiscovery.findByAttributes(attrs...)
+		ok = true
+	} else {
+		f.ServiceDiscoveryParent.ForEachConn(func(connection *Connection) {
+			connection.FindServiceNodesByAttributes(attrs...)
+		})
+	}
+	return
 }
