@@ -4,10 +4,13 @@ import (
 	"testing"
 
 	"github.com/skycoin/skycoin/src/cipher"
+	"sync"
 )
 
 func newTestConnection() *Connection {
-	return newConnection(nil)
+	connection := &Connection{}
+	connection.keySetCond = sync.NewCond(connection.fieldsMutex.RLocker())
+	return connection
 }
 
 func TestRegisterAndFind(t *testing.T) {

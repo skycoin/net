@@ -22,13 +22,15 @@ type Connection struct {
 	in           chan []byte
 	disconnected chan struct{}
 
+	proxyConnections map[uint32]*Connection
+
 	// callbacks
 
 	// call after received response for FindServiceNodesByKeys
-	findServiceNodesByKeysCallback func(map[string][]string)
+	findServiceNodesByKeysCallback func(resp *QueryResp)
 
 	// call after received response for FindServiceNodesByAttributes
-	findServiceNodesByAttributesCallback func([]cipher.PubKey)
+	findServiceNodesByAttributesCallback func(resp *QueryByAttrsResp)
 }
 
 // Used by factory to spawn connections for server side
@@ -41,7 +43,13 @@ func newConnection(c *factory.Connection, factory *MessengerFactory) *Connection
 
 // Used by factory to spawn connections for client side
 func newClientConnection(c *factory.Connection, factory *MessengerFactory) *Connection {
-	connection := &Connection{Connection: c, factory: factory, in: make(chan []byte), disconnected: make(chan struct{})}
+	connection := &Connection{
+		Connection:       c,
+		factory:          factory,
+		in:               make(chan []byte),
+		disconnected:     make(chan struct{}),
+		proxyConnections: make(map[uint32]*Connection),
+	}
 	c.RealObject = connection
 	connection.keySetCond = sync.NewCond(connection.fieldsMutex.RLocker())
 	go func() {
@@ -49,6 +57,22 @@ func newClientConnection(c *factory.Connection, factory *MessengerFactory) *Conn
 		close(connection.disconnected)
 	}()
 	return connection
+}
+
+func (c *Connection) setProxyConnection(seq uint32, conn *Connection) {
+	c.fieldsMutex.Lock()
+	c.proxyConnections[seq] = conn
+	c.fieldsMutex.Unlock()
+}
+
+func (c *Connection) removeProxyConnection(seq uint32) (conn *Connection, ok bool) {
+	c.fieldsMutex.Lock()
+	conn, ok = c.proxyConnections[seq]
+	if ok {
+		delete(c.proxyConnections, seq)
+	}
+	c.fieldsMutex.Unlock()
+	return
 }
 
 func (c *Connection) WaitForDisconnected() {
@@ -98,11 +122,7 @@ func (c *Connection) UpdateServices(ns *NodeServices) error {
 	if ns == nil || len(ns.Services) < 1 {
 		return errors.New("invalid arguments")
 	}
-	js, err := json.Marshal(ns)
-	if err != nil {
-		return err
-	}
-	err = c.WriteOP(OP_OFFER_SERVICE, js)
+	err := c.writeOP(OP_OFFER_SERVICE, ns)
 	if err != nil {
 		return err
 	}
@@ -110,26 +130,16 @@ func (c *Connection) UpdateServices(ns *NodeServices) error {
 	return nil
 }
 
-func (c *Connection) OfferService(attr string) error {
-	return c.UpdateServices(&NodeServices{Services: []*Service{{Key: c.GetKey(), Attributes: []string{attr}}}})
+func (c *Connection) OfferService(attrs ...string) error {
+	return c.UpdateServices(&NodeServices{Services: []*Service{{Key: c.GetKey(), Attributes: attrs}}})
 }
 
-func (c *Connection) FindServiceNodesByAttributes(attrs ...string) (err error) {
-	js, err := json.Marshal(&queryByAttrs{Attrs: attrs})
-	if err != nil {
-		return
-	}
-	err = c.WriteOP(OP_QUERY_BY_ATTRS, js)
-	return
+func (c *Connection) FindServiceNodesByAttributes(attrs ...string) error {
+	return c.writeOP(OP_QUERY_BY_ATTRS, newQueryByAttrs(attrs))
 }
 
-func (c *Connection) FindServiceNodesByKeys(keys []cipher.PubKey) (err error) {
-	js, err := json.Marshal(&query{Keys: keys})
-	if err != nil {
-		return
-	}
-	err = c.WriteOP(OP_QUERY_SERVICE_NODES, js)
-	return
+func (c *Connection) FindServiceNodesByKeys(keys []cipher.PubKey) error {
+	return c.writeOP(OP_QUERY_SERVICE_NODES, newQuery(keys))
 }
 
 func (c *Connection) Send(to cipher.PubKey, msg []byte) error {
@@ -137,7 +147,7 @@ func (c *Connection) Send(to cipher.PubKey, msg []byte) error {
 }
 
 func (c *Connection) SendCustom(msg []byte) error {
-	return c.WriteOP(OP_CUSTOM, msg)
+	return c.writeOPBytes(OP_CUSTOM, msg)
 }
 
 func (c *Connection) preprocessor() (err error) {
@@ -207,9 +217,17 @@ func (c *Connection) Close() {
 	c.Connection.Close()
 }
 
-func (c *Connection) WriteOP(op byte, body []byte) error {
+func (c *Connection) writeOPBytes(op byte, body []byte) error {
 	data := make([]byte, MSG_HEADER_END+len(body))
 	data[MSG_OP_BEGIN] = op
 	copy(data[MSG_HEADER_END:], body)
 	return c.Write(data)
+}
+
+func (c *Connection) writeOP(op byte, object interface{}) error {
+	js, err := json.Marshal(object)
+	if err != nil {
+		return err
+	}
+	return c.writeOPBytes(op, js)
 }

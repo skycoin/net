@@ -94,7 +94,7 @@ func (f *MessengerFactory) acceptedCallback(connection *factory.Connection) {
 				return
 			}
 			if rb != nil {
-				err = conn.WriteOP(opn|RESP_PREFIX, rb)
+				err = conn.writeOPBytes(opn|RESP_PREFIX, rb)
 				if err != nil {
 					return
 				}
@@ -152,35 +152,17 @@ func (f *MessengerFactory) ConnectWithConfig(address string, config *ConnConfig)
 	f.fieldsMutex.Unlock()
 	c, err := f.factory.Connect(address)
 	if err != nil {
+		if config != nil && config.Reconnect {
+			go func() {
+				time.Sleep(config.ReconnectWait)
+				f.ConnectWithConfig(address, config)
+			}()
+		}
 		return nil, err
 	}
 	conn = newClientConnection(c, f)
 	conn.SetContextLogger(conn.GetContextLogger().WithField("app", "messenger"))
 	err = conn.Reg()
-	if f.ServiceDiscoveryParent != nil {
-		conn.findServiceNodesByKeysCallback = func(result map[string][]string) {
-			q := &queryResp{Result: result}
-			rb, err := json.Marshal(q)
-			if err != nil {
-				conn.GetContextLogger().Debugf("findServiceNodesByKeysCallback json err: %v", err)
-			}
-			err = conn.WriteOP(OP_QUERY_SERVICE_NODES|RESP_PREFIX, rb)
-			if err != nil {
-				conn.GetContextLogger().Debugf("findServiceNodesByKeysCallback write err: %v", err)
-			}
-		}
-		conn.findServiceNodesByAttributesCallback = func(keys []cipher.PubKey) {
-			q := &queryByAttrsResp{Result: keys}
-			rb, err := json.Marshal(q)
-			if err != nil {
-				conn.GetContextLogger().Debugf("findServiceNodesByAttributesCallback json err: %v", err)
-			}
-			err = conn.WriteOP(OP_QUERY_BY_ATTRS|RESP_PREFIX, rb)
-			if err != nil {
-				conn.GetContextLogger().Debugf("findServiceNodesByAttributesCallback write err: %v", err)
-			}
-		}
-	}
 	if config != nil {
 		conn.findServiceNodesByKeysCallback = config.FindServiceNodesByKeysCallback
 		conn.findServiceNodesByAttributesCallback = config.FindServiceNodesByAttributesCallback
@@ -234,28 +216,4 @@ func (f *MessengerFactory) discoveryUnregister(conn *Connection) {
 			connection.UpdateServices(nodeServices)
 		})
 	}
-}
-
-func (f *MessengerFactory) findServiceAddresses(keys []cipher.PubKey, exclude cipher.PubKey) (result map[string][]string, ok bool) {
-	if f.ServiceDiscoveryParent == nil {
-		result = f.serviceDiscovery.findServiceAddresses(keys, exclude)
-		ok = true
-	} else {
-		f.ServiceDiscoveryParent.ForEachConn(func(connection *Connection) {
-			connection.FindServiceNodesByKeys(keys)
-		})
-	}
-	return
-}
-
-func (f *MessengerFactory) findByAttributes(attrs ...string) (result []cipher.PubKey, ok bool) {
-	if f.ServiceDiscoveryParent == nil {
-		result = f.serviceDiscovery.findByAttributes(attrs...)
-		ok = true
-	} else {
-		f.ServiceDiscoveryParent.ForEachConn(func(connection *Connection) {
-			connection.FindServiceNodesByAttributes(attrs...)
-		})
-	}
-	return
 }

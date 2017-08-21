@@ -1,7 +1,6 @@
 package factory
 
 import (
-	"github.com/skycoin/skycoin/src/cipher"
 	"time"
 )
 
@@ -11,9 +10,9 @@ type ConnConfig struct {
 
 	// callbacks
 
-	FindServiceNodesByKeysCallback func(result map[string][]string)
+	FindServiceNodesByKeysCallback func(resp *QueryResp)
 
-	FindServiceNodesByAttributesCallback func([]cipher.PubKey)
+	FindServiceNodesByAttributesCallback func(resp *QueryByAttrsResp)
 
 	// call after connected to server
 	OnConnected func(connection *Connection)

@@ -3,6 +3,8 @@ package factory
 import (
 	"sync"
 
+	"sync/atomic"
+
 	"github.com/skycoin/skycoin/src/cipher"
 )
 
@@ -14,7 +16,7 @@ func init() {
 	}
 	resps[OP_QUERY_SERVICE_NODES] = &sync.Pool{
 		New: func() interface{} {
-			return new(queryResp)
+			return new(QueryResp)
 		},
 	}
 
@@ -25,31 +27,53 @@ func init() {
 	}
 	resps[OP_QUERY_BY_ATTRS] = &sync.Pool{
 		New: func() interface{} {
-			return new(queryByAttrsResp)
+			return new(QueryByAttrsResp)
 		},
 	}
 }
 
+var (
+	querySeq uint32
+)
+
 type query struct {
 	abstractJsonOP
 	Keys []cipher.PubKey
+	Seq  uint32
+}
+
+func newQuery(keys []cipher.PubKey) *query {
+	q := &query{Keys: keys, Seq: atomic.AddUint32(&querySeq, 1)}
+	return q
 }
 
 func (query *query) Execute(f *MessengerFactory, conn *Connection) (r resp, err error) {
-	result, ok := f.findServiceAddresses(query.Keys, conn.GetKey())
-	if ok {
-		r = &queryResp{Result: result}
+	if f.ServiceDiscoveryParent == nil {
+		r = &QueryResp{
+			Seq:    query.Seq,
+			Result: f.findServiceAddresses(query.Keys, conn.GetKey()),
+		}
+		return
 	}
+	f.ServiceDiscoveryParent.ForEachConn(func(connection *Connection) {
+		connection.writeOP(OP_QUERY_SERVICE_NODES, query)
+		connection.setProxyConnection(query.Seq, conn)
+	})
+
 	return
 }
 
-type queryResp struct {
+type QueryResp struct {
+	Seq    uint32
 	Result map[string][]string
 }
 
-func (resp *queryResp) Execute(conn *Connection) (err error) {
+func (resp *QueryResp) Execute(conn *Connection) (err error) {
+	if connection, ok := conn.removeProxyConnection(resp.Seq); ok {
+		return connection.writeOP(OP_QUERY_SERVICE_NODES|RESP_PREFIX, resp)
+	}
 	if conn.findServiceNodesByKeysCallback != nil {
-		conn.findServiceNodesByKeysCallback(resp.Result)
+		conn.findServiceNodesByKeysCallback(resp)
 	}
 	return
 }
@@ -58,23 +82,38 @@ func (resp *queryResp) Execute(conn *Connection) (err error) {
 type queryByAttrs struct {
 	abstractJsonOP
 	Attrs []string
+	Seq   uint32
+}
+
+func newQueryByAttrs(attrs []string) *queryByAttrs {
+	q := &queryByAttrs{Attrs: attrs, Seq: atomic.AddUint32(&querySeq, 1)}
+	return q
 }
 
 func (query *queryByAttrs) Execute(f *MessengerFactory, conn *Connection) (r resp, err error) {
-	result, ok := f.findByAttributes(query.Attrs...)
-	if ok {
-		r = &queryByAttrsResp{Result: result}
+	if f.ServiceDiscoveryParent == nil {
+		r = &QueryByAttrsResp{Seq: query.Seq, Result: f.findByAttributes(query.Attrs...)}
+		return
 	}
+	f.ServiceDiscoveryParent.ForEachConn(func(connection *Connection) {
+		connection.writeOP(OP_QUERY_BY_ATTRS, query)
+		connection.setProxyConnection(query.Seq, conn)
+	})
+
 	return
 }
 
-type queryByAttrsResp struct {
+type QueryByAttrsResp struct {
 	Result []cipher.PubKey
+	Seq    uint32
 }
 
-func (resp *queryByAttrsResp) Execute(conn *Connection) (err error) {
-	if conn.findServiceNodesByKeysCallback != nil {
-		conn.findServiceNodesByAttributesCallback(resp.Result)
+func (resp *QueryByAttrsResp) Execute(conn *Connection) (err error) {
+	if connection, ok := conn.removeProxyConnection(resp.Seq); ok {
+		return connection.writeOP(OP_QUERY_BY_ATTRS|RESP_PREFIX, resp)
+	}
+	if conn.findServiceNodesByAttributesCallback != nil {
+		conn.findServiceNodesByAttributesCallback(resp)
 	}
 	return
 }
