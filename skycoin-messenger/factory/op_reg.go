@@ -20,7 +20,6 @@ func init() {
 }
 
 type reg struct {
-	abstractJsonOP
 }
 
 func (reg *reg) Execute(f *MessengerFactory, conn *Connection) (r resp, err error) {

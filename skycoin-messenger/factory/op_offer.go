@@ -15,7 +15,6 @@ func init() {
 }
 
 type offer struct {
-	abstractJsonOP
 	Services *NodeServices
 }
 

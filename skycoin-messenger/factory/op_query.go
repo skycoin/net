@@ -37,7 +37,6 @@ var (
 )
 
 type query struct {
-	abstractJsonOP
 	Keys []cipher.PubKey
 	Seq  uint32
 }
@@ -56,8 +55,8 @@ func (query *query) Execute(f *MessengerFactory, conn *Connection) (r resp, err 
 		return
 	}
 	f.ServiceDiscoveryParent.ForEachConn(func(connection *Connection) {
-		connection.writeOP(OP_QUERY_SERVICE_NODES, query)
 		connection.setProxyConnection(query.Seq, conn)
+		connection.writeOP(OP_QUERY_SERVICE_NODES, query)
 	})
 
 	return
@@ -80,7 +79,6 @@ func (resp *QueryResp) Execute(conn *Connection) (err error) {
 
 // query nodes by attributes
 type queryByAttrs struct {
-	abstractJsonOP
 	Attrs []string
 	Seq   uint32
 }
@@ -96,15 +94,15 @@ func (query *queryByAttrs) Execute(f *MessengerFactory, conn *Connection) (r res
 		return
 	}
 	f.ServiceDiscoveryParent.ForEachConn(func(connection *Connection) {
-		connection.writeOP(OP_QUERY_BY_ATTRS, query)
 		connection.setProxyConnection(query.Seq, conn)
+		connection.writeOP(OP_QUERY_BY_ATTRS, query)
 	})
 
 	return
 }
 
 type QueryByAttrsResp struct {
-	Result []cipher.PubKey
+	Result map[string][]cipher.PubKey
 	Seq    uint32
 }
 

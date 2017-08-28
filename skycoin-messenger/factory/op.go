@@ -5,7 +5,6 @@ import (
 )
 
 type simpleOP interface {
-	rawOP
 	Execute(f *MessengerFactory, conn *Connection) (r resp, err error)
 }
 
@@ -13,19 +12,8 @@ type rawOP interface {
 	RawExecute(f *MessengerFactory, conn *Connection, m []byte) (rb []byte, err error)
 }
 
-type abstractJsonOP struct {
-}
-
 type resp interface {
 	Execute(conn *Connection) (err error)
-}
-
-func (o *abstractJsonOP) RawExecute(f *MessengerFactory, conn *Connection, m []byte) (rb []byte, err error) {
-	return
-}
-
-func (o *abstractJsonOP) Execute(f *MessengerFactory, conn *Connection) (r resp, err error) {
-	return
 }
 
 var (

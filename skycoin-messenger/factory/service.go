@@ -192,7 +192,7 @@ func (sd *serviceDiscovery) findServiceAddresses(keys []cipher.PubKey, exclude c
 
 // find public keys of nodes by subscription attrs
 // return intersect slice
-func (sd *serviceDiscovery) findByAttributes(attrs ...string) []cipher.PubKey {
+func (sd *serviceDiscovery) findByAttributes(attrs ...string) map[string][]cipher.PubKey {
 	if len(attrs) < 1 {
 		return nil
 	}
@@ -209,17 +209,17 @@ func (sd *serviceDiscovery) findByAttributes(attrs ...string) []cipher.PubKey {
 	}
 
 	keys := intersectKeys(maps)
-	result := make(map[cipher.PubKey]struct{})
+	nodes := make(map[string][]cipher.PubKey)
 	for _, key := range keys {
 		m, ok := sd.subscription2Subscriber[key]
 		if !ok {
 			continue
 		}
 		for k := range m.nodes {
-			result[k] = struct{}{}
+			nodes[k.Hex()] = append(nodes[k.Hex()], key)
 		}
 	}
-	return mapKeys(result)
+	return nodes
 }
 
 func mapKeys(m map[cipher.PubKey]struct{}) (keys []cipher.PubKey) {
