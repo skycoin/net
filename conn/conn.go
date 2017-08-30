@@ -89,11 +89,6 @@ func (c *ConnCommonFields) SetContextLogger(l *log.Entry) {
 }
 
 func (c *ConnCommonFields) Close() {
-	defer func() {
-		if err := recover(); err != nil {
-			c.CTXLogger.Debug("closing closed udpconn")
-		}
-	}()
 	c.fieldsMutex.Lock()
 	defer c.fieldsMutex.Unlock()
 
