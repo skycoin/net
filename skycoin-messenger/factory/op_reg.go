@@ -39,7 +39,7 @@ type regResp struct {
 	PubKey cipher.PubKey
 }
 
-func (resp *regResp) Execute(conn *Connection) (err error) {
+func (resp *regResp) Run(conn *Connection) (err error) {
 	conn.SetKey(resp.PubKey)
 	conn.factory.register(resp.PubKey, conn)
 	conn.SetContextLogger(conn.GetContextLogger().WithField("pubkey", resp.PubKey.Hex()))

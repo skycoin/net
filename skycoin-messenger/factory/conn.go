@@ -17,12 +17,16 @@ type Connection struct {
 	keySetCond  *sync.Cond
 	keySet      bool
 	services    *NodeServices
+	servicesMap map[cipher.PubKey]*Service
 	fieldsMutex sync.RWMutex
 
 	in           chan []byte
 	disconnected chan struct{}
 
 	proxyConnections map[uint32]*Connection
+
+	appTransports      map[cipher.PubKey]*transport
+	appTransportsMutex sync.RWMutex
 
 	// callbacks
 
@@ -35,7 +39,11 @@ type Connection struct {
 
 // Used by factory to spawn connections for server side
 func newConnection(c *factory.Connection, factory *MessengerFactory) *Connection {
-	connection := &Connection{Connection: c, factory: factory}
+	connection := &Connection{
+		Connection:    c,
+		factory:       factory,
+		appTransports: make(map[cipher.PubKey]*transport),
+	}
 	c.RealObject = connection
 	connection.keySetCond = sync.NewCond(connection.fieldsMutex.RLocker())
 	return connection
@@ -49,6 +57,7 @@ func newClientConnection(c *factory.Connection, factory *MessengerFactory) *Conn
 		in:               make(chan []byte),
 		disconnected:     make(chan struct{}),
 		proxyConnections: make(map[uint32]*Connection),
+		appTransports:    make(map[cipher.PubKey]*transport),
 	}
 	c.RealObject = connection
 	connection.keySetCond = sync.NewCond(connection.fieldsMutex.RLocker())
@@ -103,9 +112,28 @@ func (c *Connection) GetKey() cipher.PubKey {
 }
 
 func (c *Connection) setServices(s *NodeServices) {
+	if s == nil {
+		c.fieldsMutex.Lock()
+		c.services = nil
+		c.servicesMap = nil
+		c.fieldsMutex.Unlock()
+		return
+	}
+	m := make(map[cipher.PubKey]*Service)
+	for _, v := range s.Services {
+		m[v.Key] = v
+	}
+	c.fieldsMutex.Lock()
+	c.services = s
+	c.servicesMap = m
+	c.fieldsMutex.Unlock()
+}
+
+func (c *Connection) getService(key cipher.PubKey) (service *Service, ok bool) {
 	c.fieldsMutex.Lock()
 	defer c.fieldsMutex.Unlock()
-	c.services = s
+	service, ok = c.servicesMap[key]
+	return
 }
 
 func (c *Connection) GetServices() *NodeServices {
@@ -134,6 +162,10 @@ func (c *Connection) OfferService(attrs ...string) error {
 	return c.UpdateServices(&NodeServices{Services: []*Service{{Key: c.GetKey(), Attributes: attrs}}})
 }
 
+func (c *Connection) OfferServiceWithAddress(address string, attrs ...string) error {
+	return c.UpdateServices(&NodeServices{Services: []*Service{{Key: c.GetKey(), Attributes: attrs, Address: address}}})
+}
+
 func (c *Connection) FindServiceNodesByAttributes(attrs ...string) error {
 	return c.writeOP(OP_QUERY_BY_ATTRS, newQueryByAttrs(attrs))
 }
@@ -142,8 +174,12 @@ func (c *Connection) FindServiceNodesByKeys(keys []cipher.PubKey) error {
 	return c.writeOP(OP_QUERY_SERVICE_NODES, newQuery(keys))
 }
 
+func (c *Connection) BuildConnection(node, app cipher.PubKey) error {
+	return c.writeOP(OP_BUILD_APP_CONN, &appConn{Node: node, App: app})
+}
+
 func (c *Connection) Send(to cipher.PubKey, msg []byte) error {
-	return c.Write(GenSendMsg(c.key, to, msg))
+	return c.Write(GenSendMsg(c.GetKey(), to, msg))
 }
 
 func (c *Connection) SendCustom(msg []byte) error {
@@ -182,7 +218,7 @@ func (c *Connection) preprocessor() (err error) {
 							return
 						}
 					}
-					err = r.Execute(c)
+					err = r.Run(c)
 					if err != nil {
 						return
 					}
@@ -207,6 +243,9 @@ func (c *Connection) Close() {
 	c.keySetCond.Broadcast()
 	c.fieldsMutex.Lock()
 	defer c.fieldsMutex.Unlock()
+	if c.Connection.IsClosed() {
+		return
+	}
 	if c.keySet {
 		c.factory.unregister(c.key, c)
 	}
@@ -230,4 +269,19 @@ func (c *Connection) writeOP(op byte, object interface{}) error {
 		return err
 	}
 	return c.writeOPBytes(op, js)
+}
+
+func (f *Connection) setTransport(to cipher.PubKey, tr *transport) {
+	f.appTransportsMutex.Lock()
+	defer f.appTransportsMutex.Unlock()
+
+	f.appTransports[to] = tr
+}
+
+func (f *Connection) getTransport(to cipher.PubKey) (tr *transport, ok bool) {
+	f.appTransportsMutex.RLock()
+	defer f.appTransportsMutex.RUnlock()
+
+	tr, ok = f.appTransports[to]
+	return
 }

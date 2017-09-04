@@ -73,7 +73,6 @@ func (c *ServerUDPConn) ReadLoop(fn func(c *net.UDPConn, addr *net.UDPAddr) *con
 					if err != nil {
 						cc.SetStatusToError(err)
 					}
-					cc.Close()
 				}()
 				cc.CTXLogger.Debugf("c.In <- m.Body %x", m[msg.MSG_HEADER_END:])
 				cc.In <- m[msg.MSG_HEADER_END:]

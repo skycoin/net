@@ -47,14 +47,14 @@ func newQuery(keys []cipher.PubKey) *query {
 }
 
 func (query *query) Execute(f *MessengerFactory, conn *Connection) (r resp, err error) {
-	if f.ServiceDiscoveryParent == nil {
+	if !f.Proxy {
 		r = &QueryResp{
 			Seq:    query.Seq,
 			Result: f.findServiceAddresses(query.Keys, conn.GetKey()),
 		}
 		return
 	}
-	f.ServiceDiscoveryParent.ForEachConn(func(connection *Connection) {
+	f.ForEachConn(func(connection *Connection) {
 		connection.setProxyConnection(query.Seq, conn)
 		connection.writeOP(OP_QUERY_SERVICE_NODES, query)
 	})
@@ -67,7 +67,7 @@ type QueryResp struct {
 	Result map[string][]string
 }
 
-func (resp *QueryResp) Execute(conn *Connection) (err error) {
+func (resp *QueryResp) Run(conn *Connection) (err error) {
 	if connection, ok := conn.removeProxyConnection(resp.Seq); ok {
 		return connection.writeOP(OP_QUERY_SERVICE_NODES|RESP_PREFIX, resp)
 	}
@@ -89,11 +89,11 @@ func newQueryByAttrs(attrs []string) *queryByAttrs {
 }
 
 func (query *queryByAttrs) Execute(f *MessengerFactory, conn *Connection) (r resp, err error) {
-	if f.ServiceDiscoveryParent == nil {
+	if !f.Proxy {
 		r = &QueryByAttrsResp{Seq: query.Seq, Result: f.findByAttributes(query.Attrs...)}
 		return
 	}
-	f.ServiceDiscoveryParent.ForEachConn(func(connection *Connection) {
+	f.ForEachConn(func(connection *Connection) {
 		connection.setProxyConnection(query.Seq, conn)
 		connection.writeOP(OP_QUERY_BY_ATTRS, query)
 	})
@@ -106,7 +106,7 @@ type QueryByAttrsResp struct {
 	Seq    uint32
 }
 
-func (resp *QueryByAttrsResp) Execute(conn *Connection) (err error) {
+func (resp *QueryByAttrsResp) Run(conn *Connection) (err error) {
 	if connection, ok := conn.removeProxyConnection(resp.Seq); ok {
 		return connection.writeOP(OP_QUERY_BY_ATTRS|RESP_PREFIX, resp)
 	}

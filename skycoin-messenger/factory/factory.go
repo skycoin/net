@@ -7,6 +7,8 @@ import (
 
 	"time"
 
+	"errors"
+
 	log "github.com/sirupsen/logrus"
 	"github.com/skycoin/net/factory"
 	"github.com/skycoin/skycoin/src/cipher"
@@ -18,14 +20,17 @@ func init() {
 
 type MessengerFactory struct {
 	factory             factory.Factory
+	udp                 *factory.UDPFactory
 	regConnections      map[cipher.PubKey]*Connection
 	regConnectionsMutex sync.RWMutex
+
+	appTransports      map[cipher.PubKey]*transport
+	appTransportsMutex sync.RWMutex
 
 	// custom msg callback
 	CustomMsgHandler func(*Connection, []byte)
 
-	// service discovery data will update forward to this parent factory connections
-	ServiceDiscoveryParent *MessengerFactory
+	Proxy bool
 
 	serviceDiscovery
 
@@ -36,30 +41,43 @@ func NewMessengerFactory() *MessengerFactory {
 	return &MessengerFactory{regConnections: make(map[cipher.PubKey]*Connection), serviceDiscovery: newServiceDiscovery()}
 }
 
-func (f *MessengerFactory) Listen(address string) error {
-	tcpFactory := factory.NewTCPFactory()
+func (f *MessengerFactory) Listen(address string) (err error) {
+	tcp := factory.NewTCPFactory()
+	tcp.AcceptedCallback = f.acceptedCallback
+	udp := factory.NewUDPFactory()
+	udp.AcceptedCallback = f.acceptedUDPCallback
 	f.fieldsMutex.Lock()
-	f.factory = tcpFactory
+	f.factory = tcp
+	f.udp = udp
 	f.fieldsMutex.Unlock()
-	tcpFactory.AcceptedCallback = f.acceptedCallback
-	return tcpFactory.Listen(address)
+	err = tcp.Listen(address)
+	if err != nil {
+		return
+	}
+	err = udp.Listen(address)
+	return
 }
 
-func (f *MessengerFactory) acceptedCallback(connection *factory.Connection) {
+func (f *MessengerFactory) acceptedUDPCallback(connection *factory.Connection) {
 	var err error
 	conn := newConnection(connection, f)
 	conn.SetContextLogger(conn.GetContextLogger().WithField("app", "messenger"))
 	defer func() {
 		if e := recover(); e != nil {
-			conn.GetContextLogger().Errorf("acceptedCallback recover err %v", e)
+			conn.GetContextLogger().Errorf("acceptedUDPCallback recover err %v", e)
 		}
 		if err != nil {
-			conn.GetContextLogger().Errorf("acceptedCallback err %v", err)
+			conn.GetContextLogger().Errorf("acceptedUDPCallback err %v", err)
 		}
-		f.unregister(conn.GetKey(), conn)
-		f.discoveryUnregister(conn)
 		conn.Close()
 	}()
+	err = f.callbackLoop(conn)
+	if err == ErrDetach {
+		conn.WaitForDisconnected()
+	}
+}
+
+func (f *MessengerFactory) callbackLoop(conn *Connection) (err error) {
 	for {
 		select {
 		case m, ok := <-conn.GetChanIn():
@@ -91,8 +109,11 @@ func (f *MessengerFactory) acceptedCallback(connection *factory.Connection) {
 				if r != nil {
 					rb, err = json.Marshal(r)
 				}
+			} else if rop, ok := op.(rawOP); ok {
+				rb, err = rop.RawExecute(f, conn, m)
 			} else {
-				rb, err = op.RawExecute(f, conn, m)
+				err = errors.New("not implement op type")
+				return
 			}
 			if err != nil {
 				return
@@ -106,6 +127,23 @@ func (f *MessengerFactory) acceptedCallback(connection *factory.Connection) {
 			putOP(int(opn), op)
 		}
 	}
+}
+
+func (f *MessengerFactory) acceptedCallback(connection *factory.Connection) {
+	var err error
+	conn := newConnection(connection, f)
+	conn.SetContextLogger(conn.GetContextLogger().WithField("app", "messenger"))
+	defer func() {
+		if e := recover(); e != nil {
+			conn.GetContextLogger().Errorf("acceptedCallback recover err %v", e)
+		}
+		if err != nil {
+			conn.GetContextLogger().Errorf("acceptedCallback err %v", err)
+		}
+		f.discoveryUnregister(conn)
+		conn.Close()
+	}()
+	err = f.callbackLoop(conn)
 }
 
 func (f *MessengerFactory) register(key cipher.PubKey, connection *Connection) {
@@ -138,7 +176,7 @@ func (f *MessengerFactory) unregister(key cipher.PubKey, connection *Connection)
 	if ok && c == connection {
 		delete(f.regConnections, key)
 		log.Debugf("unreg %s %p", key.Hex(), c)
-	} else {
+	} else if ok {
 		log.Debugf("unreg %s %p != new %p", key.Hex(), connection, c)
 	}
 }
@@ -184,6 +222,35 @@ func (f *MessengerFactory) ConnectWithConfig(address string, config *ConnConfig)
 	return
 }
 
+func (f *MessengerFactory) connectUDPWithConfig(address string, config *ConnConfig) (conn *Connection, err error) {
+	f.fieldsMutex.Lock()
+	if f.udp == nil {
+		ff := factory.NewUDPFactory()
+		if config != nil && config.Creator != nil {
+			ff.AcceptedCallback = config.Creator.acceptedUDPCallback
+		}
+		err = ff.Listen(":0")
+		if err != nil {
+			f.fieldsMutex.Unlock()
+			return
+		}
+		f.udp = ff
+	}
+	f.fieldsMutex.Unlock()
+	c, err := f.udp.ConnectAfterListen(address)
+	if err != nil {
+		return nil, err
+	}
+	conn = newClientConnection(c, f)
+	conn.SetContextLogger(conn.GetContextLogger().WithField("app", "transport"))
+	if config != nil {
+		if config.OnConnected != nil {
+			config.OnConnected(conn)
+		}
+	}
+	return
+}
+
 func (f *MessengerFactory) Close() error {
 	return f.factory.Close()
 }
@@ -204,9 +271,9 @@ func (f *MessengerFactory) ForEachConn(fn func(connection *Connection)) {
 
 func (f *MessengerFactory) discoveryRegister(conn *Connection, ns *NodeServices) {
 	f.serviceDiscovery.register(conn, ns)
-	if f.ServiceDiscoveryParent != nil {
+	if f.Proxy {
 		nodeServices := f.pack()
-		f.ServiceDiscoveryParent.ForEachConn(func(connection *Connection) {
+		f.ForEachConn(func(connection *Connection) {
 			connection.UpdateServices(nodeServices)
 		})
 	}
@@ -214,10 +281,25 @@ func (f *MessengerFactory) discoveryRegister(conn *Connection, ns *NodeServices)
 
 func (f *MessengerFactory) discoveryUnregister(conn *Connection) {
 	f.serviceDiscovery.unregister(conn)
-	if f.ServiceDiscoveryParent != nil {
+	if f.Proxy {
 		nodeServices := f.pack()
-		f.ServiceDiscoveryParent.ForEachConn(func(connection *Connection) {
+		f.ForEachConn(func(connection *Connection) {
 			connection.UpdateServices(nodeServices)
 		})
 	}
+}
+
+func (f *MessengerFactory) setTransport(to cipher.PubKey, tr *transport) {
+	f.appTransportsMutex.Lock()
+	defer f.appTransportsMutex.Unlock()
+
+	f.appTransports[to] = tr
+}
+
+func (f *MessengerFactory) getTransport(to cipher.PubKey) (tr *transport, ok bool) {
+	f.appTransportsMutex.RLock()
+	defer f.appTransportsMutex.RUnlock()
+
+	tr, ok = f.appTransports[to]
+	return
 }

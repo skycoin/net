@@ -2,6 +2,11 @@ package factory
 
 import (
 	"sync"
+	"errors"
+)
+
+var (
+	ErrDetach = errors.New("detach from accept callback")
 )
 
 type simpleOP interface {
@@ -13,7 +18,7 @@ type rawOP interface {
 }
 
 type resp interface {
-	Execute(conn *Connection) (err error)
+	Run(conn *Connection) (err error)
 }
 
 var (
@@ -21,7 +26,7 @@ var (
 	resps = make([]*sync.Pool, OP_SIZE)
 )
 
-func getOP(n int) rawOP {
+func getOP(n int) interface{} {
 	if n < 0 || n > OP_SIZE {
 		return nil
 	}
@@ -29,10 +34,10 @@ func getOP(n int) rawOP {
 	if pool == nil {
 		return nil
 	}
-	return pool.Get().(rawOP)
+	return pool.Get()
 }
 
-func putOP(n int, op rawOP) {
+func putOP(n int, op interface{}) {
 	if n < 0 || n > OP_SIZE {
 		return
 	}

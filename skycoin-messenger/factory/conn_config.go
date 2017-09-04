@@ -16,4 +16,6 @@ type ConnConfig struct {
 
 	// call after connected to server
 	OnConnected func(connection *Connection)
+
+	Creator *MessengerFactory
 }

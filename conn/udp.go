@@ -61,6 +61,7 @@ func (c *UDPConn) Write(bytes []byte) error {
 }
 
 func (c *UDPConn) WriteBytes(bytes []byte) error {
+	c.CTXLogger.Debugf("write %x", bytes)
 	c.writeMutex.Lock()
 	defer c.writeMutex.Unlock()
 	_, err := c.UdpConn.WriteToUDP(bytes, c.addr)
@@ -108,5 +109,5 @@ func (c *UDPConn) Close() {
 }
 
 func (c *UDPConn) GetRemoteAddr() net.Addr {
-	return c.UdpConn.RemoteAddr()
+	return c.addr
 }

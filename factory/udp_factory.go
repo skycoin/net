@@ -23,7 +23,7 @@ type UDPFactory struct {
 
 func NewUDPFactory() *UDPFactory {
 	udpFactory := &UDPFactory{stopGC: make(chan bool), FactoryCommonFields: NewFactoryCommonFields(), udpConnMap: make(map[string]*conn.UDPConn)}
-	go udpFactory.GC()
+	//go udpFactory.GC()
 	return udpFactory
 }
 
@@ -78,6 +78,25 @@ func (factory *UDPFactory) createConn(c *net.UDPConn, addr *net.UDPAddr) *conn.U
 	return udpConn
 }
 
+func (factory *UDPFactory) createConnAfterListen(addr *net.UDPAddr) *conn.UDPConn {
+	factory.udpConnMapMutex.RLock()
+	if cc, ok := factory.udpConnMap[addr.String()]; ok {
+		factory.udpConnMapMutex.RUnlock()
+		return cc
+	}
+	factory.udpConnMapMutex.RUnlock()
+
+	factory.fieldsMutex.Lock()
+	ln := factory.listener
+	factory.fieldsMutex.Unlock()
+
+	udpConn := conn.NewUDPConn(ln, addr)
+	factory.udpConnMapMutex.Lock()
+	factory.udpConnMap[addr.String()] = udpConn
+	factory.udpConnMapMutex.Unlock()
+	return udpConn
+}
+
 const UDP_GC_PERIOD = 90
 
 func (factory *UDPFactory) GC() {
@@ -116,6 +135,19 @@ func (factory *UDPFactory) Connect(address string) (conn *Connection, err error)
 	}
 	udp := c.(*net.UDPConn)
 	cn := client.NewClientUDPConn(udp)
+	cn.SetStatusToConnected()
+	conn = &Connection{Connection: cn, factory: factory}
+	conn.SetContextLogger(conn.GetContextLogger().WithField("type", "udp"))
+	factory.AddConn(conn)
+	return
+}
+
+func (factory *UDPFactory) ConnectAfterListen(address string) (conn *Connection, err error) {
+	ra, err := net.ResolveUDPAddr("udp", address)
+	if err != nil {
+		return
+	}
+	cn := factory.createConnAfterListen(ra)
 	cn.SetStatusToConnected()
 	conn = &Connection{Connection: cn, factory: factory}
 	conn.SetContextLogger(conn.GetContextLogger().WithField("type", "udp"))

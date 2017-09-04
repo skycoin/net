@@ -9,6 +9,7 @@ import (
 type Service struct {
 	Key        cipher.PubKey
 	Attributes []string `json:",omitempty"`
+	Address    string
 }
 
 type NodeServices struct {
