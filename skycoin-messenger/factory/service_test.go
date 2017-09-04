@@ -28,8 +28,8 @@ func TestRegisterAndFind(t *testing.T) {
 	if len(result) != 1 || result[0] != connkey1 {
 		t.Fatalf("len(result) != 1 || result[0] != connkey1 %v", result)
 	}
-	result = service.findByAttributes("vpn")
-	if len(result) != 1 || result[0] != connkey1 {
+	resultOfAttrs := service.findByAttributes("vpn")
+	if len(resultOfAttrs) != 1 || result[0] != connkey1 {
 		t.Fatalf("len(result) != 1 || result[0] != connkey1 %v", result)
 	}
 
@@ -46,16 +46,16 @@ func TestRegisterAndFind(t *testing.T) {
 	if len(result) != 2 {
 		t.Fatalf("len(result) != 2 %v", result)
 	}
-	result = service.findByAttributes("a")
-	if len(result) != 0 {
+	resultOfAttrs = service.findByAttributes("a")
+	if len(resultOfAttrs) != 0 {
 		t.Fatalf("len(result) != 0 %v", result)
 	}
-	result = service.findByAttributes("vpn")
-	if len(result) != 2 {
+	resultOfAttrs = service.findByAttributes("vpn")
+	if len(resultOfAttrs) != 2 {
 		t.Fatalf("len(result) != 2 %v", result)
 	}
-	result = service.findByAttributes("ss")
-	if len(result) != 2 {
+	resultOfAttrs = service.findByAttributes("ss")
+	if len(resultOfAttrs) != 2 {
 		t.Fatalf("len(result) != 2 %v", result)
 	}
 
@@ -67,13 +67,13 @@ func TestRegisterAndFind(t *testing.T) {
 
 	service.register(conn3, &NodeServices{Services: subs3})
 
-	result = service.findByAttributes("vpn")
-	if len(result) != 3 {
+	resultOfAttrs = service.findByAttributes("vpn")
+	if len(resultOfAttrs) != 3 {
 		t.Fatalf("len(result) != 3 %v", result)
 	}
 
-	result = service.findByAttributes("vpn", "a")
-	if len(result) != 0 {
+	resultOfAttrs = service.findByAttributes("vpn", "a")
+	if len(resultOfAttrs) != 0 {
 		t.Fatalf("len(result) != 0 %v", result)
 	}
 
