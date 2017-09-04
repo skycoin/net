@@ -102,11 +102,11 @@ func (t *transport) Connect(address, appAddress string) (err error) {
 	}()
 
 	go func() {
-		buf := make([]byte, cn.MAX_UDP_PACKAGE_SIZE)
+		buf := make([]byte, cn.MAX_UDP_PACKAGE_SIZE-100)
 		for {
 			n, err := appConn.Read(buf)
 			if err != nil {
-				log.Debugf("app conn read err %v", err)
+				log.Debugf("app conn read err %v, %d", err, n)
 				return
 			}
 			log.Debugf("Connect from server tcp %x", buf[:n])
@@ -150,11 +150,11 @@ func (t *transport) ListenForApp(address string, fn func()) (err error) {
 	t.fieldsMutex.Unlock()
 
 	go func() {
-		buf := make([]byte, cn.MAX_UDP_PACKAGE_SIZE)
+		buf := make([]byte, cn.MAX_UDP_PACKAGE_SIZE-100)
 		for {
 			n, err := conn.Read(buf)
 			if err != nil {
-				log.Debugf("app conn read err %v", err)
+				log.Debugf("app conn read err %v, %d", err, n)
 				return
 			}
 			log.Debugf("ListenForApp from app tcp %x", buf[:n])

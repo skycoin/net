@@ -192,7 +192,7 @@ func (sd *serviceDiscovery) findServiceAddresses(keys []cipher.PubKey, exclude c
 }
 
 // find public keys of nodes by subscription attrs
-// return intersect slice
+// return intersect map of node key => sub keys
 func (sd *serviceDiscovery) findByAttributes(attrs ...string) map[string][]cipher.PubKey {
 	if len(attrs) < 1 {
 		return nil

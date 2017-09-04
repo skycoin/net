@@ -51,6 +51,16 @@ func newConnection(c *factory.Connection, factory *MessengerFactory) *Connection
 
 // Used by factory to spawn connections for client side
 func newClientConnection(c *factory.Connection, factory *MessengerFactory) *Connection {
+	connection := newUDPClientConnection(c, factory)
+	go func() {
+		connection.preprocessor()
+		close(connection.disconnected)
+	}()
+	return connection
+}
+
+// Used by factory to spawn connections for udp client side
+func newUDPClientConnection(c *factory.Connection, factory *MessengerFactory) *Connection {
 	connection := &Connection{
 		Connection:       c,
 		factory:          factory,
@@ -61,10 +71,6 @@ func newClientConnection(c *factory.Connection, factory *MessengerFactory) *Conn
 	}
 	c.RealObject = connection
 	connection.keySetCond = sync.NewCond(connection.fieldsMutex.RLocker())
-	go func() {
-		connection.preprocessor()
-		close(connection.disconnected)
-	}()
 	return connection
 }
 
