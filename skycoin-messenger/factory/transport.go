@@ -110,12 +110,13 @@ func (t *transport) Connect(address, appAddress string) (err error) {
 				return
 			}
 			log.Debugf("Connect from server tcp %x", buf[:n])
-			err = conn.Write(buf[:n])
+			//err = conn.Write(buf[:n])
+			conn.GetChanOut()<-buf[:n]
 			log.Debugf("Connect to app udp %x", buf[:n])
-			if err != nil {
-				log.Debugf("node conn write err %v", err)
-				return
-			}
+			//if err != nil {
+			//	log.Debugf("node conn write err %v", err)
+			//	return
+			//}
 		}
 	}()
 	return
@@ -158,12 +159,13 @@ func (t *transport) ListenForApp(address string, fn func()) (err error) {
 				return
 			}
 			log.Debugf("ListenForApp from app tcp %x", buf[:n])
-			err = tConn.Write(buf[:n])
+			//err = tConn.Write(buf[:n])
+			tConn.GetChanOut()<-buf[:n]
 			log.Debugf("ListenForApp write to node b %x", buf[:n])
-			if err != nil {
-				log.Debugf("node conn write err %v", err)
-				return
-			}
+			//if err != nil {
+			//	log.Debugf("node conn write err %v", err)
+			//	return
+			//}
 		}
 	}()
 

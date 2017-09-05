@@ -67,13 +67,15 @@ func (c *ConnCommonFields) SetStatusToError(err error) {
 	c.CTXLogger.Debugf("SetStatusToError %v", err)
 }
 
-func (c *ConnCommonFields) UpdateLastAck(s uint32) {
+func (c *ConnCommonFields) UpdateLastAck(s uint32) (ok bool) {
 	c.fieldsMutex.Lock()
 	c.LastAck = time.Now().Unix()
 	if s > c.HighestACKedSequenceNumber {
 		c.HighestACKedSequenceNumber = s
+		ok = true
 	}
 	c.fieldsMutex.Unlock()
+	return
 }
 
 func (c *ConnCommonFields) GetContextLogger() *log.Entry {

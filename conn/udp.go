@@ -18,12 +18,20 @@ type UDPConn struct {
 	UdpConn *net.UDPConn
 	addr    *net.UDPAddr
 
+	Order    chan struct{}
 	lastTime int64
+	ackSeq   uint32
 }
 
 // used for server spawn udp conn
 func NewUDPConn(c *net.UDPConn, addr *net.UDPAddr) *UDPConn {
-	return &UDPConn{UdpConn: c, addr: addr, lastTime: time.Now().Unix(), ConnCommonFields: NewConnCommonFileds()}
+	return &UDPConn{
+		UdpConn:          c,
+		addr:             addr,
+		lastTime:         time.Now().Unix(),
+		ConnCommonFields: NewConnCommonFileds(),
+		Order:            make(chan struct{}),
+	}
 }
 
 func (c *UDPConn) ReadLoop() error {
@@ -44,17 +52,26 @@ func (c *UDPConn) WriteLoop() (err error) {
 				return nil
 			}
 			c.CTXLogger.Debugf("msg out %x", m)
-			err := c.Write(m)
-			if err != nil {
-				c.CTXLogger.Debugf("write msg is failed %v", err)
-				return err
+		WRITE_DONE:
+			for {
+				err := c.Write(m)
+				if err != nil {
+					c.CTXLogger.Debugf("write msg is failed %v", err)
+					return err
+				}
+				select {
+				case <-c.Order:
+					break WRITE_DONE
+				case <-time.After(time.Second * 2):
+					continue
+				}
 			}
 		}
 	}
 }
 
 func (c *UDPConn) Write(bytes []byte) error {
-	s := atomic.AddUint32(&c.seq, 1)
+	s := c.GetNextSeq()
 	m := msg.New(msg.TYPE_NORMAL, s, bytes)
 	c.AddMsg(s, m)
 	return c.WriteBytes(m.Bytes())
@@ -68,11 +85,13 @@ func (c *UDPConn) WriteBytes(bytes []byte) error {
 	return err
 }
 
-func (c *UDPConn) Ack(seq uint32) error {
+func (c *UDPConn) Ack(seq uint32) (ok bool, err error) {
+	ok = atomic.CompareAndSwapUint32(&c.ackSeq, seq-1, seq)
 	resp := make([]byte, msg.MSG_SEQ_END)
 	resp[msg.MSG_TYPE_BEGIN] = msg.TYPE_ACK
 	binary.BigEndian.PutUint32(resp[msg.MSG_SEQ_BEGIN:], seq)
-	return c.WriteBytes(resp)
+	err = c.WriteBytes(resp)
+	return
 }
 
 func (c *UDPConn) GetChanOut() chan<- []byte {

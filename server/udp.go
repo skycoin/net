@@ -14,7 +14,13 @@ type ServerUDPConn struct {
 }
 
 func NewServerUDPConn(c *net.UDPConn) *ServerUDPConn {
-	return &ServerUDPConn{UDPConn: conn.UDPConn{UdpConn: c, ConnCommonFields: conn.NewConnCommonFileds()}}
+	return &ServerUDPConn{
+		UDPConn: conn.UDPConn{
+			UdpConn:          c,
+			ConnCommonFields: conn.NewConnCommonFileds(),
+			Order:            make(chan struct{}),
+		},
+	}
 }
 
 func (c *ServerUDPConn) ReadLoop(fn func(c *net.UDPConn, addr *net.UDPAddr) *conn.UDPConn) (err error) {
@@ -49,8 +55,12 @@ func (c *ServerUDPConn) ReadLoop(fn func(c *net.UDPConn, addr *net.UDPAddr) *con
 		switch t {
 		case msg.TYPE_ACK:
 			seq := binary.BigEndian.Uint32(m[msg.MSG_SEQ_BEGIN:msg.MSG_SEQ_END])
-			cc.DelMsg(seq)
-			cc.UpdateLastAck(seq)
+			go func() {
+				if cc.DelMsg(seq) {
+					cc.Order <- struct{}{}
+				}
+				cc.UpdateLastAck(seq)
+			}()
 		case msg.TYPE_PING:
 			cc.CTXLogger.Debug("recv ping")
 			m[msg.PING_MSG_TYPE_BEGIN] = msg.TYPE_PONG
@@ -59,12 +69,8 @@ func (c *ServerUDPConn) ReadLoop(fn func(c *net.UDPConn, addr *net.UDPAddr) *con
 				return err
 			}
 		case msg.TYPE_NORMAL:
-			seq := binary.BigEndian.Uint32(m[msg.MSG_SEQ_BEGIN:msg.MSG_SEQ_END])
-			err = cc.Ack(seq)
-			if err != nil {
-				return err
-			}
 			func() {
+				var err error
 				defer func() {
 					if e := recover(); e != nil {
 						cc.CTXLogger.Debug(e)
@@ -74,6 +80,12 @@ func (c *ServerUDPConn) ReadLoop(fn func(c *net.UDPConn, addr *net.UDPAddr) *con
 						cc.SetStatusToError(err)
 					}
 				}()
+				seq := binary.BigEndian.Uint32(m[msg.MSG_SEQ_BEGIN:msg.MSG_SEQ_END])
+
+				ok, err := cc.Ack(seq)
+				if err != nil || !ok {
+					return
+				}
 				cc.CTXLogger.Debugf("c.In <- m.Body %x", m[msg.MSG_HEADER_END:])
 				cc.In <- m[msg.MSG_HEADER_END:]
 			}()

@@ -42,6 +42,7 @@ func newConnection(c *factory.Connection, factory *MessengerFactory) *Connection
 	connection := &Connection{
 		Connection:    c,
 		factory:       factory,
+		disconnected:     make(chan struct{}),
 		appTransports: make(map[cipher.PubKey]*transport),
 	}
 	c.RealObject = connection
@@ -51,16 +52,6 @@ func newConnection(c *factory.Connection, factory *MessengerFactory) *Connection
 
 // Used by factory to spawn connections for client side
 func newClientConnection(c *factory.Connection, factory *MessengerFactory) *Connection {
-	connection := newUDPClientConnection(c, factory)
-	go func() {
-		connection.preprocessor()
-		close(connection.disconnected)
-	}()
-	return connection
-}
-
-// Used by factory to spawn connections for udp client side
-func newUDPClientConnection(c *factory.Connection, factory *MessengerFactory) *Connection {
 	connection := &Connection{
 		Connection:       c,
 		factory:          factory,
@@ -71,6 +62,24 @@ func newUDPClientConnection(c *factory.Connection, factory *MessengerFactory) *C
 	}
 	c.RealObject = connection
 	connection.keySetCond = sync.NewCond(connection.fieldsMutex.RLocker())
+	go func() {
+		connection.preprocessor()
+	}()
+	return connection
+}
+
+// Used by factory to spawn connections for udp client side
+func newUDPClientConnection(c *factory.Connection, factory *MessengerFactory) *Connection {
+	connection := &Connection{
+		Connection:       c,
+		factory:          factory,
+		in:               make(chan []byte),
+	}
+	c.RealObject = connection
+	connection.keySetCond = sync.NewCond(connection.fieldsMutex.RLocker())
+	go func() {
+		connection.preprocessor()
+	}()
 	return connection
 }
 
@@ -202,6 +211,7 @@ func (c *Connection) preprocessor() (err error) {
 		}
 		c.Close()
 	}()
+	OUTER:
 	for {
 		select {
 		case m, ok := <-c.Connection.GetChanIn():
@@ -226,6 +236,10 @@ func (c *Connection) preprocessor() (err error) {
 					}
 					err = r.Run(c)
 					if err != nil {
+						if err == ErrDetach {
+							err = nil
+							break OUTER
+						}
 						return
 					}
 					putResp(i, r)
@@ -233,6 +247,15 @@ func (c *Connection) preprocessor() (err error) {
 				}
 			}
 
+			c.in <- m
+		}
+	}
+	for {
+		select {
+		case m, ok := <-c.Connection.GetChanIn():
+			if !ok {
+				return
+			}
 			c.in <- m
 		}
 	}
@@ -258,6 +281,10 @@ func (c *Connection) Close() {
 	if c.in != nil {
 		close(c.in)
 		c.in = nil
+	}
+	if c.disconnected != nil {
+		close(c.disconnected)
+		c.disconnected = nil
 	}
 	c.Connection.Close()
 }

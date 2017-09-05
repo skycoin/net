@@ -71,6 +71,7 @@ func (f *MessengerFactory) acceptedUDPCallback(connection *factory.Connection) {
 	}()
 	err = f.callbackLoop(conn)
 	if err == ErrDetach {
+		err = nil
 		conn.WaitForDisconnected()
 	}
 }
@@ -239,7 +240,7 @@ func (f *MessengerFactory) connectUDPWithConfig(address string, config *ConnConf
 	if err != nil {
 		return nil, err
 	}
-	conn = newClientConnection(c, f)
+	conn = newUDPClientConnection(c, f)
 	conn.SetContextLogger(conn.GetContextLogger().WithField("app", "transport"))
 	if config != nil {
 		if config.OnConnected != nil {

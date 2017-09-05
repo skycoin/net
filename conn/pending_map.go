@@ -36,7 +36,7 @@ func (m *PendingMap) AddMsg(k uint32, v *msg.Message) {
 	v.Transmitted()
 }
 
-func (m *PendingMap) DelMsg(k uint32) {
+func (m *PendingMap) DelMsg(k uint32) (ok bool) {
 	m.RLock()
 	v, ok := m.Pending[k]
 	m.RUnlock()
@@ -55,6 +55,7 @@ func (m *PendingMap) DelMsg(k uint32) {
 	delete(m.Pending, k)
 	m.logger.Debugf("acked %d, Pending:%d, %v", k, len(m.Pending), m.Pending)
 	m.Unlock()
+	return
 }
 
 func (m *PendingMap) analyse() {
