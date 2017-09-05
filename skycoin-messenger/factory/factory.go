@@ -9,6 +9,8 @@ import (
 
 	"errors"
 
+	"io/ioutil"
+
 	log "github.com/sirupsen/logrus"
 	"github.com/skycoin/net/factory"
 	"github.com/skycoin/skycoin/src/cipher"
@@ -298,4 +300,35 @@ func (f *MessengerFactory) getTransport(to cipher.PubKey) (tr *transport, ok boo
 
 	tr, ok = f.appTransports[to]
 	return
+}
+
+func (f *MessengerFactory) DisableLogger() {
+	log.SetOutput(ioutil.Discard)
+}
+
+// These are the different logging levels. You can set the logging level to log
+// on your instance of logger, obtained with `logrus.New()`.
+const (
+	// PanicLevel level, highest level of severity. Logs and then calls panic with the
+	// message passed to Debug, Info, ...
+	PanicLevel Level = iota
+	// FatalLevel level. Logs and then calls `os.Exit(1)`. It will exit even if the
+	// logging level is set to Panic.
+	FatalLevel
+	// ErrorLevel level. Logs. Used for errors that should definitely be noted.
+	// Commonly used for hooks to send errors to an error tracking service.
+	ErrorLevel
+	// WarnLevel level. Non-critical entries that deserve eyes.
+	WarnLevel
+	// InfoLevel level. General operational entries about what's going on inside the
+	// application.
+	InfoLevel
+	// DebugLevel level. Usually only enabled when debugging. Very verbose logging.
+	DebugLevel
+)
+
+type Level log.Level
+
+func (f *MessengerFactory) SetLoggerLevel(level Level) {
+	log.SetLevel(log.Level(level))
 }
