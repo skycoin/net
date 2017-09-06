@@ -18,7 +18,7 @@ type UDPConn struct {
 	UdpConn *net.UDPConn
 	addr    *net.UDPAddr
 
-	Order    chan struct{}
+	AckChan  chan struct{}
 	lastTime int64
 	ackSeq   uint32
 }
@@ -30,7 +30,7 @@ func NewUDPConn(c *net.UDPConn, addr *net.UDPAddr) *UDPConn {
 		addr:             addr,
 		lastTime:         time.Now().Unix(),
 		ConnCommonFields: NewConnCommonFileds(),
-		Order:            make(chan struct{}),
+		AckChan:          make(chan struct{}, 1),
 	}
 }
 
@@ -51,34 +51,39 @@ func (c *UDPConn) WriteLoop() (err error) {
 				c.CTXLogger.Debug("udp conn closed")
 				return nil
 			}
-			c.CTXLogger.Debugf("msg out %x", m)
-		WRITE_DONE:
-			for {
-				err := c.Write(m)
-				if err != nil {
-					c.CTXLogger.Debugf("write msg is failed %v", err)
-					return err
-				}
-				select {
-				case <-c.Order:
-					break WRITE_DONE
-				case <-time.After(time.Second * 2):
-					continue
-				}
+			//c.CTXLogger.Debugf("msg out %x", m)
+			err := c.Write(m)
+			if err != nil {
+				c.CTXLogger.Debugf("write msg is failed %v", err)
+				return err
 			}
 		}
 	}
 }
 
-func (c *UDPConn) Write(bytes []byte) error {
+func (c *UDPConn) Write(bytes []byte) (err error) {
 	s := c.GetNextSeq()
 	m := msg.New(msg.TYPE_NORMAL, s, bytes)
 	c.AddMsg(s, m)
-	return c.WriteBytes(m.Bytes())
+WRITE_DONE:
+	for {
+		err = c.WriteBytes(m.Bytes())
+		if err != nil {
+			c.CTXLogger.Debugf("write msg is failed %v", err)
+			return
+		}
+		select {
+		case <-c.AckChan:
+			break WRITE_DONE
+		case <-time.After(time.Millisecond * 300):
+			continue
+		}
+	}
+	return
 }
 
 func (c *UDPConn) WriteBytes(bytes []byte) error {
-	c.CTXLogger.Debugf("write %x", bytes)
+	//c.CTXLogger.Debugf("write %x", bytes)
 	c.writeMutex.Lock()
 	defer c.writeMutex.Unlock()
 	_, err := c.UdpConn.WriteToUDP(bytes, c.addr)
@@ -91,6 +96,7 @@ func (c *UDPConn) Ack(seq uint32) (ok bool, err error) {
 	resp[msg.MSG_TYPE_BEGIN] = msg.TYPE_ACK
 	binary.BigEndian.PutUint32(resp[msg.MSG_SEQ_BEGIN:], seq)
 	err = c.WriteBytes(resp)
+	c.CTXLogger.Debugf("Ack now is %d try to ack %d %v %v", atomic.LoadUint32(&c.ackSeq), seq, ok, err)
 	return
 }
 

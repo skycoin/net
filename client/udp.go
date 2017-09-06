@@ -19,7 +19,7 @@ func NewClientUDPConn(c *net.UDPConn) *ClientUDPConn {
 		UDPConn: conn.UDPConn{
 			UdpConn:          c,
 			ConnCommonFields: conn.NewConnCommonFileds(),
-			Order:            make(chan struct{}),
+			AckChan:          make(chan struct{}, 1),
 		},
 	}
 }
@@ -48,8 +48,9 @@ func (c *ClientUDPConn) ReadLoop() (err error) {
 		case msg.TYPE_PONG:
 		case msg.TYPE_ACK:
 			seq := binary.BigEndian.Uint32(maxBuf[msg.MSG_SEQ_BEGIN:msg.MSG_SEQ_END])
+			c.CTXLogger.Debugf("recv ack %d", seq)
 			if c.DelMsg(seq) {
-				c.Order <- struct{}{}
+				c.AckChan <- struct{}{}
 			}
 			c.UpdateLastAck(seq)
 		case msg.TYPE_NORMAL:
@@ -59,6 +60,7 @@ func (c *ClientUDPConn) ReadLoop() (err error) {
 				return err
 			}
 			if !ok {
+				c.CTXLogger.Debugf("Ack failed, %x", maxBuf)
 				continue
 			}
 			c.In <- maxBuf[msg.MSG_HEADER_END:]
@@ -99,20 +101,11 @@ func (c *ClientUDPConn) WriteLoop() (err error) {
 				c.CTXLogger.Debug("udp conn closed")
 				return nil
 			}
-			c.CTXLogger.Debugf("msg out %x", m)
-		WRITE_DONE:
-			for {
-				err := c.Write(m)
-				if err != nil {
-					c.CTXLogger.Debugf("write msg is failed %v", err)
-					return err
-				}
-				select {
-				case <-c.Order:
-					break WRITE_DONE
-				case <-time.After(time.Second * 2):
-					continue
-				}
+			//c.CTXLogger.Debugf("msg out %x", m)
+			err := c.Write(m)
+			if err != nil {
+				c.CTXLogger.Debugf("write msg is failed %v", err)
+				return err
 			}
 		}
 	}

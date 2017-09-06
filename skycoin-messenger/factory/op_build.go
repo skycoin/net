@@ -128,7 +128,7 @@ func (req *buildConnResp) Execute(f *MessengerFactory, conn *Connection) (r resp
 	return
 }
 
-// run on node A
+// run on node A, from manager
 func (req *buildConnResp) Run(conn *Connection) (err error) {
 	tr, ok := conn.getTransport(req.App)
 	if !ok {
@@ -146,7 +146,7 @@ type forwardNodeConn struct {
 	FromNode cipher.PubKey
 }
 
-// run on manager, conn is udp conn
+// run on manager, conn is udp conn from node A
 func (req *forwardNodeConn) Execute(f *MessengerFactory, conn *Connection) (r resp, err error) {
 	c, ok := f.GetConnection(req.Node)
 	if !ok {

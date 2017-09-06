@@ -50,7 +50,7 @@ func NewConnCommonFileds() ConnCommonFields {
 	entry := log.WithField("ctxId", atomic.AddUint32(&ctxId, 1))
 	return ConnCommonFields{
 		CTXLogger:  entry,
-		PendingMap: NewPendingMap(entry), In: make(chan []byte), Out: make(chan []byte)}
+		PendingMap: NewPendingMap(entry), In: make(chan []byte, 1), Out: make(chan []byte, 1)}
 }
 
 func (c *ConnCommonFields) SetStatusToConnected() {
@@ -67,15 +67,13 @@ func (c *ConnCommonFields) SetStatusToError(err error) {
 	c.CTXLogger.Debugf("SetStatusToError %v", err)
 }
 
-func (c *ConnCommonFields) UpdateLastAck(s uint32) (ok bool) {
+func (c *ConnCommonFields) UpdateLastAck(s uint32) {
 	c.fieldsMutex.Lock()
 	c.LastAck = time.Now().Unix()
 	if s > c.HighestACKedSequenceNumber {
 		c.HighestACKedSequenceNumber = s
-		ok = true
 	}
 	c.fieldsMutex.Unlock()
-	return
 }
 
 func (c *ConnCommonFields) GetContextLogger() *log.Entry {

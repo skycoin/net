@@ -150,7 +150,7 @@ func (factory *UDPFactory) ConnectAfterListen(address string) (conn *Connection,
 	cn := factory.createConnAfterListen(ra)
 	cn.SetStatusToConnected()
 	conn = &Connection{Connection: cn, factory: factory}
-	conn.SetContextLogger(conn.GetContextLogger().WithField("type", "udp"))
+	conn.SetContextLogger(conn.GetContextLogger().WithField("type", "udpe"))
 	factory.AddConn(conn)
 	return
 }

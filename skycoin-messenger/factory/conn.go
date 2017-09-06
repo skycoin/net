@@ -287,6 +287,13 @@ func (c *Connection) Close() {
 		c.disconnected = nil
 	}
 	c.Connection.Close()
+
+	c.appTransportsMutex.RLock()
+	defer c.appTransportsMutex.RUnlock()
+
+	for _, v := range c.appTransports {
+		v.Close()
+	}
 }
 
 func (c *Connection) writeOPBytes(op byte, body []byte) error {
@@ -304,17 +311,17 @@ func (c *Connection) writeOP(op byte, object interface{}) error {
 	return c.writeOPBytes(op, js)
 }
 
-func (f *Connection) setTransport(to cipher.PubKey, tr *transport) {
-	f.appTransportsMutex.Lock()
-	defer f.appTransportsMutex.Unlock()
+func (c *Connection) setTransport(to cipher.PubKey, tr *transport) {
+	c.appTransportsMutex.Lock()
+	defer c.appTransportsMutex.Unlock()
 
-	f.appTransports[to] = tr
+	c.appTransports[to] = tr
 }
 
-func (f *Connection) getTransport(to cipher.PubKey) (tr *transport, ok bool) {
-	f.appTransportsMutex.RLock()
-	defer f.appTransportsMutex.RUnlock()
+func (c *Connection) getTransport(to cipher.PubKey) (tr *transport, ok bool) {
+	c.appTransportsMutex.RLock()
+	defer c.appTransportsMutex.RUnlock()
 
-	tr, ok = f.appTransports[to]
+	tr, ok = c.appTransports[to]
 	return
 }

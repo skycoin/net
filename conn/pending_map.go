@@ -53,7 +53,7 @@ func (m *PendingMap) DelMsg(k uint32) (ok bool) {
 
 	m.Lock()
 	delete(m.Pending, k)
-	m.logger.Debugf("acked %d, Pending:%d, %v", k, len(m.Pending), m.Pending)
+	m.logger.Debugf("acked %d, Pending:%d", k, len(m.Pending))
 	m.Unlock()
 	return
 }

@@ -22,9 +22,6 @@ type MessengerFactory struct {
 	regConnections      map[cipher.PubKey]*Connection
 	regConnectionsMutex sync.RWMutex
 
-	appTransports      map[cipher.PubKey]*transport
-	appTransportsMutex sync.RWMutex
-
 	// custom msg callback
 	CustomMsgHandler func(*Connection, []byte)
 
@@ -286,21 +283,6 @@ func (f *MessengerFactory) discoveryUnregister(conn *Connection) {
 			connection.UpdateServices(nodeServices)
 		})
 	}
-}
-
-func (f *MessengerFactory) setTransport(to cipher.PubKey, tr *transport) {
-	f.appTransportsMutex.Lock()
-	defer f.appTransportsMutex.Unlock()
-
-	f.appTransports[to] = tr
-}
-
-func (f *MessengerFactory) getTransport(to cipher.PubKey) (tr *transport, ok bool) {
-	f.appTransportsMutex.RLock()
-	defer f.appTransportsMutex.RUnlock()
-
-	tr, ok = f.appTransports[to]
-	return
 }
 
 func (f *MessengerFactory) DisableLogger() {
