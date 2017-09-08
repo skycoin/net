@@ -58,7 +58,6 @@ func (c *ServerTCPConn) ReadLoop() (err error) {
 			if err != nil {
 				return err
 			}
-			c.CTXLogger.Debug("recv ping")
 		case msg.TYPE_NORMAL:
 			_, err = io.ReadAtLeast(reader, header, msg.MSG_HEADER_SIZE)
 			if err != nil {

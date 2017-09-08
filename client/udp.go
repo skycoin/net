@@ -48,7 +48,6 @@ func (c *ClientUDPConn) ReadLoop() (err error) {
 		case msg.TYPE_PONG:
 		case msg.TYPE_ACK:
 			seq := binary.BigEndian.Uint32(maxBuf[msg.MSG_SEQ_BEGIN:msg.MSG_SEQ_END])
-			c.CTXLogger.Debugf("recv ack %d", seq)
 			if c.DelMsg(seq) {
 				c.AckChan <- struct{}{}
 			}
@@ -91,8 +90,7 @@ func (c *ClientUDPConn) WriteLoop() (err error) {
 	for {
 		select {
 		case <-ticker.C:
-			c.CTXLogger.Debug("Ping out")
-			err := c.ping()
+			err := c.WriteBytes(msg.GenPingMsg())
 			if err != nil {
 				return err
 			}

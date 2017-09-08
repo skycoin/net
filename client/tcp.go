@@ -15,7 +15,7 @@ func NewClientTCPConn(c net.Conn) *ClientTCPConn {
 }
 
 func (c *ClientTCPConn) WriteLoop() (err error) {
-	ticker := time.NewTicker(time.Second * TICK_PERIOD)
+	ticker := time.NewTicker(time.Second * conn.TCP_PINGTICK_PERIOD)
 	defer func() {
 		ticker.Stop()
 		if err != nil {
@@ -25,7 +25,6 @@ func (c *ClientTCPConn) WriteLoop() (err error) {
 	for {
 		select {
 		case <-ticker.C:
-			c.CTXLogger.Debug("ping out")
 			err := c.Ping()
 			if err != nil {
 				return err

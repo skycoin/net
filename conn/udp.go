@@ -21,6 +21,9 @@ type UDPConn struct {
 	AckChan  chan struct{}
 	lastTime int64
 	ackSeq   uint32
+
+	// write loop with ping
+	Ping     bool
 }
 
 // used for server spawn udp conn
@@ -39,6 +42,14 @@ func (c *UDPConn) ReadLoop() error {
 }
 
 func (c *UDPConn) WriteLoop() (err error) {
+	if c.Ping {
+		return c.writeLoopWithPing()
+	} else {
+		return c.writeLoop()
+	}
+}
+
+func (c *UDPConn) writeLoop() (err error) {
 	defer func() {
 		if err != nil {
 			c.SetStatusToError(err)
@@ -51,7 +62,36 @@ func (c *UDPConn) WriteLoop() (err error) {
 				c.CTXLogger.Debug("udp conn closed")
 				return nil
 			}
-			//c.CTXLogger.Debugf("msg out %x", m)
+			err := c.Write(m)
+			if err != nil {
+				c.CTXLogger.Debugf("write msg is failed %v", err)
+				return err
+			}
+		}
+	}
+}
+
+func (c *UDPConn) writeLoopWithPing() (err error) {
+	ticker := time.NewTicker(time.Second * UDP_PING_TICK_PERIOD)
+	defer func() {
+		ticker.Stop()
+		if err != nil {
+			c.SetStatusToError(err)
+		}
+	}()
+
+	for {
+		select {
+		case <-ticker.C:
+			err := c.WriteBytes(msg.GenPingMsg())
+			if err != nil {
+				return err
+			}
+		case m, ok := <-c.Out:
+			if !ok {
+				c.CTXLogger.Debug("udp conn closed")
+				return nil
+			}
 			err := c.Write(m)
 			if err != nil {
 				c.CTXLogger.Debugf("write msg is failed %v", err)
@@ -128,6 +168,7 @@ func (c *UDPConn) Close() {
 	c.fieldsMutex.Lock()
 	if c.UdpConn != nil {
 		c.UdpConn.Close()
+		c.UdpConn = nil
 	}
 	c.fieldsMutex.Unlock()
 	c.ConnCommonFields.Close()

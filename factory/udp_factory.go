@@ -23,7 +23,7 @@ type UDPFactory struct {
 
 func NewUDPFactory() *UDPFactory {
 	udpFactory := &UDPFactory{stopGC: make(chan bool), FactoryCommonFields: NewFactoryCommonFields(), udpConnMap: make(map[string]*conn.UDPConn)}
-	//go udpFactory.GC()
+	go udpFactory.GC()
 	return udpFactory
 }
 
@@ -91,6 +91,7 @@ func (factory *UDPFactory) createConnAfterListen(addr *net.UDPAddr) *conn.UDPCon
 	factory.fieldsMutex.Unlock()
 
 	udpConn := conn.NewUDPConn(ln, addr)
+	udpConn.Ping = true
 	factory.udpConnMapMutex.Lock()
 	factory.udpConnMap[addr.String()] = udpConn
 	factory.udpConnMapMutex.Unlock()

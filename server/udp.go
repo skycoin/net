@@ -63,8 +63,8 @@ func (c *ServerUDPConn) ReadLoop(fn func(c *net.UDPConn, addr *net.UDPAddr) *con
 				}
 				cc.UpdateLastAck(seq)
 			}()
+		case msg.TYPE_PONG:
 		case msg.TYPE_PING:
-			cc.CTXLogger.Debug("recv ping")
 			m[msg.PING_MSG_TYPE_BEGIN] = msg.TYPE_PONG
 			err = cc.WriteBytes(m)
 			if err != nil {
