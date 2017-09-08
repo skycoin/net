@@ -77,58 +77,85 @@ func (t *transport) Connect(address, appAddress string) (err error) {
 	t.conn = conn
 	t.fieldsMutex.Unlock()
 
-	go func() {
-		var err error
-		for {
-			select {
-			case m, ok := <-conn.GetChanIn():
-				if !ok {
-					log.Debugf("node conn read err %v", err)
-					return
-				}
-				//log.Debugf("read from node udp %x", m)
-				id := binary.BigEndian.Uint32(m[PKG_HEADER_ID_BEGIN:PKG_HEADER_ID_END])
-				t.connsMutex.RLock()
-				appConn, ok := t.conns[id]
-				t.connsMutex.RUnlock()
-				if !ok {
-					appConn, err = net.Dial("tcp", appAddress)
-					if err != nil {
-						log.Debugf("app conn dial err %v", err)
-						return
-					}
-					go t.appReadLoop(id, appConn, conn, false)
-				}
-				body := m[PKG_HEADER_END:]
-				if len(body) < 1 {
-					continue
-				}
-				err = writeAll(appConn, body)
-				log.Debugf("send to tcp")
-				if err != nil {
-					log.Debugf("app conn write err %v", err)
-					return
-				}
+	go t.nodeReadLoop(conn, func(id uint32) net.Conn {
+		t.connsMutex.Lock()
+		defer t.connsMutex.Unlock()
+		appConn, ok := t.conns[id]
+		if !ok {
+			appConn, err = net.Dial("tcp", appAddress)
+			if err != nil {
+				log.Debugf("app conn dial err %v", err)
+				return nil
 			}
+			t.conns[id] = appConn
+			go t.appReadLoop(id, appConn, conn, false)
 		}
-	}()
+		return appConn
+	})
 
 	return
 }
 
+func (t *transport) nodeReadLoop(conn *Connection, getAppConn func(id uint32) net.Conn) {
+	var err error
+	for {
+		select {
+		case m, ok := <-conn.GetChanIn():
+			if !ok {
+				log.Debugf("node conn read err %v", err)
+				return
+			}
+			id := binary.BigEndian.Uint32(m[PKG_HEADER_ID_BEGIN:PKG_HEADER_ID_END])
+			appConn := getAppConn(id)
+			if appConn == nil {
+				continue
+			}
+			op := m[PKG_HEADER_OP_BEGIN]
+			if op == OP_CLOSE {
+				t.connsMutex.Lock()
+				t.conns[id] = nil
+				t.connsMutex.Unlock()
+				appConn.Close()
+				continue
+			}
+			body := m[PKG_HEADER_END:]
+			if len(body) < 1 {
+				continue
+			}
+			err = writeAll(appConn, body)
+			log.Debugf("send to tcp")
+			if err != nil {
+				log.Debugf("app conn write err %v", err)
+				continue
+			}
+		}
+	}
+}
+
 func (t *transport) appReadLoop(id uint32, appConn net.Conn, conn *Connection, create bool) {
 	buf := make([]byte, cn.MAX_UDP_PACKAGE_SIZE-100)
-	binary.BigEndian.PutUint32(buf, id)
+	binary.BigEndian.PutUint32(buf[PKG_HEADER_ID_BEGIN:PKG_HEADER_ID_END], id)
 	if create {
 		conn.GetChanOut() <- buf[:PKG_HEADER_END]
 	}
-	t.connsMutex.Lock()
-	t.conns[id] = appConn
-	t.connsMutex.Unlock()
+
 	defer func() {
 		t.connsMutex.Lock()
-		delete(t.conns, id)
-		t.connsMutex.Unlock()
+		defer t.connsMutex.Unlock()
+		// exited by err
+		if t.conns[id] != nil {
+			buf[PKG_HEADER_OP_BEGIN] = OP_CLOSE
+			conn.GetChanOut() <- buf[:PKG_HEADER_END]
+			if create {
+				delete(t.conns, id)
+			} else {
+				t.conns[id] = nil
+			}
+			return
+		}
+		if create {
+			delete(t.conns, id)
+		}
 	}()
 	for {
 		n, err := appConn.Read(buf[PKG_HEADER_END:])
@@ -138,7 +165,6 @@ func (t *transport) appReadLoop(id uint32, appConn net.Conn, conn *Connection, c
 		}
 		pkg := make([]byte, PKG_HEADER_END+n)
 		copy(pkg, buf[:PKG_HEADER_END+n])
-		//log.Debugf("tcp conn read %x", pkg)
 		conn.GetChanOut() <- pkg
 		log.Debugf("send to node udp")
 	}
@@ -167,11 +193,20 @@ func (t *transport) ListenForApp(address string, fn func()) (err error) {
 
 const (
 	PKG_HEADER_ID_SIZE = 4
+	PKG_HEADER_OP_SIZE = 1
 
 	PKG_HEADER_BEGIN    = 0
+	PKG_HEADER_OP_BEGIN
+	PKG_HEADER_OP_END   = PKG_HEADER_OP_BEGIN + PKG_HEADER_OP_SIZE
 	PKG_HEADER_ID_BEGIN
 	PKG_HEADER_ID_END   = PKG_HEADER_ID_BEGIN + PKG_HEADER_ID_SIZE
 	PKG_HEADER_END
+)
+
+const (
+	OP_TRANSPORT = iota
+	OP_CLOSE
+	OP_SHUTDOWN
 )
 
 func (t *transport) accept() {
@@ -179,37 +214,6 @@ func (t *transport) accept() {
 	tConn := t.conn
 	t.fieldsMutex.RUnlock()
 
-	go func() {
-		var err error
-		for {
-			select {
-			case m, ok := <-tConn.GetChanIn():
-				if !ok {
-					log.Debug("transport closed")
-					return
-				}
-				//log.Debugf("ListenForApp from node B udp %x", m)
-				id := binary.BigEndian.Uint32(m[PKG_HEADER_ID_BEGIN:PKG_HEADER_ID_END])
-				t.connsMutex.RLock()
-				conn, ok := t.conns[id]
-				t.connsMutex.RUnlock()
-				if !ok {
-					log.Debugf("node a tcp conn %d not found", id)
-					continue
-				}
-				body := m[PKG_HEADER_END:]
-				if len(body) < 1 {
-					continue
-				}
-				err = writeAll(conn, body)
-				log.Debugf("ListenForApp write to app")
-				if err != nil {
-					log.Debugf("ListenForApp write to app err %s", err)
-					continue
-				}
-			}
-		}
-	}()
 
 	var idSeq uint32
 	for {
@@ -217,7 +221,16 @@ func (t *transport) accept() {
 		if err != nil {
 			return
 		}
+		go t.nodeReadLoop(tConn, func(id uint32) net.Conn {
+			t.connsMutex.RLock()
+			conn := t.conns[id]
+			t.connsMutex.RUnlock()
+			return conn
+		})
 		id := atomic.AddUint32(&idSeq, 1)
+		t.connsMutex.Lock()
+		t.conns[id] = conn
+		t.connsMutex.Unlock()
 		go t.appReadLoop(id, conn, tConn, true)
 	}
 }
@@ -230,6 +243,14 @@ func (t *transport) Close() {
 		return
 	}
 
+	t.connsMutex.RLock()
+	for _, v := range t.conns {
+		if v == nil {
+			continue
+		}
+		v.Close()
+	}
+	t.connsMutex.RUnlock()
 	if t.appNet != nil {
 		t.appNet.Close()
 		t.appNet = nil
@@ -240,12 +261,6 @@ func (t *transport) Close() {
 	}
 	t.factory.Close()
 	t.factory = nil
-
-	t.connsMutex.RLock()
-	for _, v := range t.conns {
-		v.Close()
-	}
-	t.connsMutex.RUnlock()
 }
 
 func writeAll(conn io.Writer, m []byte) error {

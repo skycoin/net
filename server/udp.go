@@ -56,10 +56,15 @@ func (c *ServerUDPConn) ReadLoop(fn func(c *net.UDPConn, addr *net.UDPAddr) *con
 		case msg.TYPE_ACK:
 			seq := binary.BigEndian.Uint32(m[msg.MSG_SEQ_BEGIN:msg.MSG_SEQ_END])
 			cc.CTXLogger.Debugf("server recv ack %d", seq)
-			go func() {
+			func() {
+				defer func() {
+					if e := recover(); e != nil {
+						cc.CTXLogger.Debug(e)
+					}
+				}()
 				if cc.DelMsg(seq) {
-					cc.CTXLogger.Debugf("server del ack ok")
 					cc.AckChan <- struct{}{}
+					cc.CTXLogger.Debugf("server del ack ok")
 				}
 				cc.UpdateLastAck(seq)
 			}()
