@@ -39,17 +39,21 @@ func NewMessengerFactory() *MessengerFactory {
 func (f *MessengerFactory) Listen(address string) (err error) {
 	tcp := factory.NewTCPFactory()
 	tcp.AcceptedCallback = f.acceptedCallback
-	udp := factory.NewUDPFactory()
-	udp.AcceptedCallback = f.acceptedUDPCallback
 	f.fieldsMutex.Lock()
 	f.factory = tcp
-	f.udp = udp
 	f.fieldsMutex.Unlock()
 	err = tcp.Listen(address)
 	if err != nil {
 		return
 	}
-	err = udp.Listen(address)
+	if !f.Proxy {
+		udp := factory.NewUDPFactory()
+		udp.AcceptedCallback = f.acceptedUDPCallback
+		f.fieldsMutex.Lock()
+		f.udp = udp
+		f.fieldsMutex.Unlock()
+		err = udp.Listen(address)
+	}
 	return
 }
 
