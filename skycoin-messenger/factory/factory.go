@@ -208,6 +208,7 @@ func (f *MessengerFactory) ConnectWithConfig(address string, config *ConnConfig)
 	if config != nil {
 		conn.findServiceNodesByKeysCallback = config.FindServiceNodesByKeysCallback
 		conn.findServiceNodesByAttributesCallback = config.FindServiceNodesByAttributesCallback
+		conn.appConnectionInitCallback = config.AppConnectionInitCallback
 		if config.OnConnected != nil {
 			config.OnConnected(conn)
 		}

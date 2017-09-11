@@ -35,6 +35,9 @@ type Connection struct {
 
 	// call after received response for FindServiceNodesByAttributes
 	findServiceNodesByAttributesCallback func(resp *QueryByAttrsResp)
+
+	// call after received response for BuildAppConnection
+	appConnectionInitCallback func(resp *AppConnResp)
 }
 
 // Used by factory to spawn connections for server side
@@ -189,7 +192,7 @@ func (c *Connection) FindServiceNodesByKeys(keys []cipher.PubKey) error {
 	return c.writeOP(OP_QUERY_SERVICE_NODES, newQuery(keys))
 }
 
-func (c *Connection) BuildConnection(node, app cipher.PubKey) error {
+func (c *Connection) BuildAppConnection(node, app cipher.PubKey) error {
 	return c.writeOP(OP_BUILD_APP_CONN, &appConn{Node: node, App: app})
 }
 

@@ -7,6 +7,7 @@ import (
 type ConnConfig struct {
 	Reconnect     bool
 	ReconnectWait time.Duration
+	Creator       *MessengerFactory
 
 	// callbacks
 
@@ -14,8 +15,8 @@ type ConnConfig struct {
 
 	FindServiceNodesByAttributesCallback func(resp *QueryByAttrsResp)
 
+	AppConnectionInitCallback func(resp *AppConnResp)
+
 	// call after connected to server
 	OnConnected func(connection *Connection)
-
-	Creator *MessengerFactory
 }

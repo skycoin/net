@@ -3,8 +3,10 @@ package factory
 import (
 	"sync"
 
-	"fmt"
 	"sync/atomic"
+
+	"net"
+	"strconv"
 
 	"github.com/skycoin/skycoin/src/cipher"
 )
@@ -42,7 +44,7 @@ func init() {
 	}
 	resps[OP_BUILD_APP_CONN] = &sync.Pool{
 		New: func() interface{} {
-			return new(appConnResp)
+			return new(AppConnResp)
 		},
 	}
 	resps[OP_APP_CONN_ACK] = &sync.Pool{
@@ -52,12 +54,10 @@ func init() {
 	}
 }
 
-var p2pPort uint32 = 10000
+var p2pPort int32 = 30000
 
-func genP2PAddress() (addr string) {
-	port := atomic.AddUint32(&p2pPort, 1)
-	addr = fmt.Sprintf(":%d", port)
-	return
+func genP2PPort() (port int) {
+	return int(atomic.AddInt32(&p2pPort, 1))
 }
 
 type appConn struct {
@@ -87,13 +87,23 @@ func (req *appConn) Execute(f *MessengerFactory, conn *Connection) (r resp, err 
 	return
 }
 
-type appConnResp struct {
-	Address string
+type AppConnResp struct {
+	Host string `json:",omitempty"`
+	Port int
 }
 
 // run on app
-func (req *appConnResp) Run(conn *Connection) (err error) {
+func (req *AppConnResp) Run(conn *Connection) (err error) {
 	conn.GetContextLogger().Debugf("recv %#v", req)
+	if conn.appConnectionInitCallback != nil {
+		addr := conn.GetRemoteAddr().String()
+		host, _, err := net.SplitHostPort(addr)
+		if err != nil {
+			return err
+		}
+		req.Host = host
+		conn.appConnectionInitCallback(req)
+	}
 	return
 }
 
@@ -114,15 +124,15 @@ func (req *buildConnResp) Execute(f *MessengerFactory, conn *Connection) (r resp
 	conn.GetContextLogger().Debugf("recv %#v tr %#v", req, tr)
 	tr.setUDPConn(conn)
 	conn.writeOP(OP_APP_CONN_ACK|RESP_PREFIX, &connAck{})
-	addr := genP2PAddress()
+	port := genP2PPort()
 	fnOK := func() {
-		appConn.writeOP(OP_BUILD_APP_CONN|RESP_PREFIX, &appConnResp{Address: addr})
+		appConn.writeOP(OP_BUILD_APP_CONN|RESP_PREFIX, &AppConnResp{Port: port})
 	}
-	err = tr.ListenForApp(addr, fnOK)
+	err = tr.ListenForApp(net.JoinHostPort("", strconv.Itoa(port)), fnOK)
 	for err != nil {
 		conn.GetContextLogger().Debugf("ListenForApp err %v", err)
-		addr = genP2PAddress()
-		err = tr.ListenForApp(addr, fnOK)
+		port = genP2PPort()
+		err = tr.ListenForApp(net.JoinHostPort("", strconv.Itoa(port)), fnOK)
 	}
 	err = ErrDetach
 	return

@@ -168,7 +168,6 @@ func (c *UDPConn) Close() {
 	c.fieldsMutex.Lock()
 	if c.UdpConn != nil {
 		c.UdpConn.Close()
-		c.UdpConn = nil
 	}
 	c.fieldsMutex.Unlock()
 	c.ConnCommonFields.Close()
