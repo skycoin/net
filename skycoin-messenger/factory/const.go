@@ -25,12 +25,20 @@ const (
 )
 
 const (
+	// request public key for the connection
 	OP_REG = iota
+	// im messages
 	OP_SEND
+	// app custom messages
 	OP_CUSTOM
+	// discovery register
 	OP_OFFER_SERVICE
+	// find services by public key (cxo)
 	OP_QUERY_SERVICE_NODES
+	// find services by attributes (vpn, socks etc)
 	OP_QUERY_BY_ATTRS
+
+	// build udp p2p connections
 	OP_BUILD_APP_CONN
 	OP_FORWARD_NODE_CONN
 	OP_BUILD_NODE_CONN
