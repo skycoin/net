@@ -19,7 +19,7 @@ func NewClientUDPConn(c *net.UDPConn) *ClientUDPConn {
 		UDPConn: conn.UDPConn{
 			UdpConn:          c,
 			ConnCommonFields: conn.NewConnCommonFileds(),
-			AckChan:          make(chan struct{}, 1),
+			UDPPendingMap:    conn.NewUDPPendingMap(),
 		},
 	}
 }
@@ -48,10 +48,19 @@ func (c *ClientUDPConn) ReadLoop() (err error) {
 		case msg.TYPE_PONG:
 		case msg.TYPE_ACK:
 			seq := binary.BigEndian.Uint32(maxBuf[msg.MSG_SEQ_BEGIN:msg.MSG_SEQ_END])
-			if c.DelMsg(seq) {
-				c.AckChan <- struct{}{}
+			ok, msgs := c.DelMsgAndGetLossMsgs(seq)
+			if ok {
+				if len(msgs) > 1 {
+					c.CTXLogger.Debugf("resend loss msgs %v", msgs)
+					for _, msg := range msgs {
+						err = c.WriteBytes(msg.Bytes())
+						if err != nil {
+							return err
+						}
+					}
+				}
+				c.UpdateLastAck(seq)
 			}
-			c.UpdateLastAck(seq)
 		case msg.TYPE_NORMAL:
 			seq := binary.BigEndian.Uint32(maxBuf[msg.MSG_SEQ_BEGIN:msg.MSG_SEQ_END])
 			ok, err := c.Ack(seq)

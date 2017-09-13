@@ -10,20 +10,20 @@ import (
 )
 
 const (
-	MAX_UDP_PACKAGE_SIZE = 1024
+	MAX_UDP_PACKAGE_SIZE = 1200
 )
 
 type UDPConn struct {
 	ConnCommonFields
+	*UDPPendingMap
 	UdpConn *net.UDPConn
 	addr    *net.UDPAddr
 
-	AckChan  chan struct{}
 	lastTime int64
 	ackSeq   uint32
 
 	// write loop with ping
-	Ping     bool
+	Ping bool
 }
 
 // used for server spawn udp conn
@@ -33,7 +33,7 @@ func NewUDPConn(c *net.UDPConn, addr *net.UDPAddr) *UDPConn {
 		addr:             addr,
 		lastTime:         time.Now().Unix(),
 		ConnCommonFields: NewConnCommonFileds(),
-		AckChan:          make(chan struct{}, 1),
+		UDPPendingMap:    NewUDPPendingMap(),
 	}
 }
 
@@ -105,20 +105,7 @@ func (c *UDPConn) Write(bytes []byte) (err error) {
 	s := c.GetNextSeq()
 	m := msg.New(msg.TYPE_NORMAL, s, bytes)
 	c.AddMsg(s, m)
-WRITE_DONE:
-	for {
-		err = c.WriteBytes(m.Bytes())
-		if err != nil {
-			c.CTXLogger.Debugf("write msg is failed %v", err)
-			return
-		}
-		select {
-		case <-c.AckChan:
-			break WRITE_DONE
-		case <-time.After(time.Millisecond * 300):
-			continue
-		}
-	}
+	err = c.WriteBytes(m.Bytes())
 	return
 }
 
@@ -136,7 +123,9 @@ func (c *UDPConn) Ack(seq uint32) (ok bool, err error) {
 	resp[msg.MSG_TYPE_BEGIN] = msg.TYPE_ACK
 	binary.BigEndian.PutUint32(resp[msg.MSG_SEQ_BEGIN:], seq)
 	err = c.WriteBytes(resp)
-	c.CTXLogger.Debugf("Ack now is %d try to ack %d %v %v", atomic.LoadUint32(&c.ackSeq), seq, ok, err)
+	if !ok {
+		c.CTXLogger.Debugf("Ack now is %d try to ack %d %v %v", atomic.LoadUint32(&c.ackSeq), seq, ok, err)
+	}
 	return
 }
 

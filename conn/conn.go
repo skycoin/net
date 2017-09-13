@@ -1,11 +1,12 @@
 package conn
 
 import (
-	log "github.com/sirupsen/logrus"
 	"net"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	log "github.com/sirupsen/logrus"
 )
 
 var (
@@ -28,7 +29,6 @@ type Connection interface {
 }
 
 type ConnCommonFields struct {
-	*PendingMap
 	seq uint32 // id of last message, increment every new message
 
 	HighestACKedSequenceNumber uint32 // highest packet that has been ACKed
@@ -49,8 +49,10 @@ type ConnCommonFields struct {
 func NewConnCommonFileds() ConnCommonFields {
 	entry := log.WithField("ctxId", atomic.AddUint32(&ctxId, 1))
 	return ConnCommonFields{
-		CTXLogger:  entry,
-		PendingMap: NewPendingMap(entry), In: make(chan []byte, 1), Out: make(chan []byte, 1)}
+		CTXLogger: entry,
+		In:        make(chan []byte, 1),
+		Out:       make(chan []byte, 1),
+	}
 }
 
 func (c *ConnCommonFields) SetStatusToConnected() {

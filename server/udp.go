@@ -18,7 +18,7 @@ func NewServerUDPConn(c *net.UDPConn) *ServerUDPConn {
 		UDPConn: conn.UDPConn{
 			UdpConn:          c,
 			ConnCommonFields: conn.NewConnCommonFileds(),
-			AckChan:          make(chan struct{}, 1),
+			UDPPendingMap:    conn.NewUDPPendingMap(),
 		},
 	}
 }
@@ -55,18 +55,25 @@ func (c *ServerUDPConn) ReadLoop(fn func(c *net.UDPConn, addr *net.UDPAddr) *con
 		switch t {
 		case msg.TYPE_ACK:
 			seq := binary.BigEndian.Uint32(m[msg.MSG_SEQ_BEGIN:msg.MSG_SEQ_END])
-			cc.CTXLogger.Debugf("server recv ack %d", seq)
 			func() {
 				defer func() {
 					if e := recover(); e != nil {
 						cc.CTXLogger.Debug(e)
 					}
 				}()
-				if cc.DelMsg(seq) {
-					cc.AckChan <- struct{}{}
-					cc.CTXLogger.Debugf("server del ack ok")
+				ok, msgs := c.DelMsgAndGetLossMsgs(seq)
+				if ok {
+					if len(msgs) > 1 {
+						c.CTXLogger.Debugf("resend loss msgs %v", msgs)
+						for _, msg := range msgs {
+							err = c.WriteBytes(msg.Bytes())
+							if err != nil {
+								return
+							}
+						}
+					}
+					c.UpdateLastAck(seq)
 				}
-				cc.UpdateLastAck(seq)
 			}()
 		case msg.TYPE_PONG:
 		case msg.TYPE_PING:

@@ -18,6 +18,7 @@ const (
 
 type TCPConn struct {
 	ConnCommonFields
+	*PendingMap
 	TcpConn net.Conn
 }
 

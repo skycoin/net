@@ -4,10 +4,11 @@ import (
 	"bufio"
 	"encoding/binary"
 	"fmt"
-	"github.com/skycoin/net/conn"
-	"github.com/skycoin/net/msg"
 	"io"
 	"net"
+
+	"github.com/skycoin/net/conn"
+	"github.com/skycoin/net/msg"
 )
 
 type ServerTCPConn struct {
@@ -15,7 +16,13 @@ type ServerTCPConn struct {
 }
 
 func NewServerTCPConn(c *net.TCPConn) *ServerTCPConn {
-	return &ServerTCPConn{TCPConn: conn.TCPConn{TcpConn: c, ConnCommonFields: conn.NewConnCommonFileds()}}
+	return &ServerTCPConn{
+		TCPConn: conn.TCPConn{
+			TcpConn:          c,
+			ConnCommonFields: conn.NewConnCommonFileds(),
+			PendingMap:       conn.NewPendingMap(),
+		},
+	}
 }
 
 func (c *ServerTCPConn) ReadLoop() (err error) {

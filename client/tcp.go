@@ -1,9 +1,10 @@
 package client
 
 import (
-	"github.com/skycoin/net/conn"
 	"net"
 	"time"
+
+	"github.com/skycoin/net/conn"
 )
 
 type ClientTCPConn struct {
@@ -11,7 +12,13 @@ type ClientTCPConn struct {
 }
 
 func NewClientTCPConn(c net.Conn) *ClientTCPConn {
-	return &ClientTCPConn{conn.TCPConn{TcpConn: c, ConnCommonFields: conn.NewConnCommonFileds()}}
+	return &ClientTCPConn{
+		TCPConn: conn.TCPConn{
+			TcpConn:          c,
+			ConnCommonFields: conn.NewConnCommonFileds(),
+			PendingMap:       conn.NewPendingMap(),
+		},
+	}
 }
 
 func (c *ClientTCPConn) WriteLoop() (err error) {
