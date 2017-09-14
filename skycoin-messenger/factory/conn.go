@@ -164,6 +164,7 @@ func (c *Connection) Reg() error {
 	return c.Write(GenRegMsg())
 }
 
+// register services to discovery
 func (c *Connection) UpdateServices(ns *NodeServices) error {
 	if ns == nil || len(ns.Services) < 1 {
 		return errors.New("invalid arguments")
@@ -176,18 +177,22 @@ func (c *Connection) UpdateServices(ns *NodeServices) error {
 	return nil
 }
 
+// register a service to discovery
 func (c *Connection) OfferService(attrs ...string) error {
 	return c.UpdateServices(&NodeServices{Services: []*Service{{Key: c.GetKey(), Attributes: attrs}}})
 }
 
+// register a service to discovery
 func (c *Connection) OfferServiceWithAddress(address string, attrs ...string) error {
 	return c.UpdateServices(&NodeServices{Services: []*Service{{Key: c.GetKey(), Attributes: attrs, Address: address}}})
 }
 
+// find services by attributes
 func (c *Connection) FindServiceNodesByAttributes(attrs ...string) error {
 	return c.writeOP(OP_QUERY_BY_ATTRS, newQueryByAttrs(attrs))
 }
 
+// find services nodes by service public keys
 func (c *Connection) FindServiceNodesByKeys(keys []cipher.PubKey) error {
 	return c.writeOP(OP_QUERY_SERVICE_NODES, newQuery(keys))
 }
