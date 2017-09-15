@@ -7,6 +7,8 @@ import (
 	"time"
 
 	"github.com/skycoin/net/msg"
+	"sync"
+	"hash/crc32"
 )
 
 const (
@@ -16,14 +18,15 @@ const (
 type UDPConn struct {
 	ConnCommonFields
 	*UDPPendingMap
+	StreamQueue
 	UdpConn *net.UDPConn
 	addr    *net.UDPAddr
 
 	lastTime int64
-	ackSeq   uint32
 
 	// write loop with ping
-	Ping bool
+	SendPing bool
+	wmx      sync.Mutex
 }
 
 // used for server spawn udp conn
@@ -42,7 +45,7 @@ func (c *UDPConn) ReadLoop() error {
 }
 
 func (c *UDPConn) WriteLoop() (err error) {
-	if c.Ping {
+	if c.SendPing {
 		return c.writeLoopWithPing()
 	} else {
 		return c.writeLoop()
@@ -83,7 +86,7 @@ func (c *UDPConn) writeLoopWithPing() (err error) {
 	for {
 		select {
 		case <-ticker.C:
-			err := c.WriteBytes(msg.GenPingMsg())
+			err := c.Ping()
 			if err != nil {
 				return err
 			}
@@ -102,31 +105,42 @@ func (c *UDPConn) writeLoopWithPing() (err error) {
 }
 
 func (c *UDPConn) Write(bytes []byte) (err error) {
+	c.wmx.Lock()
+	defer c.wmx.Unlock()
 	s := c.GetNextSeq()
 	m := msg.New(msg.TYPE_NORMAL, s, bytes)
 	c.AddMsg(s, m)
-	err = c.WriteBytes(m.Bytes())
+	c.GetContextLogger().Debugf("Write msg seq %d", s)
+	err = c.WriteBytes(m.PkgBytes())
 	return
 }
 
 func (c *UDPConn) WriteBytes(bytes []byte) error {
 	//c.CTXLogger.Debugf("write %x", bytes)
-	c.writeMutex.Lock()
-	defer c.writeMutex.Unlock()
+	c.WriteMutex.Lock()
+	defer c.WriteMutex.Unlock()
 	_, err := c.UdpConn.WriteToUDP(bytes, c.addr)
 	return err
 }
 
-func (c *UDPConn) Ack(seq uint32) (ok bool, err error) {
-	ok = atomic.CompareAndSwapUint32(&c.ackSeq, seq-1, seq)
-	resp := make([]byte, msg.MSG_SEQ_END)
-	resp[msg.MSG_TYPE_BEGIN] = msg.TYPE_ACK
-	binary.BigEndian.PutUint32(resp[msg.MSG_SEQ_BEGIN:], seq)
-	err = c.WriteBytes(resp)
-	if !ok {
-		c.CTXLogger.Debugf("Ack now is %d try to ack %d %v %v", atomic.LoadUint32(&c.ackSeq), seq, ok, err)
-	}
-	return
+func (c *UDPConn) Ack(seq uint32) error {
+	p := make([]byte, msg.MSG_SEQ_END+msg.PKG_HEADER_SIZE)
+	m := p[msg.PKG_HEADER_SIZE:]
+	m[msg.MSG_TYPE_BEGIN] = msg.TYPE_ACK
+	binary.BigEndian.PutUint32(m[msg.MSG_SEQ_BEGIN:], seq)
+	checksum := crc32.ChecksumIEEE(m)
+	binary.BigEndian.PutUint32(p[msg.PKG_CRC32_BEGIN:], checksum)
+	return c.WriteBytes(p)
+}
+
+func (c *UDPConn) Ping() error {
+	p := make([]byte, msg.PING_MSG_HEADER_SIZE+msg.PKG_HEADER_SIZE)
+	m := p[msg.PKG_HEADER_SIZE:]
+	m[msg.PING_MSG_TYPE_BEGIN] = msg.TYPE_PING
+	binary.BigEndian.PutUint64(m[msg.PING_MSG_TIME_BEGIN:], msg.UnixMillisecond())
+	checksum := crc32.ChecksumIEEE(m)
+	binary.BigEndian.PutUint32(p[msg.PKG_CRC32_BEGIN:], checksum)
+	return c.WriteBytes(p)
 }
 
 func (c *UDPConn) GetChanOut() chan<- []byte {

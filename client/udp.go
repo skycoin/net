@@ -3,25 +3,21 @@ package client
 import (
 	"encoding/binary"
 	"fmt"
+	"hash/crc32"
 	"net"
-	"time"
 
 	"github.com/skycoin/net/conn"
 	"github.com/skycoin/net/msg"
 )
 
 type ClientUDPConn struct {
-	conn.UDPConn
+	*conn.UDPConn
 }
 
-func NewClientUDPConn(c *net.UDPConn) *ClientUDPConn {
-	return &ClientUDPConn{
-		UDPConn: conn.UDPConn{
-			UdpConn:          c,
-			ConnCommonFields: conn.NewConnCommonFileds(),
-			UDPPendingMap:    conn.NewUDPPendingMap(),
-		},
-	}
+func NewClientUDPConn(c *net.UDPConn, addr *net.UDPAddr) *ClientUDPConn {
+	uc := conn.NewUDPConn(c, addr)
+	uc.SendPing = true
+	return &ClientUDPConn{UDPConn: uc}
 }
 
 func (c *ClientUDPConn) ReadLoop() (err error) {
@@ -42,12 +38,18 @@ func (c *ClientUDPConn) ReadLoop() (err error) {
 			return err
 		}
 		maxBuf = maxBuf[:n]
+		m := maxBuf[msg.PKG_HEADER_SIZE:]
+		checksum := binary.BigEndian.Uint32(maxBuf[msg.PKG_CRC32_BEGIN:])
+		if checksum != crc32.ChecksumIEEE(m) {
+			c.GetContextLogger().Infof("checksum !=")
+			continue
+		}
 
-		t := maxBuf[msg.MSG_TYPE_BEGIN]
+		t := m[msg.MSG_TYPE_BEGIN]
 		switch t {
 		case msg.TYPE_PONG:
 		case msg.TYPE_ACK:
-			seq := binary.BigEndian.Uint32(maxBuf[msg.MSG_SEQ_BEGIN:msg.MSG_SEQ_END])
+			seq := binary.BigEndian.Uint32(m[msg.MSG_SEQ_BEGIN:msg.MSG_SEQ_END])
 			ok, msgs := c.DelMsgAndGetLossMsgs(seq)
 			if ok {
 				if len(msgs) > 1 {
@@ -62,63 +64,19 @@ func (c *ClientUDPConn) ReadLoop() (err error) {
 				c.UpdateLastAck(seq)
 			}
 		case msg.TYPE_NORMAL:
-			seq := binary.BigEndian.Uint32(maxBuf[msg.MSG_SEQ_BEGIN:msg.MSG_SEQ_END])
-			ok, err := c.Ack(seq)
+			seq := binary.BigEndian.Uint32(m[msg.MSG_SEQ_BEGIN:msg.MSG_SEQ_END])
+			err := c.Ack(seq)
 			if err != nil {
 				return err
 			}
-			if !ok {
-				c.CTXLogger.Debugf("Ack failed, %x", maxBuf)
-				continue
+			if ok, ms := c.Push(seq, m[msg.MSG_HEADER_END:]); ok {
+				for _, m := range ms {
+					c.In <- m
+				}
 			}
-			c.In <- maxBuf[msg.MSG_HEADER_END:]
 		default:
 			c.CTXLogger.Debugf("not implemented msg type %d", t)
 			return fmt.Errorf("not implemented msg type %d", t)
 		}
 	}
-}
-
-const (
-	TICK_PERIOD = 60
-)
-
-func (c *ClientUDPConn) ping() error {
-	return c.WriteBytes(msg.GenPingMsg())
-}
-
-func (c *ClientUDPConn) WriteLoop() (err error) {
-	ticker := time.NewTicker(time.Second * TICK_PERIOD)
-	defer func() {
-		ticker.Stop()
-		if err != nil {
-			c.SetStatusToError(err)
-		}
-	}()
-
-	for {
-		select {
-		case <-ticker.C:
-			err := c.WriteBytes(msg.GenPingMsg())
-			if err != nil {
-				return err
-			}
-		case m, ok := <-c.Out:
-			if !ok {
-				c.CTXLogger.Debug("udp conn closed")
-				return nil
-			}
-			//c.CTXLogger.Debugf("msg out %x", m)
-			err := c.Write(m)
-			if err != nil {
-				c.CTXLogger.Debugf("write msg is failed %v", err)
-				return err
-			}
-		}
-	}
-}
-
-func (c *ClientUDPConn) WriteBytes(bytes []byte) error {
-	_, err := c.UdpConn.Write(bytes)
-	return err
 }

@@ -41,7 +41,7 @@ type ConnCommonFields struct {
 	Out         chan []byte
 	closed      bool
 	fieldsMutex sync.RWMutex
-	writeMutex  sync.Mutex
+	WriteMutex  sync.Mutex
 
 	CTXLogger *log.Entry
 }

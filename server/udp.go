@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"net"
 
+	"hash/crc32"
+
 	"github.com/skycoin/net/conn"
 	"github.com/skycoin/net/msg"
 )
@@ -34,8 +36,8 @@ func (c *ServerUDPConn) ReadLoop(fn func(c *net.UDPConn, addr *net.UDPAddr) *con
 		}
 		c.Close()
 	}()
-	maxBuf := make([]byte, conn.MAX_UDP_PACKAGE_SIZE)
 	for {
+		maxBuf := make([]byte, conn.MAX_UDP_PACKAGE_SIZE)
 		n, addr, err := c.UdpConn.ReadFromUDP(maxBuf)
 		if err != nil {
 			if e, ok := err.(net.Error); ok {
@@ -48,7 +50,13 @@ func (c *ServerUDPConn) ReadLoop(fn func(c *net.UDPConn, addr *net.UDPAddr) *con
 			}
 			return err
 		}
-		m := maxBuf[:n]
+		maxBuf = maxBuf[:n]
+		m := maxBuf[msg.PKG_HEADER_SIZE:]
+		checksum := binary.BigEndian.Uint32(maxBuf[msg.PKG_CRC32_BEGIN:])
+		if checksum != crc32.ChecksumIEEE(m) {
+			c.GetContextLogger().Infof("checksum !=")
+			continue
+		}
 		cc := fn(c.UdpConn, addr)
 
 		t := m[msg.MSG_TYPE_BEGIN]
@@ -56,32 +64,54 @@ func (c *ServerUDPConn) ReadLoop(fn func(c *net.UDPConn, addr *net.UDPAddr) *con
 		case msg.TYPE_ACK:
 			seq := binary.BigEndian.Uint32(m[msg.MSG_SEQ_BEGIN:msg.MSG_SEQ_END])
 			func() {
+				var err error
 				defer func() {
 					if e := recover(); e != nil {
 						cc.CTXLogger.Debug(e)
+						err = fmt.Errorf("readloop panic err:%v", e)
+					}
+					if err != nil {
+						cc.SetStatusToError(err)
+						cc.ConnCommonFields.Close()
 					}
 				}()
-				ok, msgs := c.DelMsgAndGetLossMsgs(seq)
+				ok, msgs := cc.DelMsgAndGetLossMsgs(seq)
+				cc.GetContextLogger().Debugf("ack msg seq %d", seq)
 				if ok {
 					if len(msgs) > 1 {
-						c.CTXLogger.Debugf("resend loss msgs %v", msgs)
+						cc.CTXLogger.Debugf("resend loss msgs %v", msgs)
 						for _, msg := range msgs {
-							err = c.WriteBytes(msg.Bytes())
+							err = cc.WriteBytes(msg.Bytes())
 							if err != nil {
 								return
 							}
 						}
 					}
-					c.UpdateLastAck(seq)
+					cc.UpdateLastAck(seq)
 				}
 			}()
 		case msg.TYPE_PONG:
 		case msg.TYPE_PING:
-			m[msg.PING_MSG_TYPE_BEGIN] = msg.TYPE_PONG
-			err = cc.WriteBytes(m)
-			if err != nil {
-				return err
-			}
+			func() {
+				var err error
+				defer func() {
+					if e := recover(); e != nil {
+						cc.CTXLogger.Debug(e)
+						err = fmt.Errorf("readloop panic err:%v", e)
+					}
+					if err != nil {
+						cc.SetStatusToError(err)
+						cc.ConnCommonFields.Close()
+					}
+				}()
+				m[msg.PING_MSG_TYPE_BEGIN] = msg.TYPE_PONG
+				checksum := crc32.ChecksumIEEE(m)
+				binary.BigEndian.PutUint32(maxBuf[msg.PKG_CRC32_BEGIN:], checksum)
+				err = cc.WriteBytes(maxBuf)
+				if err != nil {
+					return
+				}
+			}()
 		case msg.TYPE_NORMAL:
 			func() {
 				var err error
@@ -92,17 +122,20 @@ func (c *ServerUDPConn) ReadLoop(fn func(c *net.UDPConn, addr *net.UDPAddr) *con
 					}
 					if err != nil {
 						cc.SetStatusToError(err)
+						cc.ConnCommonFields.Close()
 					}
 				}()
 				seq := binary.BigEndian.Uint32(m[msg.MSG_SEQ_BEGIN:msg.MSG_SEQ_END])
 
-				ok, err := cc.Ack(seq)
-				if err != nil || !ok {
-					cc.CTXLogger.Debugf("server Ack failed, %x", m)
+				err = cc.Ack(seq)
+				if err != nil {
 					return
 				}
-				//cc.CTXLogger.Debugf("c.In <- m.Body %x", m[msg.MSG_HEADER_END:])
-				cc.In <- m[msg.MSG_HEADER_END:]
+				if ok, ms := cc.Push(seq, m[msg.MSG_HEADER_END:]); ok {
+					for _, m := range ms {
+						cc.In <- m
+					}
+				}
 			}()
 		default:
 			cc.CTXLogger.Debugf("not implemented msg type %d", t)

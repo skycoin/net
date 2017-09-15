@@ -6,6 +6,7 @@ import (
 	"github.com/skycoin/skycoin/src/cipher"
 	"sync"
 	"time"
+	"hash/crc32"
 )
 
 type Message struct {
@@ -49,6 +50,18 @@ func (msg *Message) Bytes() []byte {
 	binary.BigEndian.PutUint32(result[MSG_SEQ_BEGIN:MSG_SEQ_END], msg.Seq)
 	binary.BigEndian.PutUint32(result[MSG_LEN_BEGIN:MSG_LEN_END], msg.Len)
 	copy(result[MSG_HEADER_END:], msg.Body)
+	return result
+}
+
+func (msg *Message) PkgBytes() []byte {
+	result := make([]byte, PKG_HEADER_SIZE+MSG_HEADER_SIZE+msg.Len)
+	m := result[PKG_HEADER_SIZE:]
+	m[0] = byte(msg.Type)
+	binary.BigEndian.PutUint32(m[MSG_SEQ_BEGIN:MSG_SEQ_END], msg.Seq)
+	binary.BigEndian.PutUint32(m[MSG_LEN_BEGIN:MSG_LEN_END], msg.Len)
+	copy(m[MSG_HEADER_END:], msg.Body)
+	checksum := crc32.ChecksumIEEE(m)
+	binary.BigEndian.PutUint32(result[PKG_CRC32_BEGIN:], checksum)
 	return result
 }
 

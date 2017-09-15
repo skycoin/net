@@ -17,7 +17,7 @@ type PendingMap struct {
 	lastMinuteAcked      map[uint32]*msg.Message
 	lastMinuteAckedMutex sync.RWMutex
 
-	statistics  string
+	statistics string
 }
 
 func NewPendingMap() *PendingMap {
@@ -108,7 +108,6 @@ type UDPPendingMap struct {
 func NewUDPPendingMap() *UDPPendingMap {
 	m := &UDPPendingMap{PendingMap: NewPendingMap()}
 	m.waitCond = sync.NewCond(&m.RWMutex)
-	go m.analyse()
 	return m
 }
 
@@ -140,12 +139,12 @@ func (m *UDPPendingMap) DelMsgAndGetLossMsgs(k uint32) (ok bool, loss []*msg.Mes
 	if m.waitBits&prev > 0 {
 		for n := 7; n > 1; n-- {
 			pk := k - uint32(n)
-			if m.waitBits&(1<<(pk%8)) > 0 {
+			ii := 1 << (pk % 8)
+			if m.waitBits&byte(ii) > 0 {
 				l, ok := m.Pending[pk]
-				if !ok {
-					panic("udp pending map !ok")
+				if ok {
+					loss = append(loss, l)
 				}
-				loss = append(loss, l)
 			}
 		}
 	}
@@ -159,4 +158,63 @@ func (m *UDPPendingMap) DelMsgAndGetLossMsgs(k uint32) (ok bool, loss []*msg.Mes
 	m.ackedMessagesMutex.Unlock()
 
 	return
+}
+
+type StreamQueue struct {
+	ackedSeq uint32
+	msgs     [][]byte
+}
+
+func (q *StreamQueue) Push(k uint32, m []byte) (ok bool, msgs [][]byte) {
+	if k <= q.ackedSeq {
+		return
+	}
+	if k == q.ackedSeq+1 {
+		ok = true
+		if len(q.msgs) < 1 {
+			msgs = [][]byte{m}
+			q.ackedSeq = k
+			return
+		}
+		q.push(k, m)
+		msgs = q.pop()
+		return
+	}
+	q.push(k, m)
+	return
+}
+
+func (q *StreamQueue) pop() (msgs [][]byte) {
+	index := len(q.msgs)
+	for i, mm := range q.msgs {
+		if mm == nil {
+			index = i
+			break
+		}
+	}
+	msgs = q.msgs[:index]
+	q.ackedSeq += uint32(index)
+	if len(q.msgs) > index {
+		for _, mm := range q.msgs[index:] {
+			if mm != nil {
+				q.msgs = q.msgs[index:]
+				return
+			}
+		}
+	}
+	q.msgs = nil
+	return
+}
+
+func (q *StreamQueue) push(k uint32, m []byte) {
+	if q.msgs == nil {
+		q.msgs = make([][]byte, 8)
+	}
+	index := k - q.ackedSeq - 1
+	if len(q.msgs) <= int(index) {
+		n := make([][]byte, index+8)
+		copy(n, q.msgs)
+		q.msgs = n
+	}
+	q.msgs[index] = m
 }

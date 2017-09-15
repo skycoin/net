@@ -123,7 +123,6 @@ func (t *transport) nodeReadLoop(conn *Connection, getAppConn func(id uint32) ne
 				continue
 			}
 			err = writeAll(appConn, body)
-			log.Debugf("send to tcp")
 			if err != nil {
 				log.Debugf("app conn write err %v", err)
 				continue
@@ -145,7 +144,7 @@ func (t *transport) appReadLoop(id uint32, appConn net.Conn, conn *Connection, c
 		// exited by err
 		if t.conns[id] != nil {
 			buf[PKG_HEADER_OP_BEGIN] = OP_CLOSE
-			log.Infof("close %v, %d", create, id)
+			//log.Infof("close %v, %d", create, id)
 			conn.GetChanOut() <- buf[:PKG_HEADER_END]
 			if create {
 				delete(t.conns, id)
@@ -167,7 +166,6 @@ func (t *transport) appReadLoop(id uint32, appConn net.Conn, conn *Connection, c
 		pkg := make([]byte, PKG_HEADER_END+n)
 		copy(pkg, buf[:PKG_HEADER_END+n])
 		conn.GetChanOut() <- pkg
-		log.Debugf("send to node udp")
 	}
 }
 
@@ -216,18 +214,18 @@ func (t *transport) accept() {
 	t.fieldsMutex.RUnlock()
 
 
+	go t.nodeReadLoop(tConn, func(id uint32) net.Conn {
+		t.connsMutex.RLock()
+		conn := t.conns[id]
+		t.connsMutex.RUnlock()
+		return conn
+	})
 	var idSeq uint32
 	for {
 		conn, err := t.appNet.Accept()
 		if err != nil {
 			return
 		}
-		go t.nodeReadLoop(tConn, func(id uint32) net.Conn {
-			t.connsMutex.RLock()
-			conn := t.conns[id]
-			t.connsMutex.RUnlock()
-			return conn
-		})
 		id := atomic.AddUint32(&idSeq, 1)
 		t.connsMutex.Lock()
 		t.conns[id] = conn

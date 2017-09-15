@@ -78,9 +78,16 @@ func (f *MessengerFactory) acceptedUDPCallback(connection *factory.Connection) {
 }
 
 func (f *MessengerFactory) callbackLoop(conn *Connection) (err error) {
+	var m []byte
+	var ok bool
+	defer func() {
+		if err != nil && err != ErrDetach {
+			conn.GetContextLogger().Debugf("err in %x", m)
+		}
+	}()
 	for {
 		select {
-		case m, ok := <-conn.GetChanIn():
+		case m, ok = <-conn.GetChanIn():
 			if !ok {
 				return
 			}

@@ -91,7 +91,7 @@ func (factory *UDPFactory) createConnAfterListen(addr *net.UDPAddr) *conn.UDPCon
 	factory.fieldsMutex.Unlock()
 
 	udpConn := conn.NewUDPConn(ln, addr)
-	udpConn.Ping = true
+	udpConn.SendPing = true
 	factory.udpConnMapMutex.Lock()
 	factory.udpConnMap[addr.String()] = udpConn
 	factory.udpConnMapMutex.Unlock()
@@ -130,12 +130,15 @@ func (factory *UDPFactory) GC() {
 }
 
 func (factory *UDPFactory) Connect(address string) (conn *Connection, err error) {
-	c, err := net.Dial("udp", address)
+	addr, err := net.ResolveUDPAddr("udp", address)
 	if err != nil {
 		return
 	}
-	udp := c.(*net.UDPConn)
-	cn := client.NewClientUDPConn(udp)
+	udp, err := net.DialUDP("udp", nil, addr)
+	if err != nil {
+		return
+	}
+	cn := client.NewClientUDPConn(udp, addr)
 	cn.SetStatusToConnected()
 	conn = &Connection{Connection: cn, factory: factory}
 	conn.SetContextLogger(conn.GetContextLogger().WithField("type", "udp"))
@@ -152,6 +155,23 @@ func (factory *UDPFactory) ConnectAfterListen(address string) (conn *Connection,
 	cn.SetStatusToConnected()
 	conn = &Connection{Connection: cn, factory: factory}
 	conn.SetContextLogger(conn.GetContextLogger().WithField("type", "udpe"))
-	factory.AddConn(conn)
+	factory.AddServerConn(conn)
 	return
+}
+
+func (factory *UDPFactory) AddServerConn(conn *Connection) {
+	factory.serverConnectionsMutex.Lock()
+	factory.serverConnections[conn] = struct{}{}
+	factory.serverConnectionsMutex.Unlock()
+	go func() {
+		conn.WriteLoop()
+		factory.RemoveServerConn(conn)
+	}()
+}
+
+func (factory *UDPFactory) RemoveServerConn(conn *Connection) {
+	factory.udpConnMapMutex.Lock()
+	delete(factory.udpConnMap, conn.GetRemoteAddr().String())
+	factory.udpConnMapMutex.Unlock()
+	factory.FactoryCommonFields.RemoveServerConn(conn)
 }

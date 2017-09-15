@@ -43,7 +43,7 @@ func (f *FactoryCommonFields) AddServerConn(conn *Connection) {
 	f.serverConnectionsMutex.Unlock()
 	go func() {
 		conn.WriteLoop()
-		f.RemoveConn(conn)
+		f.RemoveServerConn(conn)
 	}()
 	go conn.ReadLoop()
 }
