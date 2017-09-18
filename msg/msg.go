@@ -3,11 +3,23 @@ package msg
 import (
 	"encoding/binary"
 	"fmt"
-	"github.com/skycoin/skycoin/src/cipher"
+	"hash/crc32"
 	"sync"
 	"time"
-	"hash/crc32"
+
+	"sync/atomic"
+
+	"github.com/skycoin/net/conn"
+	"github.com/skycoin/skycoin/src/cipher"
 )
+
+type Interface interface {
+	Bytes() []byte
+	TotalSize() int
+	Transmitted()
+	Acked()
+	GetRTT() time.Duration
+}
 
 type Message struct {
 	Type uint8
@@ -15,7 +27,12 @@ type Message struct {
 	Len  uint32
 	Body []byte
 
-	MessageStatus
+	sync.RWMutex
+
+	Status        int
+	TransmittedAt time.Time
+	AckedAt       time.Time
+	rtt           time.Duration
 }
 
 func NewByHeader(header []byte) *Message {
@@ -77,27 +94,63 @@ func (msg *Message) TotalSize() int {
 	return MSG_HEADER_SIZE + len(msg.Body)
 }
 
-type MessageStatus struct {
-	Status int
-
-	TransmittedAt time.Time
-	AckedAt       time.Time
-	Latency       time.Duration
-
-	sync.RWMutex
+func (msg *Message) Transmitted() {
+	msg.Lock()
+	msg.Status |= MSG_STATUS_TRANSMITTED
+	msg.TransmittedAt = time.Now()
+	msg.Unlock()
 }
 
-func (ms *MessageStatus) Transmitted() {
-	ms.Lock()
-	ms.Status |= MSG_STATUS_TRANSMITTED
-	ms.TransmittedAt = time.Now()
-	ms.Unlock()
+func (msg *Message) Acked() {
+	msg.Lock()
+	msg.Status |= MSG_STATUS_ACKED
+	msg.AckedAt = time.Now()
+	msg.rtt = msg.AckedAt.Sub(msg.TransmittedAt)
+	msg.Unlock()
 }
 
-func (ms *MessageStatus) Acked() {
-	ms.Lock()
-	ms.Status |= MSG_STATUS_ACKED
-	ms.AckedAt = time.Now()
-	ms.Latency = ms.AckedAt.Sub(ms.TransmittedAt)
-	ms.Unlock()
+func (msg *Message) GetRTT() (rtt time.Duration) {
+	msg.RLock()
+	rtt = msg.rtt
+	msg.RUnlock()
+	return
+}
+
+type UDPMessage struct {
+	*Message
+
+	udpConn     *conn.UDPConn
+	resendTimer *time.Timer
+}
+
+func NewUDP(t uint8, seq uint32, bytes []byte, udpConn *conn.UDPConn) *UDPMessage {
+	return &UDPMessage{
+		Message: New(t, seq, bytes),
+		udpConn: udpConn,
+	}
+}
+
+func (msg *UDPMessage) Transmitted() {
+	msg.Lock()
+	msg.Status |= MSG_STATUS_TRANSMITTED
+	msg.TransmittedAt = time.Now()
+	msg.resendTimer = time.AfterFunc(msg.udpConn.GetRTO(), msg.resend)
+	msg.Unlock()
+}
+
+func (msg *UDPMessage) resend() {
+	msg.udpConn.AddResendCount()
+	err := msg.udpConn.WriteBytes(msg.PkgBytes())
+	if err != nil {
+		msg.udpConn.GetContextLogger().Debugf("resend err %v", err)
+	}
+}
+
+func (msg *UDPMessage) Acked() {
+	msg.Lock()
+	msg.Status |= MSG_STATUS_ACKED
+	msg.AckedAt = time.Now()
+	msg.rtt = msg.AckedAt.Sub(msg.TransmittedAt)
+	msg.resendTimer.Stop()
+	msg.Unlock()
 }

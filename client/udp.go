@@ -50,18 +50,9 @@ func (c *ClientUDPConn) ReadLoop() (err error) {
 		case msg.TYPE_PONG:
 		case msg.TYPE_ACK:
 			seq := binary.BigEndian.Uint32(m[msg.MSG_SEQ_BEGIN:msg.MSG_SEQ_END])
-			ok, msgs := c.DelMsgAndGetLossMsgs(seq)
-			if ok {
-				if len(msgs) > 1 {
-					c.CTXLogger.Debugf("resend loss msgs %v", msgs)
-					for _, msg := range msgs {
-						err = c.WriteBytes(msg.Bytes())
-						if err != nil {
-							return err
-						}
-					}
-				}
-				c.UpdateLastAck(seq)
+			err = c.DelMsg(seq)
+			if err != nil {
+				return
 			}
 		case msg.TYPE_NORMAL:
 			seq := binary.BigEndian.Uint32(m[msg.MSG_SEQ_BEGIN:msg.MSG_SEQ_END])
@@ -79,4 +70,13 @@ func (c *ClientUDPConn) ReadLoop() (err error) {
 			return fmt.Errorf("not implemented msg type %d", t)
 		}
 	}
+}
+
+func (c *ClientUDPConn) Close() {
+	c.FieldsMutex.RLock()
+	if c.UdpConn != nil {
+		c.UdpConn.Close()
+	}
+	c.FieldsMutex.RUnlock()
+	c.ConnCommonFields.Close()
 }

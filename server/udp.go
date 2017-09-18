@@ -63,33 +63,7 @@ func (c *ServerUDPConn) ReadLoop(fn func(c *net.UDPConn, addr *net.UDPAddr) *con
 		switch t {
 		case msg.TYPE_ACK:
 			seq := binary.BigEndian.Uint32(m[msg.MSG_SEQ_BEGIN:msg.MSG_SEQ_END])
-			func() {
-				var err error
-				defer func() {
-					if e := recover(); e != nil {
-						cc.CTXLogger.Debug(e)
-						err = fmt.Errorf("readloop panic err:%v", e)
-					}
-					if err != nil {
-						cc.SetStatusToError(err)
-						cc.ConnCommonFields.Close()
-					}
-				}()
-				ok, msgs := cc.DelMsgAndGetLossMsgs(seq)
-				cc.GetContextLogger().Debugf("ack msg seq %d", seq)
-				if ok {
-					if len(msgs) > 1 {
-						cc.CTXLogger.Debugf("resend loss msgs %v", msgs)
-						for _, msg := range msgs {
-							err = cc.WriteBytes(msg.Bytes())
-							if err != nil {
-								return
-							}
-						}
-					}
-					cc.UpdateLastAck(seq)
-				}
-			}()
+			cc.DelMsg(seq)
 		case msg.TYPE_PONG:
 		case msg.TYPE_PING:
 			func() {
@@ -144,4 +118,13 @@ func (c *ServerUDPConn) ReadLoop(fn func(c *net.UDPConn, addr *net.UDPAddr) *con
 
 		cc.UpdateLastTime()
 	}
+}
+
+func (c *ServerUDPConn) Close() {
+	c.FieldsMutex.RLock()
+	if c.UdpConn != nil {
+		c.UdpConn.Close()
+	}
+	c.FieldsMutex.RUnlock()
+	c.ConnCommonFields.Close()
 }

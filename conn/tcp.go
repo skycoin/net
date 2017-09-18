@@ -148,11 +148,11 @@ func (c *TCPConn) UpdateLastTime() {
 }
 
 func (c *TCPConn) Close() {
-	c.fieldsMutex.Lock()
+	c.FieldsMutex.Lock()
 	if c.TcpConn != nil {
 		c.TcpConn.Close()
 	}
-	c.fieldsMutex.Unlock()
+	c.FieldsMutex.Unlock()
 	c.ConnCommonFields.Close()
 }
 

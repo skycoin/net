@@ -2,13 +2,15 @@ package conn
 
 import (
 	"encoding/binary"
+	"hash/crc32"
 	"net"
+	"sync"
 	"sync/atomic"
 	"time"
 
+	"fmt"
+
 	"github.com/skycoin/net/msg"
-	"sync"
-	"hash/crc32"
 )
 
 const (
@@ -27,6 +29,12 @@ type UDPConn struct {
 	// write loop with ping
 	SendPing bool
 	wmx      sync.Mutex
+	rto      time.Duration
+
+	rtoResendCount  uint32
+	lossResendCount uint32
+	ackCount        uint32
+	overAckCount    uint32
 }
 
 // used for server spawn udp conn
@@ -37,6 +45,7 @@ func NewUDPConn(c *net.UDPConn, addr *net.UDPAddr) *UDPConn {
 		lastTime:         time.Now().Unix(),
 		ConnCommonFields: NewConnCommonFileds(),
 		UDPPendingMap:    NewUDPPendingMap(),
+		rto:              200,
 	}
 }
 
@@ -108,10 +117,13 @@ func (c *UDPConn) Write(bytes []byte) (err error) {
 	c.wmx.Lock()
 	defer c.wmx.Unlock()
 	s := c.GetNextSeq()
-	m := msg.New(msg.TYPE_NORMAL, s, bytes)
+	m := msg.NewUDP(msg.TYPE_NORMAL, s, bytes, c)
 	c.AddMsg(s, m)
 	c.GetContextLogger().Debugf("Write msg seq %d", s)
 	err = c.WriteBytes(m.PkgBytes())
+	if err != nil {
+		m.Transmitted()
+	}
 	return
 }
 
@@ -152,15 +164,15 @@ func (c *UDPConn) GetChanIn() <-chan []byte {
 }
 
 func (c *UDPConn) GetLastTime() int64 {
-	c.fieldsMutex.RLock()
-	defer c.fieldsMutex.RUnlock()
+	c.FieldsMutex.RLock()
+	defer c.FieldsMutex.RUnlock()
 	return c.lastTime
 }
 
 func (c *UDPConn) UpdateLastTime() {
-	c.fieldsMutex.Lock()
+	c.FieldsMutex.Lock()
 	c.lastTime = time.Now().Unix()
-	c.fieldsMutex.Unlock()
+	c.FieldsMutex.Unlock()
 }
 
 func (c *UDPConn) GetNextSeq() uint32 {
@@ -168,14 +180,76 @@ func (c *UDPConn) GetNextSeq() uint32 {
 }
 
 func (c *UDPConn) Close() {
-	c.fieldsMutex.Lock()
-	if c.UdpConn != nil {
-		c.UdpConn.Close()
-	}
-	c.fieldsMutex.Unlock()
+	c.GetContextLogger().Debugf("%s", c)
 	c.ConnCommonFields.Close()
+}
+
+func (c *UDPConn) String() string {
+	return fmt.Sprintf(
+		`udp connection:
+			rtoResend:%d,
+			lossResend:%d,
+			ack:%d,
+			overAck:%d,`,
+		atomic.LoadUint32(&c.rtoResendCount),
+		atomic.LoadUint32(&c.lossResendCount),
+		atomic.LoadUint32(&c.ackCount),
+		atomic.LoadUint32(&c.overAckCount),
+	)
 }
 
 func (c *UDPConn) GetRemoteAddr() net.Addr {
 	return c.addr
+}
+
+func (c *UDPConn) GetRTO() (rto time.Duration) {
+	c.FieldsMutex.RLock()
+	rto = c.rto
+	c.FieldsMutex.RUnlock()
+	return
+}
+
+func (c *UDPConn) SetRTO(rto time.Duration) {
+	c.FieldsMutex.Lock()
+	c.rto = rto
+	c.FieldsMutex.Unlock()
+}
+
+func (c *UDPConn) DelMsg(seq uint32) error {
+	c.AddAckCount()
+	ok, msgs := c.DelMsgAndGetLossMsgs(seq)
+	if ok {
+		if len(msgs) > 1 {
+			c.CTXLogger.Debugf("resend loss msgs %v", msgs)
+			for _, msg := range msgs {
+				err := c.WriteBytes(msg.Bytes())
+				if err != nil {
+					c.SetStatusToError(err)
+					c.Close()
+					return err
+				}
+				c.AddLossResendCount()
+			}
+		}
+		c.UpdateLastAck(seq)
+	} else {
+		c.AddOverAckCount()
+	}
+	return nil
+}
+
+func (c *UDPConn) AddLossResendCount() {
+	atomic.AddUint32(&c.lossResendCount, 1)
+}
+
+func (c *UDPConn) AddResendCount() {
+	atomic.AddUint32(&c.rtoResendCount, 1)
+}
+
+func (c *UDPConn) AddAckCount() {
+	atomic.AddUint32(&c.ackCount, 1)
+}
+
+func (c *UDPConn) AddOverAckCount() {
+	atomic.AddUint32(&c.overAckCount, 1)
 }

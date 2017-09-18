@@ -10,18 +10,18 @@ import (
 )
 
 type PendingMap struct {
-	Pending              map[uint32]*msg.Message
+	Pending              map[uint32]msg.Interface
 	sync.RWMutex
-	ackedMessages        map[uint32]*msg.Message
+	ackedMessages        map[uint32]msg.Interface
 	ackedMessagesMutex   sync.RWMutex
-	lastMinuteAcked      map[uint32]*msg.Message
+	lastMinuteAcked      map[uint32]msg.Interface
 	lastMinuteAckedMutex sync.RWMutex
 
 	statistics string
 }
 
 func NewPendingMap() *PendingMap {
-	pendingMap := &PendingMap{Pending: make(map[uint32]*msg.Message), ackedMessages: make(map[uint32]*msg.Message)}
+	pendingMap := &PendingMap{Pending: make(map[uint32]msg.Interface), ackedMessages: make(map[uint32]msg.Interface)}
 	go pendingMap.analyse()
 	return pendingMap
 }
@@ -63,7 +63,7 @@ func (m *PendingMap) analyse() {
 			m.lastMinuteAckedMutex.Lock()
 			m.lastMinuteAcked = m.ackedMessages
 			m.lastMinuteAckedMutex.Unlock()
-			m.ackedMessages = make(map[uint32]*msg.Message)
+			m.ackedMessages = make(map[uint32]msg.Interface)
 			m.ackedMessagesMutex.Unlock()
 
 			m.lastMinuteAckedMutex.RLock()
@@ -75,7 +75,7 @@ func (m *PendingMap) analyse() {
 			sum := new(big.Int)
 			bytesSent := 0
 			for _, v := range m.lastMinuteAcked {
-				latency := v.Latency.Nanoseconds()
+				latency := v.GetRTT().Nanoseconds()
 				if max < latency {
 					max = latency
 				}
@@ -103,27 +103,28 @@ type UDPPendingMap struct {
 	*PendingMap
 	waitBits byte
 	waitCond *sync.Cond
+	ringMask uint32
 }
 
 func NewUDPPendingMap() *UDPPendingMap {
 	m := &UDPPendingMap{PendingMap: NewPendingMap()}
 	m.waitCond = sync.NewCond(&m.RWMutex)
+	m.ringMask = 16
 	return m
 }
 
-func (m *UDPPendingMap) AddMsg(k uint32, v *msg.Message) {
+func (m *UDPPendingMap) AddMsg(k uint32, v msg.Interface) {
 	m.Lock()
-	i := k % 8
+	i := k % m.ringMask
 	for m.waitBits&(1<<i) > 0 {
 		m.waitCond.Wait()
 	}
 	m.Pending[k] = v
 	m.waitBits |= 1 << i
 	m.Unlock()
-	v.Transmitted()
 }
 
-func (m *UDPPendingMap) DelMsgAndGetLossMsgs(k uint32) (ok bool, loss []*msg.Message) {
+func (m *UDPPendingMap) DelMsgAndGetLossMsgs(k uint32) (ok bool, loss []msg.Interface) {
 	m.Lock()
 	v, ok := m.Pending[k]
 	if !ok {
@@ -131,15 +132,15 @@ func (m *UDPPendingMap) DelMsgAndGetLossMsgs(k uint32) (ok bool, loss []*msg.Mes
 		return
 	}
 	delete(m.Pending, k)
-	i := k % 8
+	i := k % m.ringMask
 	m.waitBits &^= 1 << i
 	var prev byte
-	prev = ^(1 << i) & ^(1 << ((k - 1) % 8 ))
+	prev = ^(1 << i) & ^(1 << ((k - 1) % m.ringMask ))
 	// loss
 	if m.waitBits&prev > 0 {
-		for n := 7; n > 1; n-- {
+		for n := m.ringMask - 1; n > 1; n-- {
 			pk := k - uint32(n)
-			ii := 1 << (pk % 8)
+			ii := 1 << (pk % m.ringMask)
 			if m.waitBits&byte(ii) > 0 {
 				l, ok := m.Pending[pk]
 				if ok {
