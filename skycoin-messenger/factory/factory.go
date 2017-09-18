@@ -259,8 +259,19 @@ func (f *MessengerFactory) connectUDPWithConfig(address string, config *ConnConf
 	return
 }
 
-func (f *MessengerFactory) Close() error {
-	return f.factory.Close()
+func (f *MessengerFactory) Close() (err error) {
+	f.fieldsMutex.RLock()
+	defer f.fieldsMutex.RUnlock()
+	if f.factory != nil {
+		err = f.factory.Close()
+	}
+	if err != nil {
+		return
+	}
+	if f.udp != nil {
+		err = f.udp.Close()
+	}
+	return
 }
 
 func (f *MessengerFactory) ForEachConn(fn func(connection *Connection)) {

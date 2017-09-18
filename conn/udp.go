@@ -45,7 +45,7 @@ func NewUDPConn(c *net.UDPConn, addr *net.UDPAddr) *UDPConn {
 		lastTime:         time.Now().Unix(),
 		ConnCommonFields: NewConnCommonFileds(),
 		UDPPendingMap:    NewUDPPendingMap(),
-		rto:              200,
+		rto:              200 * time.Millisecond,
 	}
 }
 
@@ -55,10 +55,12 @@ func (c *UDPConn) ReadLoop() error {
 
 func (c *UDPConn) WriteLoop() (err error) {
 	if c.SendPing {
-		return c.writeLoopWithPing()
+		err = c.writeLoopWithPing()
 	} else {
-		return c.writeLoop()
+		err = c.writeLoop()
 	}
+	c.GetContextLogger().Debugf("%s", c.String())
+	return
 }
 
 func (c *UDPConn) writeLoop() (err error) {
@@ -117,14 +119,9 @@ func (c *UDPConn) Write(bytes []byte) (err error) {
 	c.wmx.Lock()
 	defer c.wmx.Unlock()
 	s := c.GetNextSeq()
-	m := msg.NewUDP(msg.TYPE_NORMAL, s, bytes, c)
+	m := msg.NewUDP(msg.TYPE_NORMAL, s, bytes)
 	c.AddMsg(s, m)
-	c.GetContextLogger().Debugf("Write msg seq %d", s)
-	err = c.WriteBytes(m.PkgBytes())
-	if err != nil {
-		m.Transmitted()
-	}
-	return
+	return c.WriteBytes(m.PkgBytes())
 }
 
 func (c *UDPConn) WriteBytes(bytes []byte) error {
@@ -180,7 +177,6 @@ func (c *UDPConn) GetNextSeq() uint32 {
 }
 
 func (c *UDPConn) Close() {
-	c.GetContextLogger().Debugf("%s", c)
 	c.ConnCommonFields.Close()
 }
 
@@ -213,6 +209,17 @@ func (c *UDPConn) SetRTO(rto time.Duration) {
 	c.FieldsMutex.Lock()
 	c.rto = rto
 	c.FieldsMutex.Unlock()
+}
+
+func (c *UDPConn) AddMsg(k uint32, v *msg.UDPMessage) {
+	v.SetRTO(c.GetRTO(), func() {
+		err := c.WriteBytes(v.PkgBytes())
+		if err != nil {
+			c.SetStatusToError(err)
+			c.Close()
+		}
+	})
+	c.UDPPendingMap.AddMsg(k, v)
 }
 
 func (c *UDPConn) DelMsg(seq uint32) error {

@@ -131,6 +131,7 @@ func (m *UDPPendingMap) DelMsgAndGetLossMsgs(k uint32) (ok bool, loss []msg.Inte
 		m.Unlock()
 		return
 	}
+	v.Acked()
 	delete(m.Pending, k)
 	i := k % m.ringMask
 	m.waitBits &^= 1 << i
@@ -151,8 +152,6 @@ func (m *UDPPendingMap) DelMsgAndGetLossMsgs(k uint32) (ok bool, loss []msg.Inte
 	}
 	m.Unlock()
 	m.waitCond.Broadcast()
-
-	v.Acked()
 
 	m.ackedMessagesMutex.Lock()
 	m.ackedMessages[k] = v

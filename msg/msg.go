@@ -7,9 +7,6 @@ import (
 	"sync"
 	"time"
 
-	"sync/atomic"
-
-	"github.com/skycoin/net/conn"
 	"github.com/skycoin/skycoin/src/cipher"
 )
 
@@ -119,14 +116,12 @@ func (msg *Message) GetRTT() (rtt time.Duration) {
 type UDPMessage struct {
 	*Message
 
-	udpConn     *conn.UDPConn
 	resendTimer *time.Timer
 }
 
-func NewUDP(t uint8, seq uint32, bytes []byte, udpConn *conn.UDPConn) *UDPMessage {
+func NewUDP(t uint8, seq uint32, bytes []byte) *UDPMessage {
 	return &UDPMessage{
 		Message: New(t, seq, bytes),
-		udpConn: udpConn,
 	}
 }
 
@@ -134,16 +129,17 @@ func (msg *UDPMessage) Transmitted() {
 	msg.Lock()
 	msg.Status |= MSG_STATUS_TRANSMITTED
 	msg.TransmittedAt = time.Now()
-	msg.resendTimer = time.AfterFunc(msg.udpConn.GetRTO(), msg.resend)
 	msg.Unlock()
 }
 
-func (msg *UDPMessage) resend() {
-	msg.udpConn.AddResendCount()
-	err := msg.udpConn.WriteBytes(msg.PkgBytes())
-	if err != nil {
-		msg.udpConn.GetContextLogger().Debugf("resend err %v", err)
-	}
+
+func (msg *UDPMessage) SetRTO(rto time.Duration, fn func()) {
+	msg.Lock()
+	msg.resendTimer = time.AfterFunc(rto, func() {
+		fn()
+		msg.SetRTO(rto, fn)
+	})
+	msg.Unlock()
 }
 
 func (msg *UDPMessage) Acked() {

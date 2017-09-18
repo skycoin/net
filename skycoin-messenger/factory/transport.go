@@ -145,7 +145,9 @@ func (t *transport) appReadLoop(id uint32, appConn net.Conn, conn *Connection, c
 		if t.conns[id] != nil {
 			buf[PKG_HEADER_OP_BEGIN] = OP_CLOSE
 			//log.Infof("close %v, %d", create, id)
-			conn.GetChanOut() <- buf[:PKG_HEADER_END]
+			if !conn.IsClosed() {
+				conn.GetChanOut() <- buf[:PKG_HEADER_END]
+			}
 			if create {
 				delete(t.conns, id)
 			} else {

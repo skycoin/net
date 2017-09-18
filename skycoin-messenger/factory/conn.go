@@ -280,11 +280,9 @@ func (c *Connection) Close() {
 	c.keySetCond.Broadcast()
 	c.fieldsMutex.Lock()
 	defer c.fieldsMutex.Unlock()
-	if c.Connection.IsClosed() {
-		return
-	}
 	if c.keySet {
 		c.factory.unregister(c.key, c)
+		c.keySet = false
 	}
 	if c.in != nil {
 		close(c.in)
@@ -299,8 +297,11 @@ func (c *Connection) Close() {
 	c.appTransportsMutex.RLock()
 	defer c.appTransportsMutex.RUnlock()
 
-	for _, v := range c.appTransports {
-		v.Close()
+	if len(c.appTransports) > 0 {
+		for _, v := range c.appTransports {
+			v.Close()
+		}
+		c.appTransports = nil
 	}
 }
 

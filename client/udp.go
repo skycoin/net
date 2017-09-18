@@ -52,7 +52,7 @@ func (c *ClientUDPConn) ReadLoop() (err error) {
 			seq := binary.BigEndian.Uint32(m[msg.MSG_SEQ_BEGIN:msg.MSG_SEQ_END])
 			err = c.DelMsg(seq)
 			if err != nil {
-				return
+				return err
 			}
 		case msg.TYPE_NORMAL:
 			seq := binary.BigEndian.Uint32(m[msg.MSG_SEQ_BEGIN:msg.MSG_SEQ_END])
