@@ -3,10 +3,7 @@ package factory
 import (
 	"sync"
 
-	"sync/atomic"
-
 	"net"
-	"strconv"
 
 	"github.com/skycoin/skycoin/src/cipher"
 )
@@ -52,12 +49,6 @@ func init() {
 			return new(connAck)
 		},
 	}
-}
-
-var p2pPort int32 = 30000
-
-func genP2PPort() (port int) {
-	return int(atomic.AddInt32(&p2pPort, 1))
 }
 
 type appConn struct {
@@ -124,15 +115,13 @@ func (req *buildConnResp) Execute(f *MessengerFactory, conn *Connection) (r resp
 	conn.GetContextLogger().Debugf("recv %#v tr %#v", req, tr)
 	tr.setUDPConn(conn)
 	conn.writeOP(OP_APP_CONN_ACK|RESP_PREFIX, &connAck{})
-	port := genP2PPort()
-	fnOK := func() {
+	fnOK := func(port int) {
 		appConn.writeOP(OP_BUILD_APP_CONN|RESP_PREFIX, &AppConnResp{Port: port})
 	}
-	err = tr.ListenForApp(net.JoinHostPort("", strconv.Itoa(port)), fnOK)
-	for err != nil {
+	err = tr.ListenForApp(fnOK)
+	if err != nil {
 		conn.GetContextLogger().Debugf("ListenForApp err %v", err)
-		port = genP2PPort()
-		err = tr.ListenForApp(net.JoinHostPort("", strconv.Itoa(port)), fnOK)
+		return
 	}
 	err = ErrDetach
 	return

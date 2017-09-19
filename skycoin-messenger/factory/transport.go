@@ -11,6 +11,8 @@ import (
 
 	"encoding/binary"
 
+	"strconv"
+
 	log "github.com/sirupsen/logrus"
 	cn "github.com/skycoin/net/conn"
 	"github.com/skycoin/skycoin/src/cipher"
@@ -187,16 +189,42 @@ func (t *transport) setUDPConn(conn *Connection) {
 	t.fieldsMutex.Unlock()
 }
 
-func (t *transport) ListenForApp(address string, fn func()) (err error) {
-	ln, err := net.Listen("tcp", address)
-	if err != nil {
-		return err
+var (
+	appPort      int = 30000
+	appPortMutex sync.Mutex
+)
+
+func getAppPort() (port int) {
+	appPortMutex.Lock()
+	port = appPort
+	if appPort+1 >= 60000 {
+		appPort = 30000
+	} else {
+		appPort++
 	}
+	appPortMutex.Unlock()
+	return
+}
+
+func (t *transport) ListenForApp(fn func(port int)) (err error) {
+	var ln net.Listener
+	var port int
+	for i := 0; i < 3; i++ {
+		port = getAppPort()
+		address := net.JoinHostPort("", strconv.Itoa(port))
+		ln, err = net.Listen("tcp", address)
+		if err == nil {
+			goto OK
+		}
+	}
+	return
+
+OK:
 	t.fieldsMutex.Lock()
 	t.appNet = ln
 	t.fieldsMutex.Unlock()
 
-	fn()
+	fn(port)
 
 	go t.accept()
 	return
@@ -224,7 +252,6 @@ func (t *transport) accept() {
 	t.fieldsMutex.RLock()
 	tConn := t.conn
 	t.fieldsMutex.RUnlock()
-
 
 	go t.nodeReadLoop(tConn, func(id uint32) net.Conn {
 		t.connsMutex.RLock()
