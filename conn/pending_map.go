@@ -124,7 +124,7 @@ func (m *UDPPendingMap) AddMsg(k uint32, v msg.Interface) {
 	m.Unlock()
 }
 
-func (m *UDPPendingMap) DelMsgAndGetLossMsgs(k uint32) (ok bool, loss []msg.Interface) {
+func (m *UDPPendingMap) DelMsgAndGetLossMsgs(k uint32) (ok bool, loss []*msg.UDPMessage) {
 	m.Lock()
 	v, ok := m.Pending[k]
 	if !ok {
@@ -145,7 +145,10 @@ func (m *UDPPendingMap) DelMsgAndGetLossMsgs(k uint32) (ok bool, loss []msg.Inte
 			if m.waitBits&byte(ii) > 0 {
 				l, ok := m.Pending[pk]
 				if ok {
-					loss = append(loss, l)
+					lm, ok := l.(*msg.UDPMessage)
+					if ok {
+						loss = append(loss, lm)
+					}
 				}
 			}
 		}

@@ -229,7 +229,7 @@ func (c *UDPConn) DelMsg(seq uint32) error {
 		if len(msgs) > 1 {
 			c.CTXLogger.Debugf("resend loss msgs %v", msgs)
 			for _, msg := range msgs {
-				err := c.WriteBytes(msg.Bytes())
+				err := c.WriteBytes(msg.PkgBytes())
 				if err != nil {
 					c.SetStatusToError(err)
 					c.Close()

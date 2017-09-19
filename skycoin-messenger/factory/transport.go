@@ -139,6 +139,9 @@ func (t *transport) appReadLoop(id uint32, appConn net.Conn, conn *Connection, c
 	}
 
 	defer func() {
+		if e := recover(); e != nil {
+			conn.GetContextLogger().Debugf("close app conn %d, err %v", id, e)
+		}
 		t.connsMutex.Lock()
 		defer t.connsMutex.Unlock()
 		// exited by err
@@ -146,7 +149,14 @@ func (t *transport) appReadLoop(id uint32, appConn net.Conn, conn *Connection, c
 			buf[PKG_HEADER_OP_BEGIN] = OP_CLOSE
 			//log.Infof("close %v, %d", create, id)
 			if !conn.IsClosed() {
-				conn.GetChanOut() <- buf[:PKG_HEADER_END]
+				func() {
+					defer func() {
+						if e := recover(); e != nil {
+							conn.GetContextLogger().Debugf("close app conn %d, err %v", id, e)
+						}
+					}()
+					conn.GetChanOut() <- buf[:PKG_HEADER_END]
+				}()
 			}
 			if create {
 				delete(t.conns, id)
