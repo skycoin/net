@@ -75,7 +75,7 @@ func (c *ServerUDPConn) ReadLoop(fn func(c *net.UDPConn, addr *net.UDPAddr) *con
 					}
 					if err != nil {
 						cc.SetStatusToError(err)
-						cc.ConnCommonFields.Close()
+						cc.Close()
 					}
 				}()
 				m[msg.PING_MSG_TYPE_BEGIN] = msg.TYPE_PONG
@@ -96,7 +96,7 @@ func (c *ServerUDPConn) ReadLoop(fn func(c *net.UDPConn, addr *net.UDPAddr) *con
 					}
 					if err != nil {
 						cc.SetStatusToError(err)
-						cc.ConnCommonFields.Close()
+						cc.Close()
 					}
 				}()
 				seq := binary.BigEndian.Uint32(m[msg.MSG_SEQ_BEGIN:msg.MSG_SEQ_END])
@@ -113,7 +113,9 @@ func (c *ServerUDPConn) ReadLoop(fn func(c *net.UDPConn, addr *net.UDPAddr) *con
 			}()
 		default:
 			cc.CTXLogger.Debugf("not implemented msg type %d", t)
-			return fmt.Errorf("not implemented msg type %d", t)
+			cc.SetStatusToError(fmt.Errorf("not implemented msg type %d", t))
+			cc.Close()
+			continue
 		}
 
 		cc.UpdateLastTime()

@@ -49,6 +49,7 @@ func NewTransport(creator *MessengerFactory, fromNode, toNode, fromApp, toApp ci
 	return t
 }
 
+// Listen and connect to node manager
 func (t *transport) ListenAndConnect(address string) (conn *Connection, err error) {
 	conn, err = t.factory.connectUDPWithConfig(address, &ConnConfig{
 		OnConnected: func(connection *Connection) {
@@ -59,6 +60,7 @@ func (t *transport) ListenAndConnect(address string) (conn *Connection, err erro
 	return
 }
 
+// Connect to node A and server app
 func (t *transport) Connect(address, appAddress string) (err error) {
 	conn, err := t.factory.connectUDPWithConfig(address, &ConnConfig{
 		OnConnected: func(connection *Connection) {
@@ -99,6 +101,9 @@ func (t *transport) Connect(address, appAddress string) (err error) {
 }
 
 func (t *transport) nodeReadLoop(conn *Connection, getAppConn func(id uint32) net.Conn) {
+	defer func() {
+		t.Close()
+	}()
 	var err error
 	for {
 		select {
@@ -136,10 +141,6 @@ func (t *transport) nodeReadLoop(conn *Connection, getAppConn func(id uint32) ne
 func (t *transport) appReadLoop(id uint32, appConn net.Conn, conn *Connection, create bool) {
 	buf := make([]byte, cn.MAX_UDP_PACKAGE_SIZE-100)
 	binary.BigEndian.PutUint32(buf[PKG_HEADER_ID_BEGIN:PKG_HEADER_ID_END], id)
-	if create {
-		conn.GetChanOut() <- buf[:PKG_HEADER_END]
-	}
-
 	defer func() {
 		if e := recover(); e != nil {
 			conn.GetContextLogger().Debugf("close app conn %d, err %v", id, e)
@@ -171,6 +172,9 @@ func (t *transport) appReadLoop(id uint32, appConn net.Conn, conn *Connection, c
 			delete(t.conns, id)
 		}
 	}()
+	if create {
+		conn.GetChanOut() <- buf[:PKG_HEADER_END]
+	}
 	for {
 		n, err := appConn.Read(buf[PKG_HEADER_END:])
 		if err != nil {

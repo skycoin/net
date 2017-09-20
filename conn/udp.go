@@ -10,6 +10,8 @@ import (
 
 	"fmt"
 
+	"errors"
+
 	"github.com/skycoin/net/msg"
 )
 
@@ -97,6 +99,11 @@ func (c *UDPConn) writeLoopWithPing() (err error) {
 	for {
 		select {
 		case <-ticker.C:
+			nowUnix := time.Now().Unix()
+			if nowUnix-c.GetLastTime() >= UDP_GC_PERIOD {
+				c.Close()
+				return errors.New("timeout")
+			}
 			err := c.Ping()
 			if err != nil {
 				return err
@@ -240,6 +247,7 @@ func (c *UDPConn) DelMsg(seq uint32) error {
 		}
 		c.UpdateLastAck(seq)
 	} else {
+		c.CTXLogger.Debugf("over ack %s", c)
 		c.AddOverAckCount()
 	}
 	return nil

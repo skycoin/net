@@ -98,10 +98,8 @@ func (factory *UDPFactory) createConnAfterListen(addr *net.UDPAddr) *conn.UDPCon
 	return udpConn
 }
 
-const UDP_GC_PERIOD = 90
-
 func (factory *UDPFactory) GC() {
-	ticker := time.NewTicker(time.Second * UDP_GC_PERIOD)
+	ticker := time.NewTicker(time.Second * conn.UDP_GC_PERIOD)
 	for {
 		select {
 		case <-factory.stopGC:
@@ -111,7 +109,7 @@ func (factory *UDPFactory) GC() {
 			closed := []string{}
 			factory.udpConnMapMutex.RLock()
 			for k, udp := range factory.udpConnMap {
-				if nowUnix-udp.GetLastTime() >= UDP_GC_PERIOD {
+				if nowUnix-udp.GetLastTime() >= conn.UDP_GC_PERIOD {
 					udp.Close()
 					closed = append(closed, k)
 				}
