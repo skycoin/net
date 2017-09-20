@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/btree"
 	"github.com/skycoin/net/msg"
 )
 
@@ -101,26 +102,24 @@ func (m *PendingMap) analyse() {
 
 type UDPPendingMap struct {
 	*PendingMap
-	waitBits byte
-	waitCond *sync.Cond
-	ringMask uint32
+	seqs *btree.BTree
+}
+
+type Uint32 uint32
+
+func (a Uint32) Less(b btree.Item) bool {
+	return a < b.(Uint32)
 }
 
 func NewUDPPendingMap() *UDPPendingMap {
-	m := &UDPPendingMap{PendingMap: NewPendingMap()}
-	m.waitCond = sync.NewCond(&m.RWMutex)
-	m.ringMask = 16
+	m := &UDPPendingMap{PendingMap: NewPendingMap(), seqs: btree.New(2)}
 	return m
 }
 
 func (m *UDPPendingMap) AddMsg(k uint32, v msg.Interface) {
 	m.Lock()
-	i := k % m.ringMask
-	for m.waitBits&(1<<i) > 0 {
-		m.waitCond.Wait()
-	}
 	m.Pending[k] = v
-	m.waitBits |= 1 << i
+	m.seqs.ReplaceOrInsert(Uint32(k))
 	m.Unlock()
 }
 
@@ -133,28 +132,22 @@ func (m *UDPPendingMap) DelMsgAndGetLossMsgs(k uint32) (ok bool, loss []*msg.UDP
 	}
 	v.Acked()
 	delete(m.Pending, k)
-	i := k % m.ringMask
-	m.waitBits &^= 1 << i
-	var prev byte
-	prev = ^(1 << i) & ^(1 << ((k - 1) % m.ringMask ))
-	// loss
-	if m.waitBits&prev > 0 {
-		for n := m.ringMask - 1; n > 1; n-- {
-			pk := k - uint32(n)
-			ii := 1 << (pk % m.ringMask)
-			if m.waitBits&byte(ii) > 0 {
-				l, ok := m.Pending[pk]
-				if ok {
-					lm, ok := l.(*msg.UDPMessage)
-					if ok {
-						loss = append(loss, lm)
-					}
+
+	m.seqs.AscendLessThan(Uint32(k), func(i btree.Item) bool {
+		v, ok := m.Pending[uint32(i.(Uint32))]
+		if ok {
+			v, ok := v.(*msg.UDPMessage)
+			if ok {
+				if v.Miss() >= 2 {
+					v.ResetMiss()
+					loss = append(loss, v)
 				}
 			}
 		}
-	}
+		return true
+	})
+	m.seqs.Delete(Uint32(k))
 	m.Unlock()
-	m.waitCond.Broadcast()
 
 	m.ackedMessagesMutex.Lock()
 	m.ackedMessages[k] = v

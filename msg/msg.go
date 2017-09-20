@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/skycoin/skycoin/src/cipher"
+	"sync/atomic"
 )
 
 type Interface interface {
@@ -116,6 +117,7 @@ func (msg *Message) GetRTT() (rtt time.Duration) {
 type UDPMessage struct {
 	*Message
 
+	miss uint32
 	resendTimer *time.Timer
 }
 
@@ -136,6 +138,7 @@ func (msg *UDPMessage) Transmitted() {
 func (msg *UDPMessage) SetRTO(rto time.Duration, fn func()) {
 	msg.Lock()
 	msg.resendTimer = time.AfterFunc(rto, func() {
+		msg.ResetMiss()
 		fn()
 		msg.SetRTO(rto, fn)
 	})
@@ -149,4 +152,12 @@ func (msg *UDPMessage) Acked() {
 	msg.rtt = msg.AckedAt.Sub(msg.TransmittedAt)
 	msg.resendTimer.Stop()
 	msg.Unlock()
+}
+
+func (msg *UDPMessage) Miss() uint32 {
+	return atomic.AddUint32(&msg.miss, 1)
+}
+
+func (msg *UDPMessage) ResetMiss() {
+	atomic.StoreUint32(&msg.miss, 0)
 }
