@@ -219,12 +219,14 @@ func (c *UDPConn) SetRTO(rto time.Duration) {
 }
 
 func (c *UDPConn) AddMsg(k uint32, v *msg.UDPMessage) {
-	v.SetRTO(c.GetRTO(), func() {
-		err := c.WriteBytes(v.PkgBytes())
+	v.SetRTO(c.GetRTO(), func() (err error) {
+		c.AddLossResendCount()
+		err = c.WriteBytes(v.PkgBytes())
 		if err != nil {
 			c.SetStatusToError(err)
 			c.Close()
 		}
+		return
 	})
 	c.UDPPendingMap.AddMsg(k, v)
 }
