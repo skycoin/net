@@ -189,11 +189,12 @@ func (c *UDPConn) Close() {
 
 func (c *UDPConn) String() string {
 	return fmt.Sprintf(
-		`udp connection:
+		`udp connection(%s):
 			rtoResend:%d,
 			lossResend:%d,
 			ack:%d,
 			overAck:%d,`,
+		c.GetRemoteAddr().String(),
 		atomic.LoadUint32(&c.rtoResendCount),
 		atomic.LoadUint32(&c.lossResendCount),
 		atomic.LoadUint32(&c.ackCount),

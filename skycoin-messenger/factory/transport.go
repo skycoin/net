@@ -16,6 +16,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	cn "github.com/skycoin/net/conn"
 	"github.com/skycoin/skycoin/src/cipher"
+	"errors"
 )
 
 type transport struct {
@@ -221,6 +222,7 @@ func (t *transport) ListenForApp(fn func(port int)) (err error) {
 			goto OK
 		}
 	}
+	err = errors.New("can not listen for app")
 	return
 
 OK:
