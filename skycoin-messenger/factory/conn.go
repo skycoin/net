@@ -35,6 +35,9 @@ type Connection struct {
 
 	// call after received response for FindServiceNodesByAttributes
 	findServiceNodesByAttributesCallback func(resp *QueryByAttrsResp)
+
+	// call after received response for BuildAppConnection
+	appConnectionInitCallback func(resp *AppConnResp)
 }
 
 // Used by factory to spawn connections for server side
@@ -42,6 +45,7 @@ func newConnection(c *factory.Connection, factory *MessengerFactory) *Connection
 	connection := &Connection{
 		Connection:    c,
 		factory:       factory,
+		disconnected:     make(chan struct{}),
 		appTransports: make(map[cipher.PubKey]*transport),
 	}
 	c.RealObject = connection
@@ -51,16 +55,6 @@ func newConnection(c *factory.Connection, factory *MessengerFactory) *Connection
 
 // Used by factory to spawn connections for client side
 func newClientConnection(c *factory.Connection, factory *MessengerFactory) *Connection {
-	connection := newUDPClientConnection(c, factory)
-	go func() {
-		connection.preprocessor()
-		close(connection.disconnected)
-	}()
-	return connection
-}
-
-// Used by factory to spawn connections for udp client side
-func newUDPClientConnection(c *factory.Connection, factory *MessengerFactory) *Connection {
 	connection := &Connection{
 		Connection:       c,
 		factory:          factory,
@@ -71,6 +65,24 @@ func newUDPClientConnection(c *factory.Connection, factory *MessengerFactory) *C
 	}
 	c.RealObject = connection
 	connection.keySetCond = sync.NewCond(connection.fieldsMutex.RLocker())
+	go func() {
+		connection.preprocessor()
+	}()
+	return connection
+}
+
+// Used by factory to spawn connections for udp client side
+func newUDPClientConnection(c *factory.Connection, factory *MessengerFactory) *Connection {
+	connection := &Connection{
+		Connection:       c,
+		factory:          factory,
+		in:               make(chan []byte),
+	}
+	c.RealObject = connection
+	connection.keySetCond = sync.NewCond(connection.fieldsMutex.RLocker())
+	go func() {
+		connection.preprocessor()
+	}()
 	return connection
 }
 
@@ -152,6 +164,7 @@ func (c *Connection) Reg() error {
 	return c.Write(GenRegMsg())
 }
 
+// register services to discovery
 func (c *Connection) UpdateServices(ns *NodeServices) error {
 	if ns == nil || len(ns.Services) < 1 {
 		return errors.New("invalid arguments")
@@ -164,23 +177,27 @@ func (c *Connection) UpdateServices(ns *NodeServices) error {
 	return nil
 }
 
+// register a service to discovery
 func (c *Connection) OfferService(attrs ...string) error {
 	return c.UpdateServices(&NodeServices{Services: []*Service{{Key: c.GetKey(), Attributes: attrs}}})
 }
 
+// register a service to discovery
 func (c *Connection) OfferServiceWithAddress(address string, attrs ...string) error {
 	return c.UpdateServices(&NodeServices{Services: []*Service{{Key: c.GetKey(), Attributes: attrs, Address: address}}})
 }
 
+// find services by attributes
 func (c *Connection) FindServiceNodesByAttributes(attrs ...string) error {
 	return c.writeOP(OP_QUERY_BY_ATTRS, newQueryByAttrs(attrs))
 }
 
+// find services nodes by service public keys
 func (c *Connection) FindServiceNodesByKeys(keys []cipher.PubKey) error {
 	return c.writeOP(OP_QUERY_SERVICE_NODES, newQuery(keys))
 }
 
-func (c *Connection) BuildConnection(node, app cipher.PubKey) error {
+func (c *Connection) BuildAppConnection(node, app cipher.PubKey) error {
 	return c.writeOP(OP_BUILD_APP_CONN, &appConn{Node: node, App: app})
 }
 
@@ -202,6 +219,7 @@ func (c *Connection) preprocessor() (err error) {
 		}
 		c.Close()
 	}()
+	OUTER:
 	for {
 		select {
 		case m, ok := <-c.Connection.GetChanIn():
@@ -226,6 +244,10 @@ func (c *Connection) preprocessor() (err error) {
 					}
 					err = r.Run(c)
 					if err != nil {
+						if err == ErrDetach {
+							err = nil
+							break OUTER
+						}
 						return
 					}
 					putResp(i, r)
@@ -233,6 +255,15 @@ func (c *Connection) preprocessor() (err error) {
 				}
 			}
 
+			c.in <- m
+		}
+	}
+	for {
+		select {
+		case m, ok := <-c.Connection.GetChanIn():
+			if !ok {
+				return
+			}
 			c.in <- m
 		}
 	}
@@ -249,17 +280,29 @@ func (c *Connection) Close() {
 	c.keySetCond.Broadcast()
 	c.fieldsMutex.Lock()
 	defer c.fieldsMutex.Unlock()
-	if c.Connection.IsClosed() {
-		return
-	}
 	if c.keySet {
 		c.factory.unregister(c.key, c)
+		c.keySet = false
 	}
 	if c.in != nil {
 		close(c.in)
 		c.in = nil
 	}
+	if c.disconnected != nil {
+		close(c.disconnected)
+		c.disconnected = nil
+	}
 	c.Connection.Close()
+
+	c.appTransportsMutex.RLock()
+	defer c.appTransportsMutex.RUnlock()
+
+	if len(c.appTransports) > 0 {
+		for _, v := range c.appTransports {
+			v.Close()
+		}
+		c.appTransports = nil
+	}
 }
 
 func (c *Connection) writeOPBytes(op byte, body []byte) error {
@@ -277,17 +320,17 @@ func (c *Connection) writeOP(op byte, object interface{}) error {
 	return c.writeOPBytes(op, js)
 }
 
-func (f *Connection) setTransport(to cipher.PubKey, tr *transport) {
-	f.appTransportsMutex.Lock()
-	defer f.appTransportsMutex.Unlock()
+func (c *Connection) setTransport(to cipher.PubKey, tr *transport) {
+	c.appTransportsMutex.Lock()
+	defer c.appTransportsMutex.Unlock()
 
-	f.appTransports[to] = tr
+	c.appTransports[to] = tr
 }
 
-func (f *Connection) getTransport(to cipher.PubKey) (tr *transport, ok bool) {
-	f.appTransportsMutex.RLock()
-	defer f.appTransportsMutex.RUnlock()
+func (c *Connection) getTransport(to cipher.PubKey) (tr *transport, ok bool) {
+	c.appTransportsMutex.RLock()
+	defer c.appTransportsMutex.RUnlock()
 
-	tr, ok = f.appTransports[to]
+	tr, ok = c.appTransports[to]
 	return
 }

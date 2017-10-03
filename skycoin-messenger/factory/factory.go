@@ -22,9 +22,6 @@ type MessengerFactory struct {
 	regConnections      map[cipher.PubKey]*Connection
 	regConnectionsMutex sync.RWMutex
 
-	appTransports      map[cipher.PubKey]*transport
-	appTransportsMutex sync.RWMutex
-
 	// custom msg callback
 	CustomMsgHandler func(*Connection, []byte)
 
@@ -42,17 +39,21 @@ func NewMessengerFactory() *MessengerFactory {
 func (f *MessengerFactory) Listen(address string) (err error) {
 	tcp := factory.NewTCPFactory()
 	tcp.AcceptedCallback = f.acceptedCallback
-	udp := factory.NewUDPFactory()
-	udp.AcceptedCallback = f.acceptedUDPCallback
 	f.fieldsMutex.Lock()
 	f.factory = tcp
-	f.udp = udp
 	f.fieldsMutex.Unlock()
 	err = tcp.Listen(address)
 	if err != nil {
 		return
 	}
-	err = udp.Listen(address)
+	if !f.Proxy {
+		udp := factory.NewUDPFactory()
+		udp.AcceptedCallback = f.acceptedUDPCallback
+		f.fieldsMutex.Lock()
+		f.udp = udp
+		f.fieldsMutex.Unlock()
+		err = udp.Listen(address)
+	}
 	return
 }
 
@@ -71,14 +72,22 @@ func (f *MessengerFactory) acceptedUDPCallback(connection *factory.Connection) {
 	}()
 	err = f.callbackLoop(conn)
 	if err == ErrDetach {
+		err = nil
 		conn.WaitForDisconnected()
 	}
 }
 
 func (f *MessengerFactory) callbackLoop(conn *Connection) (err error) {
+	var m []byte
+	var ok bool
+	defer func() {
+		if err != nil && err != ErrDetach {
+			conn.GetContextLogger().Debugf("err in %x", m)
+		}
+	}()
 	for {
 		select {
-		case m, ok := <-conn.GetChanIn():
+		case m, ok = <-conn.GetChanIn():
 			if !ok {
 				return
 			}
@@ -206,6 +215,7 @@ func (f *MessengerFactory) ConnectWithConfig(address string, config *ConnConfig)
 	if config != nil {
 		conn.findServiceNodesByKeysCallback = config.FindServiceNodesByKeysCallback
 		conn.findServiceNodesByAttributesCallback = config.FindServiceNodesByAttributesCallback
+		conn.appConnectionInitCallback = config.AppConnectionInitCallback
 		if config.OnConnected != nil {
 			config.OnConnected(conn)
 		}
@@ -239,7 +249,7 @@ func (f *MessengerFactory) connectUDPWithConfig(address string, config *ConnConf
 	if err != nil {
 		return nil, err
 	}
-	conn = newClientConnection(c, f)
+	conn = newUDPClientConnection(c, f)
 	conn.SetContextLogger(conn.GetContextLogger().WithField("app", "transport"))
 	if config != nil {
 		if config.OnConnected != nil {
@@ -249,8 +259,19 @@ func (f *MessengerFactory) connectUDPWithConfig(address string, config *ConnConf
 	return
 }
 
-func (f *MessengerFactory) Close() error {
-	return f.factory.Close()
+func (f *MessengerFactory) Close() (err error) {
+	f.fieldsMutex.RLock()
+	defer f.fieldsMutex.RUnlock()
+	if f.factory != nil {
+		err = f.factory.Close()
+	}
+	if err != nil {
+		return
+	}
+	if f.udp != nil {
+		err = f.udp.Close()
+	}
+	return
 }
 
 func (f *MessengerFactory) ForEachConn(fn func(connection *Connection)) {
@@ -285,21 +306,6 @@ func (f *MessengerFactory) discoveryUnregister(conn *Connection) {
 			connection.UpdateServices(nodeServices)
 		})
 	}
-}
-
-func (f *MessengerFactory) setTransport(to cipher.PubKey, tr *transport) {
-	f.appTransportsMutex.Lock()
-	defer f.appTransportsMutex.Unlock()
-
-	f.appTransports[to] = tr
-}
-
-func (f *MessengerFactory) getTransport(to cipher.PubKey) (tr *transport, ok bool) {
-	f.appTransportsMutex.RLock()
-	defer f.appTransportsMutex.RUnlock()
-
-	tr, ok = f.appTransports[to]
-	return
 }
 
 func (f *MessengerFactory) DisableLogger() {

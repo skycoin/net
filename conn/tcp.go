@@ -4,11 +4,12 @@ import (
 	"bufio"
 	"encoding/binary"
 	"fmt"
-	"github.com/skycoin/net/msg"
 	"io"
 	"net"
 	"sync/atomic"
 	"time"
+
+	"github.com/skycoin/net/msg"
 )
 
 const (
@@ -17,6 +18,7 @@ const (
 
 type TCPConn struct {
 	ConnCommonFields
+	*PendingMap
 	TcpConn net.Conn
 }
 
@@ -51,7 +53,6 @@ func (c *TCPConn) ReadLoop() (err error) {
 			c.UpdateLastAck(seq)
 		case msg.TYPE_PONG:
 			reader.Discard(msg.PING_MSG_HEADER_END)
-			c.CTXLogger.Debug("recv pong")
 		case msg.TYPE_NORMAL:
 			_, err = io.ReadAtLeast(reader, header, msg.MSG_HEADER_SIZE)
 			if err != nil {
@@ -112,8 +113,8 @@ func (c *TCPConn) Write(bytes []byte) error {
 
 func (c *TCPConn) WriteBytes(bytes []byte) error {
 	c.CTXLogger.Debugf("write %x", bytes)
-	c.writeMutex.Lock()
-	defer c.writeMutex.Unlock()
+	c.WriteMutex.Lock()
+	defer c.WriteMutex.Unlock()
 	index := 0
 	for n, err := c.TcpConn.Write(bytes[index:]); index != len(bytes); index += n {
 		if err != nil {
@@ -147,11 +148,11 @@ func (c *TCPConn) UpdateLastTime() {
 }
 
 func (c *TCPConn) Close() {
-	c.fieldsMutex.Lock()
+	c.FieldsMutex.Lock()
 	if c.TcpConn != nil {
 		c.TcpConn.Close()
 	}
-	c.fieldsMutex.Unlock()
+	c.FieldsMutex.Unlock()
 	c.ConnCommonFields.Close()
 }
 

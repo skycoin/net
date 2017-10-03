@@ -1,11 +1,12 @@
 package conn
 
 import (
-	log "github.com/sirupsen/logrus"
 	"net"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	log "github.com/sirupsen/logrus"
 )
 
 var (
@@ -28,7 +29,6 @@ type Connection interface {
 }
 
 type ConnCommonFields struct {
-	*PendingMap
 	seq uint32 // id of last message, increment every new message
 
 	HighestACKedSequenceNumber uint32 // highest packet that has been ACKed
@@ -40,8 +40,8 @@ type ConnCommonFields struct {
 	In          chan []byte
 	Out         chan []byte
 	closed      bool
-	fieldsMutex sync.RWMutex
-	writeMutex  sync.Mutex
+	FieldsMutex sync.RWMutex
+	WriteMutex  sync.Mutex
 
 	CTXLogger *log.Entry
 }
@@ -49,48 +49,50 @@ type ConnCommonFields struct {
 func NewConnCommonFileds() ConnCommonFields {
 	entry := log.WithField("ctxId", atomic.AddUint32(&ctxId, 1))
 	return ConnCommonFields{
-		CTXLogger:  entry,
-		PendingMap: NewPendingMap(entry), In: make(chan []byte), Out: make(chan []byte)}
+		CTXLogger: entry,
+		In:        make(chan []byte, 1),
+		Out:       make(chan []byte, 1),
+	}
 }
 
 func (c *ConnCommonFields) SetStatusToConnected() {
-	c.fieldsMutex.Lock()
+	c.FieldsMutex.Lock()
 	c.Status = STATUS_CONNECTED
-	c.fieldsMutex.Unlock()
+	c.FieldsMutex.Unlock()
 }
 
 func (c *ConnCommonFields) SetStatusToError(err error) {
-	c.fieldsMutex.Lock()
+	c.FieldsMutex.Lock()
 	c.Status = STATUS_ERROR
 	c.Err = err
-	c.fieldsMutex.Unlock()
+	c.FieldsMutex.Unlock()
 	c.CTXLogger.Debugf("SetStatusToError %v", err)
 }
 
 func (c *ConnCommonFields) UpdateLastAck(s uint32) {
-	c.fieldsMutex.Lock()
+	c.FieldsMutex.Lock()
 	c.LastAck = time.Now().Unix()
 	if s > c.HighestACKedSequenceNumber {
 		c.HighestACKedSequenceNumber = s
 	}
-	c.fieldsMutex.Unlock()
+	c.FieldsMutex.Unlock()
 }
 
 func (c *ConnCommonFields) GetContextLogger() *log.Entry {
-	c.fieldsMutex.RLock()
-	defer c.fieldsMutex.RUnlock()
+	c.FieldsMutex.RLock()
+	defer c.FieldsMutex.RUnlock()
 	return c.CTXLogger
 }
 
 func (c *ConnCommonFields) SetContextLogger(l *log.Entry) {
-	c.fieldsMutex.Lock()
+	c.FieldsMutex.Lock()
 	c.CTXLogger = l
-	c.fieldsMutex.Unlock()
+	c.FieldsMutex.Unlock()
 }
 
 func (c *ConnCommonFields) Close() {
-	c.fieldsMutex.Lock()
-	defer c.fieldsMutex.Unlock()
+	c.FieldsMutex.Lock()
+	defer c.FieldsMutex.Unlock()
 
 	if c.closed {
 		return
@@ -104,7 +106,7 @@ func (c *ConnCommonFields) Close() {
 }
 
 func (c *ConnCommonFields) IsClosed() bool {
-	c.fieldsMutex.RLock()
-	defer c.fieldsMutex.RUnlock()
+	c.FieldsMutex.RLock()
+	defer c.FieldsMutex.RUnlock()
 	return c.closed
 }
