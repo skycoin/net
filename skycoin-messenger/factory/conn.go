@@ -12,10 +12,15 @@ import (
 
 type Connection struct {
 	*factory.Connection
-	factory     *MessengerFactory
-	key         cipher.PubKey
-	keySetCond  *sync.Cond
-	keySet      bool
+	factory *MessengerFactory
+
+	key        cipher.PubKey
+	keySetCond *sync.Cond
+	keySet     bool
+	secKey     cipher.SecKey
+
+	context sync.Map
+
 	services    *NodeServices
 	servicesMap map[cipher.PubKey]*Service
 	fieldsMutex sync.RWMutex
@@ -45,7 +50,7 @@ func newConnection(c *factory.Connection, factory *MessengerFactory) *Connection
 	connection := &Connection{
 		Connection:    c,
 		factory:       factory,
-		disconnected:     make(chan struct{}),
+		disconnected:  make(chan struct{}),
 		appTransports: make(map[cipher.PubKey]*transport),
 	}
 	c.RealObject = connection
@@ -74,9 +79,9 @@ func newClientConnection(c *factory.Connection, factory *MessengerFactory) *Conn
 // Used by factory to spawn connections for udp client side
 func newUDPClientConnection(c *factory.Connection, factory *MessengerFactory) *Connection {
 	connection := &Connection{
-		Connection:       c,
-		factory:          factory,
-		in:               make(chan []byte),
+		Connection: c,
+		factory:    factory,
+		in:         make(chan []byte),
 	}
 	c.RealObject = connection
 	connection.keySetCond = sync.NewCond(connection.fieldsMutex.RLocker())
@@ -129,6 +134,19 @@ func (c *Connection) GetKey() cipher.PubKey {
 	return c.key
 }
 
+func (c *Connection) SetSecKey(key cipher.SecKey) {
+	c.fieldsMutex.Lock()
+	c.secKey = key
+	c.fieldsMutex.Unlock()
+}
+
+func (c *Connection) GetSecKey() (key cipher.SecKey) {
+	c.fieldsMutex.RLock()
+	key = c.secKey
+	c.fieldsMutex.RUnlock()
+	return
+}
+
 func (c *Connection) setServices(s *NodeServices) {
 	if s == nil {
 		c.fieldsMutex.Lock()
@@ -162,6 +180,10 @@ func (c *Connection) GetServices() *NodeServices {
 
 func (c *Connection) Reg() error {
 	return c.Write(GenRegMsg())
+}
+
+func (c *Connection) RegWithKey(key cipher.PubKey) error {
+	return c.writeOP(OP_REG_KEY, &regWithKey{PublicKey: key})
 }
 
 // register services to discovery
@@ -219,7 +241,7 @@ func (c *Connection) preprocessor() (err error) {
 		}
 		c.Close()
 	}()
-	OUTER:
+OUTER:
 	for {
 		select {
 		case m, ok := <-c.Connection.GetChanIn():
