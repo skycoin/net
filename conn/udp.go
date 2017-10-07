@@ -271,3 +271,11 @@ func (c *UDPConn) AddAckCount() {
 func (c *UDPConn) AddOverAckCount() {
 	atomic.AddUint32(&c.overAckCount, 1)
 }
+
+func (c *UDPConn) IsTCP() bool {
+	return false
+}
+
+func (c *UDPConn) IsUDP() bool {
+	return true
+}
