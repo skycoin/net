@@ -58,7 +58,9 @@ func (f *MessengerFactory) Listen(address string) (err error) {
 	}
 	return
 }
-
+func (f *MessengerFactory) GetRegConns() map[cipher.PubKey]*Connection {
+	return f.regConnections
+}
 func (f *MessengerFactory) acceptedUDPCallback(connection *factory.Connection) {
 	var err error
 	conn := newConnection(connection, f)
