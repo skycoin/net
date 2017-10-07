@@ -32,7 +32,7 @@ func (m *Monitor) Close() error {
 
 func (m *Monitor) Start() {
 	srv = &http.Server{Addr: m.address}
-	log.Debugf("path: %s",http.Dir("./web/dist"))
+	http.Handle("/",http.FileServer(http.Dir("./github.com/skycoin/net/skycoin-messenger/monitor/web/dist")))
 	http.HandleFunc("/conn/getAll", func(w http.ResponseWriter, r *http.Request) {
 		conns := m.factory.GetRegConns()
 		cs := make([]Conn,0,len(conns))
