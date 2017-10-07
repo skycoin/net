@@ -26,6 +26,8 @@ type Connection interface {
 	SetContextLogger(*log.Entry)
 
 	GetRemoteAddr() net.Addr
+	IsTCP() bool
+	IsUDP() bool
 }
 
 type ConnCommonFields struct {

@@ -159,3 +159,11 @@ func (c *TCPConn) Close() {
 func (c *TCPConn) GetRemoteAddr() net.Addr {
 	return c.TcpConn.RemoteAddr()
 }
+
+func (c *TCPConn) IsTCP() bool {
+	return true
+}
+
+func (c *TCPConn) IsUDP() bool {
+	return false
+}

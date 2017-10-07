@@ -11,6 +11,8 @@ import (
 
 	"io/ioutil"
 
+	"os"
+
 	log "github.com/sirupsen/logrus"
 	"github.com/skycoin/net/factory"
 	"github.com/skycoin/skycoin/src/cipher"
@@ -193,6 +195,11 @@ func (f *MessengerFactory) Connect(address string) (conn *Connection, err error)
 }
 
 func (f *MessengerFactory) ConnectWithConfig(address string, config *ConnConfig) (conn *Connection, err error) {
+	defer func() {
+		if err != nil && conn != nil {
+			conn.Close()
+		}
+	}()
 	f.fieldsMutex.Lock()
 	if f.factory == nil {
 		tcpFactory := factory.NewTCPFactory()
@@ -211,7 +218,44 @@ func (f *MessengerFactory) ConnectWithConfig(address string, config *ConnConfig)
 	}
 	conn = newClientConnection(c, f)
 	conn.SetContextLogger(conn.GetContextLogger().WithField("app", "messenger"))
-	err = conn.Reg()
+	if config != nil {
+		var sc *SeedConfig
+		if config.SeedConfig != nil {
+			sc = config.SeedConfig
+		} else if len(config.SeedConfigPath) > 0 {
+			sc, err = ReadSeedConfig(config.SeedConfigPath)
+			if err != nil {
+				if os.IsNotExist(err) {
+					sc = NewSeedConfig()
+					err = WriteSeedConfig(sc, config.SeedConfigPath)
+					if err != nil {
+						return
+					}
+				} else {
+					return
+				}
+			}
+		}
+		if sc != nil {
+			var k cipher.PubKey
+			k, err = cipher.PubKeyFromHex(sc.PublicKey)
+			if err != nil {
+				return
+			}
+			var sk cipher.SecKey
+			sk, err = cipher.SecKeyFromHex(sc.SecKey)
+			if err != nil {
+				return
+			}
+			conn.SetSecKey(sk)
+			err = conn.RegWithKey(k)
+		} else {
+			err = conn.Reg()
+		}
+	} else {
+		err = conn.Reg()
+	}
+
 	if config != nil {
 		conn.findServiceNodesByKeysCallback = config.FindServiceNodesByKeysCallback
 		conn.findServiceNodesByAttributesCallback = config.FindServiceNodesByAttributesCallback

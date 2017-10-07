@@ -46,6 +46,10 @@ const (
 	OP_BUILD_APP_CONN_OK
 	OP_APP_CONN_ACK
 
+	// reg with key steps
+	OP_REG_KEY
+	OP_REG_SIG
+
 	OP_SIZE
 )
 

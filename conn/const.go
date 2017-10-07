@@ -9,5 +9,5 @@ const (
 const (
 	TCP_PINGTICK_PERIOD  = 60
 	UDP_PING_TICK_PERIOD = 10
-	UDP_GC_PERIOD = 90
+	UDP_GC_PERIOD        = 90
 )

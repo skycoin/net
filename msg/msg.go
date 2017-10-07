@@ -117,7 +117,7 @@ func (msg *Message) GetRTT() (rtt time.Duration) {
 type UDPMessage struct {
 	*Message
 
-	miss uint32
+	miss        uint32
 	resendTimer *time.Timer
 }
 
@@ -134,7 +134,6 @@ func (msg *UDPMessage) Transmitted() {
 	msg.Unlock()
 }
 
-
 func (msg *UDPMessage) SetRTO(rto time.Duration, fn func() error) {
 	msg.Lock()
 	msg.setRTO(rto, fn)
@@ -144,7 +143,7 @@ func (msg *UDPMessage) SetRTO(rto time.Duration, fn func() error) {
 func (msg *UDPMessage) setRTO(rto time.Duration, fn func() error) {
 	msg.resendTimer = time.AfterFunc(rto, func() {
 		msg.Lock()
-		if msg.Status & MSG_STATUS_ACKED > 0 {
+		if msg.Status&MSG_STATUS_ACKED > 0 {
 			msg.Unlock()
 			return
 		}
