@@ -15,8 +15,8 @@ type OP interface {
 }
 
 type OPer interface {
-	GetConnection() *factory.Connection
-	SetConnection(*factory.Connection)
+	GetFactory() *factory.MessengerFactory
+	SetFactory(factory *factory.MessengerFactory)
 	PushLoop(*factory.Connection)
 }
 

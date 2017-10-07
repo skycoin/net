@@ -13,24 +13,24 @@ var DefaultClient = &Client{Push: make(chan interface{}, 8)}
 
 type Client struct {
 	sync.RWMutex
-	Connection *factory.Connection
+	factory *factory.MessengerFactory
 
 	Push   chan interface{}
 	Logger *log.Entry
 }
 
-func (c *Client) GetConnection() *factory.Connection {
+func (c *Client) GetFactory() *factory.MessengerFactory {
 	c.RLock()
 	defer c.RUnlock()
-	return c.Connection
+	return c.factory
 }
 
-func (c *Client) SetConnection(connection *factory.Connection) {
+func (c *Client) SetFactory(factory *factory.MessengerFactory) {
 	c.Lock()
-	if c.Connection != nil {
-		c.Connection.Close()
+	if c.factory != nil {
+		c.factory.Close()
 	}
-	c.Connection = connection
+	c.factory = factory
 	c.Unlock()
 }
 

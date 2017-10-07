@@ -2,6 +2,7 @@ package op
 
 import (
 	"sync"
+	"time"
 
 	"github.com/skycoin/net/skycoin-messenger/factory"
 	"github.com/skycoin/net/skycoin-messenger/msg"
@@ -21,11 +22,16 @@ func init() {
 
 func (r *Reg) Execute(c msg.OPer) error {
 	f := factory.NewMessengerFactory()
-	conn, err := f.Connect(r.Address)
+	_, err := f.ConnectWithConfig(r.Address, &factory.ConnConfig{
+		Reconnect:     true,
+		ReconnectWait: 2 * time.Second,
+		OnConnected: func(connection *factory.Connection) {
+			go c.PushLoop(connection)
+		},
+	})
 	if err != nil {
 		return err
 	}
-	c.SetConnection(conn)
-	go c.PushLoop(conn)
+	c.SetFactory(f)
 	return nil
 }
