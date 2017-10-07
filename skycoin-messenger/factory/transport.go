@@ -1,22 +1,17 @@
 package factory
 
 import (
-	"sync"
-
-	"net"
-
-	"io"
-
-	"sync/atomic"
-
 	"encoding/binary"
-
+	"errors"
+	"io"
+	"net"
 	"strconv"
+	"sync"
+	"sync/atomic"
 
 	log "github.com/sirupsen/logrus"
 	cn "github.com/skycoin/net/conn"
 	"github.com/skycoin/skycoin/src/cipher"
-	"errors"
 )
 
 type transport struct {
@@ -240,11 +235,11 @@ const (
 	PKG_HEADER_ID_SIZE = 4
 	PKG_HEADER_OP_SIZE = 1
 
-	PKG_HEADER_BEGIN    = 0
+	PKG_HEADER_BEGIN = 0
 	PKG_HEADER_OP_BEGIN
-	PKG_HEADER_OP_END   = PKG_HEADER_OP_BEGIN + PKG_HEADER_OP_SIZE
+	PKG_HEADER_OP_END = PKG_HEADER_OP_BEGIN + PKG_HEADER_OP_SIZE
 	PKG_HEADER_ID_BEGIN
-	PKG_HEADER_ID_END   = PKG_HEADER_ID_BEGIN + PKG_HEADER_ID_SIZE
+	PKG_HEADER_ID_END = PKG_HEADER_ID_BEGIN + PKG_HEADER_ID_SIZE
 	PKG_HEADER_END
 )
 

@@ -1,15 +1,14 @@
 package factory
 
 import (
-	"time"
-
 	"encoding/json"
 	"io/ioutil"
+	"os"
+	"path/filepath"
+	"time"
 
 	"github.com/skycoin/skycoin/src/cipher"
 	"github.com/skycoin/skycoin/src/cipher/go-bip39"
-	"path/filepath"
-	"os"
 )
 
 type ConnConfig struct {

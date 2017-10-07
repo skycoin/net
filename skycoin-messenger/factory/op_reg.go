@@ -1,10 +1,10 @@
 package factory
 
 import (
+	"errors"
 	"sync"
 
 	"github.com/skycoin/skycoin/src/cipher"
-	"errors"
 )
 
 func init() {
@@ -70,7 +70,7 @@ func (resp *regResp) Run(conn *Connection) (err error) {
 }
 
 const (
-	publicKey   = iota
+	publicKey = iota
 	randomBytes
 )
 
@@ -136,4 +136,3 @@ func (reg *regCheckSig) Execute(f *MessengerFactory, conn *Connection) (r resp, 
 	}
 	return
 }
-

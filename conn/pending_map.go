@@ -11,7 +11,7 @@ import (
 )
 
 type PendingMap struct {
-	Pending              map[uint32]msg.Interface
+	Pending map[uint32]msg.Interface
 	sync.RWMutex
 	ackedMessages        map[uint32]msg.Interface
 	ackedMessagesMutex   sync.RWMutex
