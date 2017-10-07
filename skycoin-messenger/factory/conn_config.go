@@ -19,6 +19,7 @@ type ConnConfig struct {
 	// generate seed, private key and public key for the connection
 	// seed config file path
 	SeedConfigPath string
+	SeedConfig     *SeedConfig
 
 	// callbacks
 

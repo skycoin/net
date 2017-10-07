@@ -218,32 +218,40 @@ func (f *MessengerFactory) ConnectWithConfig(address string, config *ConnConfig)
 	}
 	conn = newClientConnection(c, f)
 	conn.SetContextLogger(conn.GetContextLogger().WithField("app", "messenger"))
-	if config != nil && len(config.SeedConfigPath) > 0 {
+	if config != nil {
 		var sc *SeedConfig
-		sc, err = ReadSeedConfig(config.SeedConfigPath)
-		if err != nil {
-			if os.IsNotExist(err) {
-				sc = NewSeedConfig()
-				err = WriteSeedConfig(sc, config.SeedConfigPath)
-				if err != nil {
+		if config.SeedConfig != nil {
+			sc = config.SeedConfig
+		} else if len(config.SeedConfigPath) > 0 {
+			sc, err = ReadSeedConfig(config.SeedConfigPath)
+			if err != nil {
+				if os.IsNotExist(err) {
+					sc = NewSeedConfig()
+					err = WriteSeedConfig(sc, config.SeedConfigPath)
+					if err != nil {
+						return
+					}
+				} else {
 					return
 				}
-			} else {
-				return
 			}
 		}
-		var k cipher.PubKey
-		k, err = cipher.PubKeyFromHex(sc.PublicKey)
-		if err != nil {
-			return
+		if sc != nil {
+			var k cipher.PubKey
+			k, err = cipher.PubKeyFromHex(sc.PublicKey)
+			if err != nil {
+				return
+			}
+			var sk cipher.SecKey
+			sk, err = cipher.SecKeyFromHex(sc.SecKey)
+			if err != nil {
+				return
+			}
+			conn.SetSecKey(sk)
+			err = conn.RegWithKey(k)
+		} else {
+			err = conn.Reg()
 		}
-		var sk cipher.SecKey
-		sk, err = cipher.SecKeyFromHex(sc.SecKey)
-		if err != nil {
-			return
-		}
-		conn.SetSecKey(sk)
-		err = conn.RegWithKey(k)
 	} else {
 		err = conn.Reg()
 	}

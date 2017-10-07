@@ -14,7 +14,8 @@ const (
 )
 
 const (
-	OP_REG = iota
+	OP_ACCOUNT = iota
+	OP_REG
 	OP_SEND
 	OP_ACK
 	OP_SIZE
