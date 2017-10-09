@@ -58,9 +58,7 @@ func (f *MessengerFactory) Listen(address string) (err error) {
 	}
 	return
 }
-func (f *MessengerFactory) GetRegConns() map[cipher.PubKey]*Connection {
-	return f.regConnections
-}
+
 func (f *MessengerFactory) acceptedUDPCallback(connection *factory.Connection) {
 	var err error
 	conn := newConnection(connection, f)
@@ -159,20 +157,22 @@ func (f *MessengerFactory) acceptedCallback(connection *factory.Connection) {
 
 func (f *MessengerFactory) register(key cipher.PubKey, connection *Connection) {
 	f.regConnectionsMutex.Lock()
-	defer f.regConnectionsMutex.Unlock()
 	c, ok := f.regConnections[key]
 	if ok {
 		if c == connection {
+			f.regConnectionsMutex.Unlock()
 			log.Debugf("reg %s %p already", key.Hex(), connection)
 			return
 		}
 		log.Debugf("reg close %s %p for %p", key.Hex(), c, connection)
-		c.Close()
+		defer c.Close()
 	}
 	f.regConnections[key] = connection
+	f.regConnectionsMutex.Unlock()
 	log.Debugf("reg %s %p", key.Hex(), connection)
 }
 
+// Get accepted connection by key
 func (f *MessengerFactory) GetConnection(key cipher.PubKey) (c *Connection, ok bool) {
 	f.regConnectionsMutex.RLock()
 	c, ok = f.regConnections[key]
@@ -180,15 +180,27 @@ func (f *MessengerFactory) GetConnection(key cipher.PubKey) (c *Connection, ok b
 	return
 }
 
+// execute fn for each accepted connection
+func (f *MessengerFactory) ForEachAcceptedConnection(fn func(key cipher.PubKey, conn *Connection)) {
+	f.regConnectionsMutex.RLock()
+	for k, v := range f.regConnections {
+		fn(k, v)
+	}
+	f.regConnectionsMutex.RUnlock()
+}
+
 func (f *MessengerFactory) unregister(key cipher.PubKey, connection *Connection) {
 	f.regConnectionsMutex.Lock()
-	defer f.regConnectionsMutex.Unlock()
 	c, ok := f.regConnections[key]
 	if ok && c == connection {
 		delete(f.regConnections, key)
+		f.regConnectionsMutex.Unlock()
 		log.Debugf("unreg %s %p", key.Hex(), c)
 	} else if ok {
+		f.regConnectionsMutex.Unlock()
 		log.Debugf("unreg %s %p != new %p", key.Hex(), connection, c)
+	} else {
+		f.regConnectionsMutex.Unlock()
 	}
 }
 
@@ -320,6 +332,7 @@ func (f *MessengerFactory) Close() (err error) {
 	return
 }
 
+// execute fn for each connection that connected to server
 func (f *MessengerFactory) ForEachConn(fn func(connection *Connection)) {
 	f.factory.ForEachConn(func(conn *factory.Connection) {
 		real := conn.RealObject
