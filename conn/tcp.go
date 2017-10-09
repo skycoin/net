@@ -42,28 +42,34 @@ func (c *TCPConn) ReadLoop() (err error) {
 			return err
 		}
 		msg_t := t[msg.MSG_TYPE_BEGIN]
+		var n int
 		switch msg_t {
 		case msg.TYPE_ACK:
-			_, err = io.ReadAtLeast(reader, header[:msg.MSG_SEQ_END], msg.MSG_SEQ_END)
+			n, err = io.ReadAtLeast(reader, header[:msg.MSG_SEQ_END], msg.MSG_SEQ_END)
 			if err != nil {
 				return err
 			}
+			c.AddReceivedBytes(n)
 			seq := binary.BigEndian.Uint32(header[msg.MSG_SEQ_BEGIN:msg.MSG_SEQ_END])
 			c.DelMsg(seq)
 			c.UpdateLastAck(seq)
 		case msg.TYPE_PONG:
-			reader.Discard(msg.PING_MSG_HEADER_END)
+			n = msg.PING_MSG_HEADER_END
+			reader.Discard(n)
+			c.AddReceivedBytes(n)
 		case msg.TYPE_NORMAL:
-			_, err = io.ReadAtLeast(reader, header, msg.MSG_HEADER_SIZE)
+			n, err = io.ReadAtLeast(reader, header, msg.MSG_HEADER_SIZE)
 			if err != nil {
 				return err
 			}
+			c.AddReceivedBytes(n)
 
 			m := msg.NewByHeader(header)
-			_, err = io.ReadAtLeast(reader, m.Body, int(m.Len))
+			n, err = io.ReadAtLeast(reader, m.Body, int(m.Len))
 			if err != nil {
 				return err
 			}
+			c.AddReceivedBytes(n)
 
 			seq := binary.BigEndian.Uint32(header[msg.MSG_SEQ_BEGIN:msg.MSG_SEQ_END])
 			c.Ack(seq)

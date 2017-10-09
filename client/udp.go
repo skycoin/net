@@ -37,6 +37,7 @@ func (c *ClientUDPConn) ReadLoop() (err error) {
 		if err != nil {
 			return err
 		}
+		c.AddReceivedBytes(n)
 		maxBuf = maxBuf[:n]
 		m := maxBuf[msg.PKG_HEADER_SIZE:]
 		checksum := binary.BigEndian.Uint32(maxBuf[msg.PKG_CRC32_BEGIN:])

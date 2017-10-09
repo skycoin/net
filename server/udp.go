@@ -50,6 +50,7 @@ func (c *ServerUDPConn) ReadLoop(fn func(c *net.UDPConn, addr *net.UDPAddr) *con
 			}
 			return err
 		}
+		c.AddReceivedBytes(n)
 		maxBuf = maxBuf[:n]
 		m := maxBuf[msg.PKG_HEADER_SIZE:]
 		checksum := binary.BigEndian.Uint32(maxBuf[msg.PKG_CRC32_BEGIN:])

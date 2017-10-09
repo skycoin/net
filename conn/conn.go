@@ -39,6 +39,7 @@ type ConnCommonFields struct {
 	lastReadTime int64
 
 	sentBytes uint64
+	receivedBytes uint64
 
 	Status int // STATUS_CONNECTING, STATUS_CONNECTED, STATUS_ERROR
 	Err    error
@@ -132,4 +133,12 @@ func (c *ConnCommonFields) GetSentBytes() uint64 {
 
 func (c *ConnCommonFields) AddSentBytes(n int) {
 	atomic.AddUint64(&c.sentBytes, uint64(n))
+}
+
+func (c *ConnCommonFields) GetReceivedBytes() uint64 {
+	return atomic.LoadUint64(&c.receivedBytes)
+}
+
+func (c *ConnCommonFields) AddReceivedBytes(n int) {
+	atomic.AddUint64(&c.receivedBytes, uint64(n))
 }
