@@ -28,6 +28,13 @@ type Connection interface {
 	GetRemoteAddr() net.Addr
 	IsTCP() bool
 	IsUDP() bool
+
+	// Get last time about read bytes from connection
+	GetLastTime() int64
+	// Get sent bytes count
+	GetSentBytes() uint64
+	// Get received bytes count
+	GetReceivedBytes() uint64
 }
 
 type ConnCommonFields struct {
