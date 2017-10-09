@@ -12,9 +12,9 @@
       margin: 12.5%;
     }
     .mat-nav-list {
-      .mat-list-item-focus {
+      .active{
         background-color: $nav-list-item-focus;
-        border-right: .5rem solid #1ABB9C;
+        border-right: .3rem solid #1ABB9C;
       }
       .mat-list-item {
         color: $nav-text-color;
@@ -27,28 +27,5 @@
     overflow: auto;
     padding: 1rem;
     background-color: $content-bg;
-    .table-extran-header {
-      display: flex;
-      .header-col {
-        width: 50%;
-      }
-      .header-text {
-        user-select: none;
-        font-size: 1.1rem;
-        font-weight: 500;
-      }
-      .action-col {
-        padding: 0 1rem;
-        .mat-icon {
-          cursor: pointer;
-          &:hover {
-            color: #999;
-          }
-        }
-      }
-    }
-    .table-box {
-      margin-top: .5rem;
-    }
   }
 }

@@ -2,9 +2,10 @@ package monitor
 
 import (
 	"net/http"
-	"encoding/json"
 	log "github.com/sirupsen/logrus"
 	"github.com/skycoin/net/skycoin-messenger/factory"
+	"github.com/skycoin/skycoin/src/cipher"
+	"encoding/json"
 )
 
 type Conns struct {
@@ -13,6 +14,10 @@ type Conns struct {
 type Conn struct {
 	Key string `json:"key"`
 	Type string `json:"type"`
+	SendBytes uint64 `json:"send_bytes"`
+	ReceivedBytes uint64 `json:"received_bytes"`
+	LastAckTime	int64 `json:"last_ack_time"`
+	StartTime int64 `json:"start_time"`
 }
 
 var srv *http.Server
@@ -29,22 +34,25 @@ func New(f *factory.MessengerFactory, addr string) *Monitor {
 func (m *Monitor) Close() error {
 	return srv.Shutdown(nil)
 }
-
-func (m *Monitor) Start() {
+func (m *Monitor) Start(webDir string) {
 	srv = &http.Server{Addr: m.address}
-	http.Handle("/",http.FileServer(http.Dir("./github.com/skycoin/net/skycoin-messenger/monitor/web/dist")))
+	http.Handle("/",http.FileServer(http.Dir(webDir)))
 	http.HandleFunc("/conn/getAll", func(w http.ResponseWriter, r *http.Request) {
-		conns := m.factory.GetRegConns()
-		cs := make([]Conn,0,len(conns))
-		for k, v := range conns {
-			c := Conn{Key:k.Hex()}
-			if v.Connection.Connection.IsTCP() {
-				c.Type = "tcp"
+		cs := make([]Conn,0)
+		m.factory.ForEachAcceptedConnection(func(key cipher.PubKey, conn *factory.Connection) {
+			c := conn.Connection.Connection
+			content := Conn{Key:key.Hex(),
+				SendBytes: c.GetSentBytes(),
+				ReceivedBytes: c.GetReceivedBytes(),
+				StartTime:conn.GetConnectTime(),
+				LastAckTime: c.GetLastTime()}
+			if conn.Connection.Connection.IsTCP() {
+				content.Type = "tcp"
 			}else {
-				c.Type = "udp"
+				content.Type = "udp"
 			}
-			cs = append(cs,c)
-		}
+			cs = append(cs,content)
+		})
 		js,err := json.Marshal(Conns{Conns:cs})
 		if err != nil {
 			http.Error(w,err.Error(),500)

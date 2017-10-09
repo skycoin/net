@@ -169,6 +169,7 @@ func (f *MessengerFactory) register(key cipher.PubKey, connection *Connection) {
 		log.Debugf("reg close %s %p for %p", key.Hex(), c, connection)
 		defer c.Close()
 	}
+	connection.UpdateConnectTime()
 	f.regConnections[key] = connection
 	f.regConnectionsMutex.Unlock()
 	log.Debugf("reg %s %p", key.Hex(), connection)

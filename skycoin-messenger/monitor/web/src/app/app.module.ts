@@ -13,15 +13,23 @@ import {
 import { AppComponent } from './app.component';
 import { HttpClientModule } from '@angular/common/http';
 import { ApiService } from './service';
+import { TimeAgoPipe, ByteToPipe } from './pipe';
+import { DashboardComponent } from './page';
+
+import { AppRoutingModule } from './route/app-routing.module';
 
 @NgModule({
   declarations: [
-    AppComponent
+    AppComponent,
+    DashboardComponent,
+    TimeAgoPipe,
+    ByteToPipe
   ],
   imports: [
     BrowserModule,
     HttpClientModule,
     BrowserAnimationsModule,
+    AppRoutingModule,
     MdGridListModule,
     MatListModule,
     MdIconModule,

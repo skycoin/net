@@ -8,6 +8,7 @@ import (
 
 	"github.com/skycoin/net/factory"
 	"github.com/skycoin/skycoin/src/cipher"
+	"time"
 )
 
 type Connection struct {
@@ -33,6 +34,7 @@ type Connection struct {
 	appTransports      map[cipher.PubKey]*transport
 	appTransportsMutex sync.RWMutex
 
+	connectTime int64
 	// callbacks
 
 	// call after received response for FindServiceNodesByKeys
@@ -355,4 +357,16 @@ func (c *Connection) getTransport(to cipher.PubKey) (tr *transport, ok bool) {
 
 	tr, ok = c.appTransports[to]
 	return
+}
+
+func (c *Connection) UpdateConnectTime()  {
+	c.fieldsMutex.Lock()
+	c.connectTime = time.Now().Unix()
+	c.fieldsMutex.Unlock()
+}
+
+func (c *Connection) GetConnectTime() int64 {
+	c.fieldsMutex.Lock()
+	defer c.fieldsMutex.Unlock()
+	return c.connectTime
 }

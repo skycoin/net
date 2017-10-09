@@ -1,0 +1,33 @@
+@import '../../../app.scss';
+app-dashboard {
+  .status-success {
+    color: $success-color;
+  }
+  .status-col {
+    margin-left: .8rem;
+    margin-top: .4rem;
+  }
+  .table-extran-header {
+    display: flex;
+    .header-col {
+      width: 50%;
+    }
+    .header-text {
+      user-select: none;
+      font-size: 1.1rem;
+      font-weight: 500;
+    }
+    .action-col {
+      padding: 0 1rem;
+      .mat-icon {
+        cursor: pointer;
+        &:hover {
+          color: #999;
+        }
+      }
+    }
+  }
+  .table-box {
+    margin-top: .5rem;
+  }
+}
