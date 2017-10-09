@@ -48,9 +48,6 @@ func NewTransport(creator *MessengerFactory, fromNode, toNode, fromApp, toApp ci
 // Listen and connect to node manager
 func (t *transport) ListenAndConnect(address string) (conn *Connection, err error) {
 	conn, err = t.factory.connectUDPWithConfig(address, &ConnConfig{
-		OnConnected: func(connection *Connection) {
-			connection.Reg()
-		},
 		Creator: t.creator,
 	})
 	return

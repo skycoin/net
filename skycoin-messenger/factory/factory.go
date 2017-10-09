@@ -29,8 +29,8 @@ type MessengerFactory struct {
 	// custom msg callback
 	CustomMsgHandler func(*Connection, []byte)
 
+	// will deliver the services data to server if true
 	Proxy bool
-
 	serviceDiscovery
 
 	fieldsMutex sync.RWMutex

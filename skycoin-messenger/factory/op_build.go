@@ -127,7 +127,7 @@ func (req *buildConnResp) Execute(f *MessengerFactory, conn *Connection) (r resp
 	return
 }
 
-// run on node A, from manager
+// run on node A, from manager udp
 func (req *buildConnResp) Run(conn *Connection) (err error) {
 	tr, ok := conn.getTransport(req.App)
 	if !ok {
@@ -177,13 +177,7 @@ type forwardNodeConnResp forwardNodeConn
 func (req *forwardNodeConnResp) Execute(f *MessengerFactory, conn *Connection) (r resp, err error) {
 	c, ok := f.GetConnection(req.FromNode)
 	if !ok {
-		conn.GetContextLogger().Debugf("node %x not exists", req.Node)
-		return
-	}
-
-	_, ok = c.getService(req.FromApp)
-	if !ok {
-		conn.GetContextLogger().Debugf("node %x app %x not exists", req.Node, req.App)
+		conn.GetContextLogger().Debugf("node %x not exists", req.FromNode)
 		return
 	}
 
