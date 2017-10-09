@@ -38,6 +38,8 @@ type ConnCommonFields struct {
 
 	lastReadTime int64
 
+	sentBytes uint64
+
 	Status int // STATUS_CONNECTING, STATUS_CONNECTED, STATUS_ERROR
 	Err    error
 
@@ -117,13 +119,17 @@ func (c *ConnCommonFields) IsClosed() bool {
 }
 
 func (c *ConnCommonFields) GetLastTime() int64 {
-	c.FieldsMutex.RLock()
-	defer c.FieldsMutex.RUnlock()
-	return c.lastReadTime
+	return atomic.LoadInt64(&c.lastReadTime)
 }
 
 func (c *ConnCommonFields) UpdateLastTime() {
-	c.FieldsMutex.Lock()
-	c.lastReadTime = time.Now().Unix()
-	c.FieldsMutex.Unlock()
+	atomic.StoreInt64(&c.lastReadTime, time.Now().Unix())
+}
+
+func (c *ConnCommonFields) GetSentBytes() uint64 {
+	return atomic.LoadUint64(&c.sentBytes)
+}
+
+func (c *ConnCommonFields) AddSentBytes(n int) {
+	atomic.AddUint64(&c.sentBytes, uint64(n))
 }

@@ -130,9 +130,13 @@ func (c *UDPConn) Write(bytes []byte) (err error) {
 
 func (c *UDPConn) WriteBytes(bytes []byte) error {
 	//c.CTXLogger.Debugf("write %x", bytes)
+	c.AddSentBytes(len(bytes))
 	c.WriteMutex.Lock()
 	defer c.WriteMutex.Unlock()
-	_, err := c.UdpConn.WriteToUDP(bytes, c.addr)
+	n, err := c.UdpConn.WriteToUDP(bytes, c.addr)
+	if err == nil && n != len(bytes) {
+		return errors.New("nothing was written")
+	}
 	return err
 }
 

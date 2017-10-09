@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"hash/crc32"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/skycoin/skycoin/src/cipher"
-	"sync/atomic"
 )
 
 type Interface interface {

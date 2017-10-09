@@ -115,11 +115,13 @@ func (c *TCPConn) WriteBytes(bytes []byte) error {
 	c.CTXLogger.Debugf("write %x", bytes)
 	c.WriteMutex.Lock()
 	defer c.WriteMutex.Unlock()
-	index := 0
-	for n, err := c.TcpConn.Write(bytes[index:]); index != len(bytes); index += n {
+	for index := 0; index != len(bytes); {
+		n, err := c.TcpConn.Write(bytes[index:])
 		if err != nil {
 			return err
 		}
+		index += n
+		c.AddSentBytes(index)
 	}
 	return nil
 }
