@@ -13,6 +13,8 @@ import (
 
 	"os"
 
+	"fmt"
+
 	log "github.com/sirupsen/logrus"
 	"github.com/skycoin/net/factory"
 	"github.com/skycoin/skycoin/src/cipher"
@@ -180,7 +182,7 @@ func (f *MessengerFactory) GetConnection(key cipher.PubKey) (c *Connection, ok b
 	return
 }
 
-// execute fn for each accepted connection
+// Execute fn for each accepted connection
 func (f *MessengerFactory) ForEachAcceptedConnection(fn func(key cipher.PubKey, conn *Connection)) {
 	f.regConnectionsMutex.RLock()
 	for k, v := range f.regConnections {
@@ -243,26 +245,35 @@ func (f *MessengerFactory) ConnectWithConfig(address string, config *ConnConfig)
 					sc = NewSeedConfig()
 					err = WriteSeedConfig(sc, config.SeedConfigPath)
 					if err != nil {
+						err = fmt.Errorf("failed to write seed config  %v", err)
 						return
 					}
 				} else {
+					err = fmt.Errorf("failed to read seed config %v", err)
 					return
 				}
 			}
 		}
 		if sc != nil {
-			var k cipher.PubKey
-			k, err = cipher.PubKeyFromHex(sc.PublicKey)
-			if err != nil {
-				return
-			}
-			var sk cipher.SecKey
-			sk, err = cipher.SecKeyFromHex(sc.SecKey)
-			if err != nil {
-				return
-			}
-			conn.SetSecKey(sk)
-			err = conn.RegWithKey(k)
+			func() {
+				defer func() {
+					if e := recover(); e != nil {
+						err = errors.New("invalid seed config file")
+					}
+				}()
+				var k cipher.PubKey
+				k, err = cipher.PubKeyFromHex(sc.PublicKey)
+				if err != nil {
+					return
+				}
+				var sk cipher.SecKey
+				sk, err = cipher.SecKeyFromHex(sc.SecKey)
+				if err != nil {
+					return
+				}
+				conn.SetSecKey(sk)
+				err = conn.RegWithKey(k)
+			}()
 		} else {
 			err = conn.Reg()
 		}
@@ -332,7 +343,7 @@ func (f *MessengerFactory) Close() (err error) {
 	return
 }
 
-// execute fn for each connection that connected to server
+// Execute fn for each connection that connected to server
 func (f *MessengerFactory) ForEachConn(fn func(connection *Connection)) {
 	f.factory.ForEachConn(func(conn *factory.Connection) {
 		real := conn.RealObject
