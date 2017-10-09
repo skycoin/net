@@ -26,8 +26,6 @@ type UDPConn struct {
 	UdpConn *net.UDPConn
 	addr    *net.UDPAddr
 
-	lastTime int64
-
 	// write loop with ping
 	SendPing bool
 	wmx      sync.Mutex
@@ -44,7 +42,6 @@ func NewUDPConn(c *net.UDPConn, addr *net.UDPAddr) *UDPConn {
 	return &UDPConn{
 		UdpConn:          c,
 		addr:             addr,
-		lastTime:         time.Now().Unix(),
 		ConnCommonFields: NewConnCommonFileds(),
 		UDPPendingMap:    NewUDPPendingMap(),
 		rto:              200 * time.Millisecond,
@@ -165,18 +162,6 @@ func (c *UDPConn) GetChanOut() chan<- []byte {
 
 func (c *UDPConn) GetChanIn() <-chan []byte {
 	return c.In
-}
-
-func (c *UDPConn) GetLastTime() int64 {
-	c.FieldsMutex.RLock()
-	defer c.FieldsMutex.RUnlock()
-	return c.lastTime
-}
-
-func (c *UDPConn) UpdateLastTime() {
-	c.FieldsMutex.Lock()
-	c.lastTime = time.Now().Unix()
-	c.FieldsMutex.Unlock()
 }
 
 func (c *UDPConn) GetNextSeq() uint32 {

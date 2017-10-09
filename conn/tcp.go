@@ -145,6 +145,7 @@ func (c *TCPConn) GetChanIn() <-chan []byte {
 
 func (c *TCPConn) UpdateLastTime() {
 	c.TcpConn.SetReadDeadline(getTCPReadDeadline())
+	c.ConnCommonFields.UpdateLastTime()
 }
 
 func (c *TCPConn) Close() {

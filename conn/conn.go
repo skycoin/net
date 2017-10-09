@@ -36,6 +36,8 @@ type ConnCommonFields struct {
 	HighestACKedSequenceNumber uint32 // highest packet that has been ACKed
 	LastAck                    int64  // last time an ACK of receipt was received (better to store id of highest packet id with an ACK?)
 
+	lastReadTime int64
+
 	Status int // STATUS_CONNECTING, STATUS_CONNECTED, STATUS_ERROR
 	Err    error
 
@@ -51,9 +53,10 @@ type ConnCommonFields struct {
 func NewConnCommonFileds() ConnCommonFields {
 	entry := log.WithField("ctxId", atomic.AddUint32(&ctxId, 1))
 	return ConnCommonFields{
-		CTXLogger: entry,
-		In:        make(chan []byte, 1),
-		Out:       make(chan []byte, 1),
+		lastReadTime: time.Now().Unix(),
+		CTXLogger:    entry,
+		In:           make(chan []byte, 1),
+		Out:          make(chan []byte, 1),
 	}
 }
 
@@ -111,4 +114,16 @@ func (c *ConnCommonFields) IsClosed() bool {
 	c.FieldsMutex.RLock()
 	defer c.FieldsMutex.RUnlock()
 	return c.closed
+}
+
+func (c *ConnCommonFields) GetLastTime() int64 {
+	c.FieldsMutex.RLock()
+	defer c.FieldsMutex.RUnlock()
+	return c.lastReadTime
+}
+
+func (c *ConnCommonFields) UpdateLastTime() {
+	c.FieldsMutex.Lock()
+	c.lastReadTime = time.Now().Unix()
+	c.FieldsMutex.Unlock()
 }
