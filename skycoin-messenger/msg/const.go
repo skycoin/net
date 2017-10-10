@@ -14,16 +14,10 @@ const (
 )
 
 const (
-	OP_ACCOUNT = iota
-	OP_REG
-	OP_SEND
-	OP_ACK
+	OP_ACCOUNT = iota // query created keys
+	OP_REG // create key
+	OP_LOGIN // use key to login
+	OP_SEND // send msg to others
+	OP_ACK // ack msg
 	OP_SIZE
-)
-
-const (
-	PUSH_ACK = iota
-	PUSH_REG
-	PUSH_MSG
-	PUSH_SIZE
 )

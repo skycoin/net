@@ -49,8 +49,17 @@ type pushMsg struct {
 	data interface{}
 }
 
+var pushMsgPool = &sync.Pool{
+	New: func() interface{} {
+		return new(pushMsg)
+	},
+}
+
 func (c *Client) Push(op byte, d interface{}) {
-	c.push <- &pushMsg{op, d}
+	p := pushMsgPool.Get().(*pushMsg)
+	p.op = op
+	p.data = d
+	c.push <- p
 }
 
 func (c *Client) PushLoop(conn *net.Connection) {
@@ -60,8 +69,7 @@ func (c *Client) PushLoop(conn *net.Connection) {
 		}
 	}()
 	key := conn.GetKey()
-	c.push <- &msg.Reg{PublicKey: key.Hex()}
-	push := &msg.PushMsg{}
+	c.Push(msg.OP_LOGIN, &msg.Reg{PublicKey: key.Hex()})
 	for {
 		select {
 		case m, ok := <-conn.GetChanIn():
@@ -75,9 +83,7 @@ func (c *Client) PushLoop(conn *net.Connection) {
 					continue
 				}
 				key := cipher.NewPubKey(m[net.SEND_MSG_PUBLIC_KEY_BEGIN:net.SEND_MSG_PUBLIC_KEY_END])
-				push.From = key.Hex()
-				push.Msg = string(m[net.SEND_MSG_META_END:])
-				c.push <- push
+				c.Push(msg.OP_SEND, msg.GetPushMsg(key.Hex(), string(m[net.SEND_MSG_META_END:])))
 			}
 		}
 	}
@@ -162,12 +168,12 @@ func (c *Client) writeLoop() (err error) {
 				return err
 			}
 			switch m := message.(type) {
-			case *msg.PushMsg:
-				err = c.write(w, msg.PUSH_MSG, m)
-			case *msg.Reg:
-				err = c.write(w, msg.PUSH_REG, m)
 			case *pushMsg:
 				err = c.write(w, m.op, m.data)
+				if _, ok := m.data.(*msg.PushMsg); ok {
+					msg.PutPushMsg(m.data)
+				}
+				pushMsgPool.Put(m)
 			default:
 				c.Logger.Errorf("not implemented msg %v", m)
 			}
@@ -218,7 +224,7 @@ func (c *Client) write(w io.WriteCloser, op byte, m interface{}) (err error) {
 }
 
 func (c *Client) ack(data []byte) error {
-	data[msg.MSG_OP_BEGIN] = msg.PUSH_ACK
+	data[msg.MSG_OP_BEGIN] = msg.OP_ACK
 	c.conn.SetWriteDeadline(time.Now().Add(writeWait))
 	return c.conn.WriteMessage(websocket.BinaryMessage, data)
 }

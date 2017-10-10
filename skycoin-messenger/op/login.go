@@ -1,31 +1,33 @@
 package op
 
 import (
+	"errors"
 	"sync"
 	"time"
-
-	"errors"
 
 	"github.com/skycoin/net/skycoin-messenger/factory"
 	"github.com/skycoin/net/skycoin-messenger/msg"
 	"github.com/skycoin/net/skycoin-messenger/websocket/data"
 )
 
-type Reg struct {
+type Login struct {
 	Address   string
 	PublicKey string
 }
 
 func init() {
-	msg.OP_POOL[msg.OP_REG] = &sync.Pool{
+	msg.OP_POOL[msg.OP_LOGIN] = &sync.Pool{
 		New: func() interface{} {
-			return new(Reg)
+			return new(Login)
 		},
 	}
 }
 
-func (r *Reg) Execute(c msg.OPer) error {
-	keys := data.GetData()
+func (r *Login) Execute(c msg.OPer) (err error) {
+	keys, err := data.GetKeys()
+	if err != nil {
+		return
+	}
 	if len(keys) < 1 {
 		return errors.New("no public key found")
 	}
@@ -34,7 +36,7 @@ func (r *Reg) Execute(c msg.OPer) error {
 		return errors.New("public key not found")
 	}
 	f := factory.NewMessengerFactory()
-	_, err := f.ConnectWithConfig(r.Address, &factory.ConnConfig{
+	_, err = f.ConnectWithConfig(r.Address, &factory.ConnConfig{
 		SeedConfig:    sc,
 		Reconnect:     true,
 		ReconnectWait: 2 * time.Second,
@@ -43,8 +45,8 @@ func (r *Reg) Execute(c msg.OPer) error {
 		},
 	})
 	if err != nil {
-		return err
+		return
 	}
 	c.SetFactory(f)
-	return nil
+	return
 }
