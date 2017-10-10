@@ -1,0 +1,66 @@
+<md-card>
+  <md-card-title>
+    Node Status
+    <small><md-icon mdTooltip="refresh" fontSet="fa" fontIcon="fa-refresh" (click)="refresh($event)"></md-icon></small>
+  </md-card-title>
+  <md-card-content>
+    <div class="node-key">
+      Public Key:
+      <strong>{{key}}</strong>
+    </div>
+    <md-grid-list cols="4" rowHeight="3:1">
+      <md-grid-tile>
+        <p class="status-box-item-title">
+          <small>Status</small>
+        </p>
+        <p class="status-box-item-content">Online</p>
+      </md-grid-tile>
+      <md-grid-tile>
+        <p class="status-box-item-title">
+          <small>Type</small>
+        </p>
+        <p class="status-box-item-content">
+          <md-chip-list>
+            <md-chip style="background-color: #6b6bff; color:#fff;">{{status?.type}}</md-chip>
+          </md-chip-list>
+        </p>
+      </md-grid-tile>
+      <md-grid-tile>
+        <p class="status-box-item-title">
+          <small>Seen</small>
+        </p>
+        <p class="status-box-item-content">{{status?.last_ack_time | timeAgo}}</p>
+      </md-grid-tile>
+      <md-grid-tile>
+        <p class="status-box-item-title">
+          <small>Started</small>
+        </p>
+        <p class="status-box-item-content">{{status?.start_time | timeAgo}}</p>
+      </md-grid-tile>
+    </md-grid-list>
+    <!-- Transfer Data -->
+    <md-grid-list cols="3" rowHeight="3:1">
+      <md-grid-tile>
+        <p class="status-box-item-title">
+          <small>Send</small>
+        </p>
+        <p class="status-box-item-content">{{status?.send_bytes | byteTo}} </p>
+      </md-grid-tile>
+      <md-grid-tile>
+        <p class="status-box-item-title">
+          <small>Recv</small>
+        </p>
+        <p class="status-box-item-content">{{status?.recv_bytes | byteTo}}</p>
+      </md-grid-tile>
+      <md-grid-tile>
+        <p class="status-box-item-title">
+          <small>Apps</small>
+        </p>
+        <div class="status-box-item-content">
+          <span *ngFor="let app of status?.apps">{{app}}</span>
+          <span *ngIf="!status?.apps">null</span>
+        </div>
+      </md-grid-tile>
+    </md-grid-list>
+  </md-card-content>
+</md-card>

@@ -8,13 +8,14 @@ import {
   MatTableModule,
   MatTooltipModule,
   MatChipsModule,
-  MatSnackBarModule
+  MatSnackBarModule,
+  MatCardModule
 } from '@angular/material';
 import { AppComponent } from './app.component';
 import { HttpClientModule } from '@angular/common/http';
 import { ApiService } from './service';
 import { TimeAgoPipe, ByteToPipe } from './pipe';
-import { DashboardComponent } from './page';
+import { DashboardComponent, SubStatusComponent } from './page';
 
 import { AppRoutingModule } from './route/app-routing.module';
 
@@ -23,7 +24,8 @@ import { AppRoutingModule } from './route/app-routing.module';
     AppComponent,
     DashboardComponent,
     TimeAgoPipe,
-    ByteToPipe
+    ByteToPipe,
+    SubStatusComponent
   ],
   imports: [
     BrowserModule,
@@ -36,7 +38,8 @@ import { AppRoutingModule } from './route/app-routing.module';
     MatTableModule,
     MatTooltipModule,
     MatChipsModule,
-    MatSnackBarModule
+    MatSnackBarModule,
+    MatCardModule
   ],
   providers: [ApiService],
   bootstrap: [AppComponent]

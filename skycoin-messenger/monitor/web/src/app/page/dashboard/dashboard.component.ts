@@ -1,9 +1,11 @@
 import { Component, OnInit, ViewEncapsulation, OnDestroy } from '@angular/core';
-import { ApiService, ConnData, ConnsResponse } from '../../service';
+import { ApiService, Conn, ConnsResponse } from '../../service';
 import { DataSource } from '@angular/cdk/collections';
 import { Observable } from 'rxjs/Observable';
-import 'rxjs/add/operator/map';
+import { Router } from '@angular/router';
 import { MdSnackBar } from '@angular/material';
+import 'rxjs/add/operator/map';
+
 @Component({
   selector: 'app-dashboard',
   templateUrl: './dashboard.component.html',
@@ -11,11 +13,11 @@ import { MdSnackBar } from '@angular/material';
   encapsulation: ViewEncapsulation.None
 })
 export class DashboardComponent implements OnInit, OnDestroy {
-  displayedColumns = ['index', 'type', 'status', 'key', 'send', 'receive', 'seen'];
+  displayedColumns = ['index', 'status', 'key', 'send', 'recv', 'seen'];
   dataSource: ExampleDataSource = null;
   dataSize = 0;
   refreshTask = null;
-  constructor(private api: ApiService, private snackBar: MdSnackBar) { }
+  constructor(private api: ApiService, private snackBar: MdSnackBar, private router: Router) { }
   ngOnInit() {
     this.refresh();
     this.refreshTask = setInterval(() => {
@@ -30,7 +32,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
   status(ago: number) {
     const now = new Date().getTime() / 1000;
-    return (now - ago) < 120;
+    return (now - ago) < 180;
   }
   refresh(ev?: Event) {
     if (ev) {
@@ -41,10 +43,20 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.dataSource = new ExampleDataSource(this.api);
     if (ev) {
       this.snackBar.open('Refresh Successful', 'Dismiss', {
-        duration: 2000,
+        duration: 3000,
         verticalPosition: 'top'
       });
     }
+  }
+  openStatus(ev: Event, conn: Conn) {
+    if (!conn) {
+      this.snackBar.open('Unable to obtain the node state', 'Dismiss', {
+        duration: 3000,
+        verticalPosition: 'top'
+      });
+      return;
+    }
+    this.router.navigate(['node'], { queryParams: { key: conn.key } });
   }
   close() {
     clearInterval(this.refreshTask);
@@ -55,23 +67,8 @@ export class ExampleDataSource extends DataSource<any> {
   constructor(private api: ApiService) {
     super();
   }
-  connect(): Observable<ConnData[]> {
-    return this.api.getAllNode().map((res: ConnsResponse) => {
-      this.size = res.conns.length;
-      const connDatas: Array<ConnData> = [];
-      res.conns.forEach((v, i) => {
-        connDatas.push({
-          index: i + 1,
-          key: v.key,
-          type: v.type,
-          send_bytes: v.send_bytes,
-          received_bytes: v.received_bytes,
-          last_ack_time: v.last_ack_time,
-          start_time: v.start_time
-        });
-      });
-      return connDatas;
-    });
+  connect(): Observable<Conn[]> {
+    return this.api.getAllNode();
   }
 
   disconnect() { }

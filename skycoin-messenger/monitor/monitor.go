@@ -8,19 +8,39 @@ import (
 	"encoding/json"
 )
 
-type Conns struct {
-	Conns []Conn `json:"conns"`
-}
 type Conn struct {
-	Key string `json:"key"`
-	Type string `json:"type"`
-	SendBytes uint64 `json:"send_bytes"`
-	ReceivedBytes uint64 `json:"received_bytes"`
-	LastAckTime	int64 `json:"last_ack_time"`
-	StartTime int64 `json:"start_time"`
+	Index       int64  `json:"index"`
+	Key         string `json:"key"`
+	Type        string `json:"type"`
+	SendBytes   uint64 `json:"send_bytes"`
+	RecvBytes   uint64 `json:"recv_bytes"`
+	LastAckTime int64  `json:"last_ack_time"`
+	StartTime   int64  `json:"start_time"`
+}
+type NodeServices struct {
+	Type        string   `json:"type"`
+	Apps        []string `json:"apps"`
+	SendBytes   uint64   `json:"send_bytes"`
+	RecvBytes   uint64   `json:"recv_bytes"`
+	LastAckTime int64    `json:"last_ack_time"`
+	StartTime   int64    `json:"start_time"`
+}
+type Services struct {
+	Key        string   `json:"key"`
+	Attributes []string `json:"attributes"`
+	Address    string   `json:"address"`
 }
 
 var srv *http.Server
+
+var (
+	NULL = "null"
+)
+var (
+	BAD_REQUEST  = 400
+	NOT_FOUND    = 404
+	SERVER_ERROR = 500
+)
 
 type Monitor struct {
 	factory *factory.MessengerFactory
@@ -28,7 +48,7 @@ type Monitor struct {
 }
 
 func New(f *factory.MessengerFactory, addr string) *Monitor {
-	return &Monitor{factory:f,address:addr}
+	return &Monitor{factory: f, address: addr}
 }
 
 func (m *Monitor) Close() error {
@@ -36,29 +56,72 @@ func (m *Monitor) Close() error {
 }
 func (m *Monitor) Start(webDir string) {
 	srv = &http.Server{Addr: m.address}
-	http.Handle("/",http.FileServer(http.Dir(webDir)))
+	http.Handle("/", http.FileServer(http.Dir(webDir)))
 	http.HandleFunc("/conn/getAll", func(w http.ResponseWriter, r *http.Request) {
-		cs := make([]Conn,0)
+		cs := make([]Conn, 0)
+		var index int64 = 1
 		m.factory.ForEachAcceptedConnection(func(key cipher.PubKey, conn *factory.Connection) {
-			c := conn.Connection.Connection
-			content := Conn{Key:key.Hex(),
-				SendBytes: c.GetSentBytes(),
-				ReceivedBytes: c.GetReceivedBytes(),
-				StartTime:conn.GetConnectTime(),
-				LastAckTime: c.GetLastTime()}
-			if conn.Connection.Connection.IsTCP() {
-				content.Type = "tcp"
-			}else {
-				content.Type = "udp"
+			content := Conn{
+				Index:       index,
+				Key:         key.Hex(),
+				SendBytes:   conn.GetSentBytes(),
+				RecvBytes:   conn.GetReceivedBytes(),
+				StartTime:   conn.GetConnectTime(),
+				LastAckTime: conn.GetLastTime()}
+			if conn.IsTCP() {
+				content.Type = "TCP"
+			} else {
+				content.Type = "UDP"
 			}
-			cs = append(cs,content)
+			cs = append(cs, content)
+			index ++
 		})
-		js,err := json.Marshal(Conns{Conns:cs})
+		js, err := json.Marshal(cs)
 		if err != nil {
-			http.Error(w,err.Error(),500)
+			http.Error(w, err.Error(), SERVER_ERROR)
 			return
 		}
-		w.Header().Add("Access-Control-Allow-Origin","*")
+		w.Header().Add("Access-Control-Allow-Origin", "*")
+		w.Write(js)
+	})
+	http.HandleFunc("/conn/getNodeStatus", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "POST" {
+			http.Error(w, "please use post method", BAD_REQUEST)
+			return
+		}
+		key, err := cipher.PubKeyFromHex(r.FormValue("key"))
+		if err != nil {
+			http.Error(w, err.Error(), BAD_REQUEST)
+			return
+		}
+		c, ok := m.factory.GetConnection(key)
+		if !ok {
+			http.Error(w, "No connection is found", NOT_FOUND)
+			return
+		}
+
+		nodeService := NodeServices{
+			SendBytes:   c.GetSentBytes(),
+			RecvBytes:   c.GetReceivedBytes(),
+			StartTime:   c.GetConnectTime(),
+			LastAckTime: c.GetLastTime()}
+		if c.IsTCP() {
+			nodeService.Type = "TCP"
+		} else {
+			nodeService.Type = "UDP"
+		}
+		ns := c.GetServices()
+		if ns != nil {
+			for _, v := range ns.Services {
+				nodeService.Apps = append(nodeService.Apps, v.Attributes...)
+			}
+		}
+		js, err := json.Marshal(nodeService)
+		if err != nil {
+			http.Error(w, err.Error(), SERVER_ERROR)
+			return
+		}
+		w.Header().Add("Access-Control-Allow-Origin", "*")
 		w.Write(js)
 	})
 	go func() {
@@ -66,5 +129,5 @@ func (m *Monitor) Start(webDir string) {
 			log.Printf("http server: ListenAndServe() error: %s", err)
 		}
 	}()
-	log.Debugf("http server listen on %s",m.address)
+	log.Debugf("http server listen on %s", m.address)
 }

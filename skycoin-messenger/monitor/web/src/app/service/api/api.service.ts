@@ -15,15 +15,31 @@ export class ApiService {
     }
   }
   getAllNode() {
-    return this.httpClient.get(this.connUrl + 'getAll')
-      .catch(err => Observable.throw(err));
+    return this.handleGet(this.connUrl + 'getAll');
+  }
+
+  getNodeStatus(data: FormData) {
+    return this.handlePost(this.connUrl + 'getNodeStatus', data);
+  }
+
+  handleGet(url: string) {
+    if (url === '') {
+      return Observable.throw('Url is empty.');
+    }
+    return this.httpClient.get(url).catch(err => Observable.throw(err));
+  }
+  handlePost(url: string, data: FormData) {
+    if (url === '') {
+      return Observable.throw('Url is empty.');
+    }
+    return this.httpClient.post(url, data).catch(err => Observable.throw(err));
   }
 }
 export interface Conn {
   key?: string;
   type?: string;
   send_bytes?: number;
-  received_bytes?: number;
+  recv_bytes?: number;
   last_ack_time?: number;
   start_time?: number;
 }
@@ -31,6 +47,12 @@ export interface ConnsResponse {
   conns?: Array<Conn>;
 }
 
-export interface ConnData extends Conn {
-  index?: number;
+export interface NodeServices extends Conn {
+  apps?: Array<string>;
+}
+
+export interface Services {
+  key?: string;
+  attributes?: Array<string>;
+  address?: string;
 }

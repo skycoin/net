@@ -1,0 +1,37 @@
+@import '../../../app.scss';
+app-sub-status {
+  .node-key {
+    margin-bottom: 1.5rem;
+  }
+  .mat-card {
+    .mat-card-title {
+      .mat-icon {
+        cursor: pointer;
+        color: $light-green;
+      }
+    }
+    box-shadow: 0 0 0.1rem rgba(0, 0, 0, 0.2) !important;
+    .mat-grid-list {
+      margin-bottom: 2rem;
+      .mat-grid-tile {
+        &:nth-last-child(1) {
+          .mat-figure {
+            border-right: none;
+          }
+        }
+      }
+    }
+    color: #73879C;
+    .status-box-item-title {
+      margin-bottom: .5rem;
+      @at-root .mat-figure {
+        flex-direction: column;
+        border-right: 1px solid $light-dark-2x;
+      }
+    }
+    .status-box-item-content {
+      font-size: 1.1em;
+      font-weight: 500;
+    }
+  }
+}
