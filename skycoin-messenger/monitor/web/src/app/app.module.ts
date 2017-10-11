@@ -2,9 +2,9 @@ import { BrowserModule } from '@angular/platform-browser';
 import { NgModule } from '@angular/core';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 import {
-  MdGridListModule,
+  MatGridListModule,
   MatListModule,
-  MdIconModule,
+  MatIconModule,
   MatTableModule,
   MatTooltipModule,
   MatChipsModule,
@@ -32,9 +32,9 @@ import { AppRoutingModule } from './route/app-routing.module';
     HttpClientModule,
     BrowserAnimationsModule,
     AppRoutingModule,
-    MdGridListModule,
+    MatGridListModule,
     MatListModule,
-    MdIconModule,
+    MatIconModule,
     MatTableModule,
     MatTooltipModule,
     MatChipsModule,

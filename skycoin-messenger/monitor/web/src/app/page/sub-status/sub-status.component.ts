@@ -1,7 +1,7 @@
 import { Component, OnInit, ViewEncapsulation, OnDestroy } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { ApiService, NodeServices } from '../../service';
-import { MdSnackBar } from '@angular/material';
+import { MatSnackBar } from '@angular/material';
 
 @Component({
   selector: 'app-sub-status',
@@ -10,14 +10,14 @@ import { MdSnackBar } from '@angular/material';
   encapsulation: ViewEncapsulation.None
 })
 export class SubStatusComponent implements OnInit, OnDestroy {
-  private key = '';
-  private status: NodeServices = null;
-  private task = null;
+  key = '';
+  status: NodeServices = null;
+  task = null;
   constructor(
     private router: Router,
     private route: ActivatedRoute,
     private api: ApiService,
-    private snackBar: MdSnackBar) { }
+    private snackBar: MatSnackBar) { }
 
   ngOnInit() {
     this.route.queryParams.subscribe(params => {

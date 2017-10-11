@@ -3,7 +3,7 @@ import { ApiService, Conn, ConnsResponse } from '../../service';
 import { DataSource } from '@angular/cdk/collections';
 import { Observable } from 'rxjs/Observable';
 import { Router } from '@angular/router';
-import { MdSnackBar } from '@angular/material';
+import { MatSnackBar } from '@angular/material';
 import 'rxjs/add/operator/map';
 
 @Component({
@@ -17,7 +17,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   dataSource: ExampleDataSource = null;
   dataSize = 0;
   refreshTask = null;
-  constructor(private api: ApiService, private snackBar: MdSnackBar, private router: Router) { }
+  constructor(private api: ApiService, private snackBar: MatSnackBar, private router: Router) { }
   ngOnInit() {
     this.refresh();
     this.refreshTask = setInterval(() => {
