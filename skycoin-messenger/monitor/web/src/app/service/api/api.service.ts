@@ -48,11 +48,11 @@ export interface ConnsResponse {
 }
 
 export interface NodeServices extends Conn {
-  apps?: Array<string>;
+  apps?: Array<App>;
 }
 
-export interface Services {
+export interface App {
+  index?: number;
   key?: string;
   attributes?: Array<string>;
-  address?: string;
 }

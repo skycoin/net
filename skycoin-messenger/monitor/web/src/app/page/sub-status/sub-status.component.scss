@@ -1,5 +1,8 @@
 @import '../../../app.scss';
 app-sub-status {
+  .status-app-title {
+    margin-bottom: .5rem;
+  }
   .node-key {
     margin-bottom: 1.5rem;
   }
@@ -10,7 +13,8 @@ app-sub-status {
         color: $primary-color;
       }
     }
-    box-shadow: 0 0 0.1rem rgba(0, 0, 0, 0.2) !important;
+    box-shadow: none !important;
+    margin-bottom: 1rem;
     .mat-grid-list {
       margin-bottom: 2rem;
       .mat-grid-tile {

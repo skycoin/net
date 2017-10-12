@@ -2,7 +2,6 @@
 @import '~@angular/material/prebuilt-themes/deeppurple-amber.css';
 @import '../node_modules/font-awesome/scss/font-awesome';
 @import './app.scss';
-
 *,
 *::before,
 *::after {
@@ -44,14 +43,30 @@
 }
 
 .bg-success {
-  background-color: $success-color;
+  background-color: $success-color !important;
+  ;
 }
+
 .bg-danger {
-  background-color: $danger-color;
+  background-color: $danger-color !important;
+  ;
 }
+
 .bg-warn {
-  background-color: $warn-color;
+  background-color: $warn-color !important;
+  ;
 }
+
 .bg-primary {
-  background-color: $primary-color;
+  background-color: $primary-color !important;
+  ;
+}
+
+.monitor-chip-text {
+  color: #fff !important;
+}
+
+.chip-success {
+  @extend .bg-success;
+  @extend .monitor-chip-text;
 }

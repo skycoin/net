@@ -18,17 +18,17 @@ type Conn struct {
 	StartTime   int64  `json:"start_time"`
 }
 type NodeServices struct {
-	Type        string   `json:"type"`
-	Apps        []string `json:"apps"`
-	SendBytes   uint64   `json:"send_bytes"`
-	RecvBytes   uint64   `json:"recv_bytes"`
-	LastAckTime int64    `json:"last_ack_time"`
-	StartTime   int64    `json:"start_time"`
+	Type        string `json:"type"`
+	Apps        []App  `json:"apps"`
+	SendBytes   uint64 `json:"send_bytes"`
+	RecvBytes   uint64 `json:"recv_bytes"`
+	LastAckTime int64  `json:"last_ack_time"`
+	StartTime   int64  `json:"start_time"`
 }
-type Services struct {
+type App struct {
+	Index      int64    `json:"index"`
 	Key        string   `json:"key"`
 	Attributes []string `json:"attributes"`
-	Address    string   `json:"address"`
 }
 
 var srv *http.Server
@@ -112,8 +112,11 @@ func (m *Monitor) Start(webDir string) {
 		}
 		ns := c.GetServices()
 		if ns != nil {
+			var index int64 = 1
 			for _, v := range ns.Services {
-				nodeService.Apps = append(nodeService.Apps, v.Attributes...)
+				app := App{Index: index, Key: v.Key.Hex(), Attributes: v.Attributes}
+				nodeService.Apps = append(nodeService.Apps, app)
+				index ++
 			}
 		}
 		js, err := json.Marshal(nodeService)

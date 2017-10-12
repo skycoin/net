@@ -1,7 +1,10 @@
 import { Component, OnInit, ViewEncapsulation, OnDestroy } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
-import { ApiService, NodeServices } from '../../service';
+import { ApiService, NodeServices, App } from '../../service';
 import { MatSnackBar } from '@angular/material';
+import { DataSource } from '@angular/cdk/collections';
+import { Observable } from 'rxjs/Observable';
+import 'rxjs/add/observable/of';
 
 @Component({
   selector: 'app-sub-status',
@@ -10,6 +13,8 @@ import { MatSnackBar } from '@angular/material';
   encapsulation: ViewEncapsulation.None
 })
 export class SubStatusComponent implements OnInit, OnDestroy {
+  displayedColumns = ['index', 'key', 'app'];
+  dataSource: SubStatusDataSource = null;
   key = '';
   status: NodeServices = null;
   task = null;
@@ -51,7 +56,21 @@ export class SubStatusComponent implements OnInit, OnDestroy {
     this.api.getNodeStatus(data).subscribe((nodeServices: NodeServices) => {
       if (nodeServices) {
         this.status = nodeServices;
+        if (nodeServices.apps) {
+          this.dataSource = new SubStatusDataSource(this.status.apps);
+        }
       }
     });
   }
+}
+export class SubStatusDataSource extends DataSource<any> {
+  size = 0;
+  constructor(private apps: Array<App>) {
+    super();
+  }
+  connect(): Observable<App[]> {
+    return Observable.of(this.apps);
+  }
+
+  disconnect() { }
 }
