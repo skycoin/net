@@ -1,6 +1,8 @@
 @import 'variables';
 @import '~@angular/material/prebuilt-themes/deeppurple-amber.css';
 @import '../node_modules/font-awesome/scss/font-awesome';
+@import './app.scss';
+
 *,
 *::before,
 *::after {
@@ -39,4 +41,17 @@
     font-weight: 500;
     font-size: 1.5em;
   }
+}
+
+.bg-success {
+  background-color: $success-color;
+}
+.bg-danger {
+  background-color: $danger-color;
+}
+.bg-warn {
+  background-color: $warn-color;
+}
+.bg-primary {
+  background-color: $primary-color;
 }

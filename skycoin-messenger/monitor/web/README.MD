@@ -19,7 +19,7 @@ npm install -g @angular/cli
 ```
 
 
-## Run
+## Run For Dev
 From your command line:
 ```bash
 git clone https://github.com/skycoin/net.git
@@ -27,7 +27,7 @@ cd net/skycoin-messenger/monitor/web
 ./run.sh
 ```
 
-## Build
+## Build The Web Files
 From your command line:
 ```bash
 git clone https://github.com/skycoin/net.git

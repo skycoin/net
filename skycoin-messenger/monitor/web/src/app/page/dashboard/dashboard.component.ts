@@ -27,9 +27,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
   ngOnDestroy() {
     this.close();
   }
-  TrackByKey(index, item) {
-    return item ? item.index : undefined;
-  }
   status(ago: number) {
     const now = new Date().getTime() / 1000;
     return (now - ago) < 180;
@@ -42,9 +39,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
     }
     this.dataSource = new ExampleDataSource(this.api);
     if (ev) {
-      this.snackBar.open('Refresh Successful', 'Dismiss', {
+      this.snackBar.open('Refreshed', 'Dismiss', {
         duration: 3000,
-        verticalPosition: 'top'
+        verticalPosition: 'top',
+        extraClasses: ['bg-success']
       });
     }
   }

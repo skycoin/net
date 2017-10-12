@@ -36,9 +36,10 @@ export class SubStatusComponent implements OnInit, OnDestroy {
     ev.stopPropagation();
     ev.preventDefault();
     this.init();
-    this.snackBar.open('Refresh Successful', 'Dismiss', {
+    this.snackBar.open('Refreshed', 'Dismiss', {
       duration: 3000,
-      verticalPosition: 'top'
+      verticalPosition: 'top',
+      extraClasses: ['bg-success']
     });
   }
   close() {
