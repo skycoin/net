@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"encoding/binary"
 	"fmt"
-	"io"
 	"net"
 
 	"github.com/skycoin/net/conn"
@@ -46,41 +45,36 @@ func (c *ServerTCPConn) ReadLoop() (err error) {
 			return err
 		}
 		msg_t := t[msg.MSG_TYPE_BEGIN]
-		var n int
 		switch msg_t {
 		case msg.TYPE_ACK:
-			n, err = io.ReadAtLeast(reader, header[:msg.MSG_SEQ_END], msg.MSG_SEQ_END)
+			err = c.ReadBytes(reader, header[:msg.MSG_SEQ_END], msg.MSG_SEQ_END)
 			if err != nil {
 				return err
 			}
-			c.AddReceivedBytes(n)
 			seq := binary.BigEndian.Uint32(header[msg.MSG_SEQ_BEGIN:msg.MSG_SEQ_END])
 			c.DelMsg(seq)
 			c.UpdateLastAck(seq)
 		case msg.TYPE_PING:
-			n, err = io.ReadAtLeast(reader, pingHeader, msg.PING_MSG_HEADER_SIZE)
+			err = c.ReadBytes(reader, pingHeader, msg.PING_MSG_HEADER_SIZE)
 			if err != nil {
 				return err
 			}
-			c.AddReceivedBytes(n)
 			pingHeader[msg.PING_MSG_TYPE_BEGIN] = msg.TYPE_PONG
 			err = c.WriteBytes(pingHeader)
 			if err != nil {
 				return err
 			}
 		case msg.TYPE_NORMAL:
-			n, err = io.ReadAtLeast(reader, header, msg.MSG_HEADER_SIZE)
+			err = c.ReadBytes(reader, header, msg.MSG_HEADER_SIZE)
 			if err != nil {
 				return err
 			}
-			c.AddReceivedBytes(n)
 
 			m := msg.NewByHeader(header)
-			n, err = io.ReadAtLeast(reader, m.Body, int(m.Len))
+			err = c.ReadBytes(reader, m.Body, int(m.Len))
 			if err != nil {
 				return err
 			}
-			c.AddReceivedBytes(n)
 
 			seq := binary.BigEndian.Uint32(header[msg.MSG_TYPE_END:msg.MSG_SEQ_END])
 			c.Ack(seq)

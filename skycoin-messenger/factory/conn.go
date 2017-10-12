@@ -1,14 +1,14 @@
 package factory
 
 import (
-	"sync"
-
 	"encoding/json"
 	"errors"
+	"sync"
+	"time"
 
 	"github.com/skycoin/net/factory"
 	"github.com/skycoin/skycoin/src/cipher"
-	"time"
+	"sync/atomic"
 )
 
 type Connection struct {
@@ -359,14 +359,10 @@ func (c *Connection) getTransport(to cipher.PubKey) (tr *transport, ok bool) {
 	return
 }
 
-func (c *Connection) UpdateConnectTime()  {
-	c.fieldsMutex.Lock()
-	c.connectTime = time.Now().Unix()
-	c.fieldsMutex.Unlock()
+func (c *Connection) UpdateConnectTime() {
+	atomic.StoreInt64(&c.connectTime, time.Now().Unix())
 }
 
 func (c *Connection) GetConnectTime() int64 {
-	c.fieldsMutex.Lock()
-	defer c.fieldsMutex.Unlock()
-	return c.connectTime
+	return atomic.LoadInt64(&c.connectTime)
 }
