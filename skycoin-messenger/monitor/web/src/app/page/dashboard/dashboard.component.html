@@ -1,7 +1,7 @@
 <!-- Node Table -->
 <div class="table-extran-header">
-  <p class="header-col header-text">All Node</p>
-  <p class="header-col text-right action-col">
+  <p class="header-col header-text">
+    All Node
     <md-icon mdTooltip="refresh" fontSet="fa" fontIcon="fa-refresh" (click)="refresh($event)"></md-icon>
   </p>
 </div>
@@ -13,7 +13,7 @@
   <ng-container mdColumnDef="status">
     <md-header-cell *mdHeaderCellDef [style.flex]="'0 0 5rem'"> Status </md-header-cell>
     <md-cell *mdCellDef="let data" [style.flex]="'0 0 5rem'">
-        Online
+      Online
     </md-cell>
   </ng-container>
   <ng-container mdColumnDef="key">

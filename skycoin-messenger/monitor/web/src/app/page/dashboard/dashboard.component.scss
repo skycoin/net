@@ -23,14 +23,9 @@ app-dashboard {
       user-select: none;
       font-size: 1.1rem;
       font-weight: 500;
-    }
-    .action-col {
-      padding: 0 1rem;
       .mat-icon {
         cursor: pointer;
-        &:hover {
-          color: #999;
-        }
+        color: $primary-color;
       }
     }
   }

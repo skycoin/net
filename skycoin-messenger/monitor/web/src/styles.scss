@@ -70,3 +70,11 @@
   @extend .bg-success;
   @extend .monitor-chip-text;
 }
+
+snack-bar-container {
+  .mat-simple-snackbar {
+    .mat-simple-snackbar-action {
+      color: #ffeda8;
+    }
+  }
+}
