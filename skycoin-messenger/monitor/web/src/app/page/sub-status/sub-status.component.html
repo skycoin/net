@@ -1,8 +1,8 @@
 <md-card>
   <md-card-title>
-    Node Status
+    <span>Node Status</span>
     <small>
-      <md-icon mdTooltip="refresh" fontSet="fa" fontIcon="fa-refresh" (click)="refresh($event)"></md-icon>
+      <md-icon (click)="refresh($event)">cached</md-icon>
     </small>
   </md-card-title>
   <md-card-content>
@@ -14,12 +14,14 @@
       <md-grid-tile>
         <p class="status-box-item-title">
           <small>Status</small>
+          <md-icon>network_check</md-icon>
         </p>
         <p class="status-box-item-content">Online</p>
       </md-grid-tile>
       <md-grid-tile>
         <p class="status-box-item-title">
           <small>Type</small>
+          <md-icon>layers</md-icon>
         </p>
         <p class="status-box-item-content">
           <md-chip-list>
@@ -30,24 +32,28 @@
       <md-grid-tile>
         <p class="status-box-item-title">
           <small>Seen</small>
+          <md-icon>timelapse</md-icon>
         </p>
         <p class="status-box-item-content">{{status?.last_ack_time | timeAgo}}</p>
       </md-grid-tile>
       <md-grid-tile>
         <p class="status-box-item-title">
           <small>Started</small>
+          <md-icon>av_timer</md-icon>
         </p>
         <p class="status-box-item-content">{{status?.start_time | timeAgo}}</p>
       </md-grid-tile>
       <md-grid-tile>
         <p class="status-box-item-title">
           <small>Send</small>
+          <md-icon>arrow_upward</md-icon>
         </p>
         <p class="status-box-item-content">{{status?.send_bytes | byteTo}} </p>
       </md-grid-tile>
       <md-grid-tile>
         <p class="status-box-item-title">
           <small>Recv</small>
+          <md-icon>arrow_downward</md-icon>
         </p>
         <p class="status-box-item-content">{{status?.recv_bytes | byteTo}}</p>
       </md-grid-tile>
@@ -56,7 +62,10 @@
 </md-card>
 
 
-<h3 class="status-app-title">Apps</h3>
+<h3 class="status-app-title">
+  <span>Apps</span>
+  <md-icon>apps</md-icon>
+</h3>
 <md-table #table [dataSource]="dataSource">
   <ng-container mdColumnDef="index">
     <md-header-cell *mdHeaderCellDef [style.flex]="'0 0 3rem'"> # </md-header-cell>
@@ -75,5 +84,5 @@
     </md-cell>
   </ng-container>
   <md-header-row *mdHeaderRowDef="displayedColumns"></md-header-row>
-  <md-row *mdRowDef="let row; columns: displayedColumns;" class="mat-row-hover" (click)="openStatus($event,row)"></md-row>
+  <md-row *mdRowDef="let row; columns: displayedColumns;"></md-row>
 </md-table>

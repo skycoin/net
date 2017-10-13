@@ -1,9 +1,15 @@
 @import '../../../app.scss';
 app-sub-status {
+  .mat-cell {
+    color: #73879c;
+  }
   .status-app-title {
     margin-bottom: .5rem;
+    color: #73879c;
   }
   .node-key {
+    border-bottom: 1px solid $light-dark-2x;
+    padding-bottom: .5rem;
     margin-bottom: 1.5rem;
   }
   .mat-card {
@@ -34,7 +40,7 @@ app-sub-status {
       }
     }
     .status-box-item-content {
-      font-size: 1.25em;
+      font-size: 1.3em;
       font-weight: 500;
     }
   }

@@ -4,13 +4,8 @@
       <nav class="nav">
         <md-nav-list>
           <img src="../assets/logo.png" alt="Sky Wire" class="nav-logo">
-          <!-- <md-list-item *ngFor="let item of listitems" routerLinkActive="active">
-
-            <a mdLine routerLink="/">{{ item }}</a>
-          </md-list-item> -->
-
           <a md-list-item md-line routerLink="/" *ngFor="let item of listitems" routerLinkActive="active">
-            <md-icon md-list-icon fontSet="fa" fontIcon="fa-tachometer"></md-icon>
+            <md-icon>dashboard</md-icon>
             <span class="list-item-text">{{ item }}</span>
           </a>
         </md-nav-list>
