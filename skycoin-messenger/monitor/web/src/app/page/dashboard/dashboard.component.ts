@@ -1,5 +1,5 @@
 import { Component, OnInit, ViewEncapsulation, OnDestroy } from '@angular/core';
-import { ApiService, Conn, ConnsResponse } from '../../service';
+import { ApiService, Conn, ConnData, ConnsResponse } from '../../service';
 import { DataSource } from '@angular/cdk/collections';
 import { Observable } from 'rxjs/Observable';
 import { Router } from '@angular/router';
@@ -66,7 +66,29 @@ export class ExampleDataSource extends DataSource<any> {
     super();
   }
   connect(): Observable<Conn[]> {
-    return this.api.getAllNode();
+    return this.api.getAllNode().map((conns: Array<Conn>) => {
+      conns.sort((a, b) => {
+        if (a.start_time < b.start_time) {
+          return 1;
+        }
+        if (a.start_time > b.start_time) {
+          return -1;
+        }
+        if (a.start_time === b.start_time) {
+          return a.key.localeCompare(b.key);
+        }
+      });
+      return conns;
+      // const data: Array<ConnData> = [];
+      // conns.forEach((v, i) => {
+      //   data.push({
+      //     index: i,
+      //     key: v.key,
+
+      //   })
+      // });
+      // return data;
+    });
   }
 
   disconnect() { }

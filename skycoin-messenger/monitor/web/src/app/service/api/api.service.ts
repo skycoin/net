@@ -43,6 +43,9 @@ export interface Conn {
   last_ack_time?: number;
   start_time?: number;
 }
+export interface ConnData extends Conn {
+  index?: number;
+}
 export interface ConnsResponse {
   conns?: Array<Conn>;
 }

@@ -9,7 +9,6 @@ import (
 )
 
 type Conn struct {
-	Index       int64  `json:"index"`
 	Key         string `json:"key"`
 	Type        string `json:"type"`
 	SendBytes   uint64 `json:"send_bytes"`
@@ -59,10 +58,8 @@ func (m *Monitor) Start(webDir string) {
 	http.Handle("/", http.FileServer(http.Dir(webDir)))
 	http.HandleFunc("/conn/getAll", func(w http.ResponseWriter, r *http.Request) {
 		cs := make([]Conn, 0)
-		var index int64 = 1
 		m.factory.ForEachAcceptedConnection(func(key cipher.PubKey, conn *factory.Connection) {
 			content := Conn{
-				Index:       index,
 				Key:         key.Hex(),
 				SendBytes:   conn.GetSentBytes(),
 				RecvBytes:   conn.GetReceivedBytes(),
@@ -74,7 +71,6 @@ func (m *Monitor) Start(webDir string) {
 				content.Type = "UDP"
 			}
 			cs = append(cs, content)
-			index ++
 		})
 		js, err := json.Marshal(cs)
 		if err != nil {
