@@ -64,7 +64,9 @@ type regResp struct {
 
 func (resp *regResp) Run(conn *Connection) (err error) {
 	conn.SetKey(resp.PubKey)
-	conn.factory.register(resp.PubKey, conn)
+	if !conn.IsSkipFactoryReg() {
+		conn.factory.register(resp.PubKey, conn)
+	}
 	conn.SetContextLogger(conn.GetContextLogger().WithField("pubkey", resp.PubKey.Hex()))
 	return
 }

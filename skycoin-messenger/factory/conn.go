@@ -35,6 +35,8 @@ type Connection struct {
 	appTransportsMutex sync.RWMutex
 
 	connectTime int64
+
+	skipFactoryReg bool
 	// callbacks
 
 	// call after received response for FindServiceNodesByKeys
@@ -305,7 +307,9 @@ func (c *Connection) Close() {
 	c.fieldsMutex.Lock()
 	defer c.fieldsMutex.Unlock()
 	if c.keySet {
-		c.factory.unregister(c.key, c)
+		if !c.skipFactoryReg {
+			c.factory.unregister(c.key, c)
+		}
 		c.keySet = false
 	}
 	if c.in != nil {
@@ -365,4 +369,17 @@ func (c *Connection) UpdateConnectTime() {
 
 func (c *Connection) GetConnectTime() int64 {
 	return atomic.LoadInt64(&c.connectTime)
+}
+
+func (c *Connection) EnableSkipFactoryReg() {
+	c.fieldsMutex.Lock()
+	c.skipFactoryReg = true
+	c.fieldsMutex.Unlock()
+}
+
+func (c *Connection) IsSkipFactoryReg() (skip bool) {
+	c.fieldsMutex.RLock()
+	skip = c.skipFactoryReg
+	c.fieldsMutex.RUnlock()
+	return
 }

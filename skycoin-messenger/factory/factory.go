@@ -236,6 +236,9 @@ func (f *MessengerFactory) ConnectWithConfig(address string, config *ConnConfig)
 	conn = newClientConnection(c, f)
 	conn.SetContextLogger(conn.GetContextLogger().WithField("app", "messenger"))
 	if config != nil {
+		if config.SkipFactoryReg {
+			conn.EnableSkipFactoryReg()
+		}
 		var sc *SeedConfig
 		if config.SeedConfig != nil {
 			sc = config.SeedConfig

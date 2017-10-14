@@ -21,6 +21,9 @@ type ConnConfig struct {
 	SeedConfigPath string
 	SeedConfig     *SeedConfig
 
+	// skip factory reg
+	SkipFactoryReg bool
+
 	// callbacks
 
 	FindServiceNodesByKeysCallback func(resp *QueryResp)
