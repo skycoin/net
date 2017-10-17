@@ -30,10 +30,14 @@ install() {
 dev() {
   cmd "npm run start"
 }
+
 build(){
-  cmd "npm run build"
+  cmd "npm run build-d"
 }
 
+buildManager(){
+  cmd "npm run build-m"
+}
 cmd() {
     echo "[ RUNNING ] '${1}' ..."
     ${1}

@@ -27,10 +27,18 @@ cd net/skycoin-messenger/monitor/web
 ./run.sh
 ```
 
-## Build The Web Files
+## Build The Discovery Web Files
 From your command line:
 ```bash
 git clone https://github.com/skycoin/net.git
 cd net/skycoin-messenger/monitor/web
 ./build.sh
+```
+
+## Build The Manager Web Files
+From your command line:
+```bash
+git clone https://github.com/skycoin/net.git
+cd net/skycoin-messenger/monitor/web
+./build-manager.sh
 ```
