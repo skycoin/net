@@ -5,7 +5,8 @@
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
-    "build": "ng build --prod",
+    "build-d": "ng build --prod --env=discovery",
+    "build-m": "ng build --prod --env=manager",
     "test": "ng test",
     "lint": "ng lint",
     "e2e": "ng e2e"

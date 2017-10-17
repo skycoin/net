@@ -96,6 +96,11 @@
   @extend .bg-success;
   @extend .monitor-chip-text;
 }
+.chip-primary {
+  @extend .bg-primary;
+  @extend .monitor-chip-text;
+}
+
 
 snack-bar-container {
   .mat-simple-snackbar {

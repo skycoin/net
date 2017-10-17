@@ -1,6 +1,7 @@
 import { Component, OnInit, ViewEncapsulation, OnDestroy } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
-import { ApiService, NodeServices, App } from '../../service';
+import { environment as env } from '../../../environments/environment';
+import { ApiService, NodeServices, App, Transports } from '../../service';
 import { MatSnackBar } from '@angular/material';
 import { DataSource } from '@angular/cdk/collections';
 import { Observable } from 'rxjs/Observable';
@@ -14,10 +15,16 @@ import 'rxjs/add/observable/of';
 })
 export class SubStatusComponent implements OnInit, OnDestroy {
   displayedColumns = ['index', 'key', 'app'];
-  dataSource: SubStatusDataSource = null;
+  transportColumns = ['type', 'from', 'to'];
+  appSource: SubStatusDataSource = null;
+  transportSource: SubStatusDataSource = null;
   key = '';
+  power = '';
+  transports: Array<Transports> = [];
   status: NodeServices = null;
+  apps: Array<App> = [];
   task = null;
+  isManager = false;
   constructor(
     private router: Router,
     private route: ActivatedRoute,
@@ -27,10 +34,9 @@ export class SubStatusComponent implements OnInit, OnDestroy {
   ngOnInit() {
     this.route.queryParams.subscribe(params => {
       this.key = params.key;
-      this.init();
-      this.task = setInterval(() => {
-        this.init();
-      }, 10000);
+      this.startTask();
+      this.power = 'warn';
+      this.isManager = env.isManager;
     });
   }
   ngOnDestroy() {
@@ -47,8 +53,46 @@ export class SubStatusComponent implements OnInit, OnDestroy {
       extraClasses: ['bg-success']
     });
   }
+
+  restart(ev: Event) {
+    ev.stopImmediatePropagation();
+    ev.stopPropagation();
+    ev.preventDefault();
+    this.api.restart(this.status.addr).subscribe(isOk => {
+      if (isOk) {
+        if (this.task) {
+          this.close();
+        }
+        this.startTask();
+      }
+    });
+  }
+
+  shutDown(ev: Event) {
+    ev.stopImmediatePropagation();
+    ev.stopPropagation();
+    ev.preventDefault();
+    this.api.shutDown(this.status.addr).subscribe(isOk => {
+      if (isOk) {
+        this.power = '';
+        this.snackBar.open('Closed', 'Dismiss', {
+          duration: 3000,
+          verticalPosition: 'top',
+          extraClasses: ['bg-success']
+        });
+        this.close();
+      }
+    });
+  }
+  startTask() {
+    this.init();
+    this.task = setInterval(() => {
+      this.init();
+    }, 10000);
+  }
   close() {
     clearInterval(this.task);
+    this.task = null;
   }
   init() {
     const data = new FormData();
@@ -56,8 +100,16 @@ export class SubStatusComponent implements OnInit, OnDestroy {
     this.api.getNodeStatus(data).subscribe((nodeServices: NodeServices) => {
       if (nodeServices) {
         this.status = nodeServices;
+        if (env.isManager && nodeServices.addr) {
+          this.api.getTransport(nodeServices.addr).subscribe((allTransports: Array<Transports>) => {
+            if (allTransports && allTransports.length > 0) {
+              this.transports = allTransports;
+              this.transportSource = new SubStatusDataSource(allTransports);
+            }
+          });
+        }
         if (nodeServices.apps) {
-          this.dataSource = new SubStatusDataSource(this.status.apps);
+          this.appSource = new SubStatusDataSource(this.status.apps);
         }
       }
     });
@@ -65,10 +117,10 @@ export class SubStatusComponent implements OnInit, OnDestroy {
 }
 export class SubStatusDataSource extends DataSource<any> {
   size = 0;
-  constructor(private apps: Array<App>) {
+  constructor(private apps: any) {
     super();
   }
-  connect(): Observable<App[]> {
+  connect(): Observable<any> {
     return Observable.of(this.apps);
   }
 

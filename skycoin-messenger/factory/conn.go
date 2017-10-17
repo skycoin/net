@@ -383,3 +383,10 @@ func (c *Connection) IsSkipFactoryReg() (skip bool) {
 	c.fieldsMutex.RUnlock()
 	return
 }
+
+func (c *Connection) GetTransports() (ts map[cipher.PubKey]*transport) {
+	c.appTransportsMutex.RLock()
+	ts = c.appTransports
+	c.appTransportsMutex.RUnlock()
+	return
+}

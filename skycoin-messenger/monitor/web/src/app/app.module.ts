@@ -9,7 +9,8 @@ import {
   MatTooltipModule,
   MatChipsModule,
   MatSnackBarModule,
-  MatCardModule
+  MatCardModule,
+  MatButtonModule
 } from '@angular/material';
 import { AppComponent } from './app.component';
 import { HttpClientModule } from '@angular/common/http';
@@ -39,7 +40,8 @@ import { AppRoutingModule } from './route/app-routing.module';
     MatTooltipModule,
     MatChipsModule,
     MatSnackBarModule,
-    MatCardModule
+    MatCardModule,
+    MatButtonModule
   ],
   providers: [ApiService],
   bootstrap: [AppComponent]

@@ -232,11 +232,11 @@ const (
 	PKG_HEADER_ID_SIZE = 4
 	PKG_HEADER_OP_SIZE = 1
 
-	PKG_HEADER_BEGIN = 0
+	PKG_HEADER_BEGIN    = 0
 	PKG_HEADER_OP_BEGIN
-	PKG_HEADER_OP_END = PKG_HEADER_OP_BEGIN + PKG_HEADER_OP_SIZE
+	PKG_HEADER_OP_END   = PKG_HEADER_OP_BEGIN + PKG_HEADER_OP_SIZE
 	PKG_HEADER_ID_BEGIN
-	PKG_HEADER_ID_END = PKG_HEADER_ID_BEGIN + PKG_HEADER_ID_SIZE
+	PKG_HEADER_ID_END   = PKG_HEADER_ID_BEGIN + PKG_HEADER_ID_SIZE
 	PKG_HEADER_END
 )
 
@@ -308,4 +308,16 @@ func writeAll(conn io.Writer, m []byte) error {
 		i += n
 	}
 	return nil
+}
+
+type FromAndTo struct {
+	Type string `json:"type"`
+	From string `json:"from"`
+	To   string `json:"to"`
+}
+
+func (t *transport) GetTransportBundle() (node,app FromAndTo) {
+	node = FromAndTo{Type: "Node", From: t.fromNode.Hex(), To: t.toNode.Hex()}
+	app = FromAndTo{Type: "App", From: t.fromApp.Hex(), To: t.toApp.Hex()}
+	return
 }

@@ -7,7 +7,7 @@ import 'rxjs/add/observable/throw';
 
 @Injectable()
 export class ApiService {
-  private url = 'http://127.0.0.1:5998/';
+  private url = 'http://127.0.0.1:8000/';
   private connUrl = this.url + 'conn/';
   constructor(private httpClient: HttpClient) {
     if (environment.production) {
@@ -19,9 +19,17 @@ export class ApiService {
   }
 
   getNodeStatus(data: FormData) {
-    return this.handlePost(this.connUrl + 'getNodeStatus', data);
+    return this.handlePost(this.connUrl + 'getNode', data);
   }
-
+  getTransport(addr: string) {
+    return this.handleGet('http://' + addr + '/node/getTransports');
+  }
+  restart(addr: string) {
+    return this.handleGet('http://' + addr + '/node/restart');
+  }
+  shutDown(addr: string) {
+    return this.handleGet('http://' + addr + '/node/shutDown');
+  }
   handleGet(url: string) {
     if (url === '') {
       return Observable.throw('Url is empty.');
@@ -52,10 +60,17 @@ export interface ConnsResponse {
 
 export interface NodeServices extends Conn {
   apps?: Array<App>;
+  addr?: string;
 }
 
 export interface App {
   index?: number;
   key?: string;
   attributes?: Array<string>;
+}
+
+export interface Transports {
+  type?: string;
+  from?: string;
+  to?: string;
 }
