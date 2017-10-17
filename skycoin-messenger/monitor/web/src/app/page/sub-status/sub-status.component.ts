@@ -15,7 +15,7 @@ import 'rxjs/add/observable/of';
 })
 export class SubStatusComponent implements OnInit, OnDestroy {
   displayedColumns = ['index', 'key', 'app'];
-  transportColumns = ['type', 'from', 'to'];
+  transportColumns = ['index', 'fromNode', 'fromApp', 'toNode', 'toApp'];
   appSource: SubStatusDataSource = null;
   transportSource: SubStatusDataSource = null;
   key = '';
@@ -29,7 +29,8 @@ export class SubStatusComponent implements OnInit, OnDestroy {
     private router: Router,
     private route: ActivatedRoute,
     private api: ApiService,
-    private snackBar: MatSnackBar) { }
+    private snackBar: MatSnackBar) {
+  }
 
   ngOnInit() {
     this.route.queryParams.subscribe(params => {
@@ -53,19 +54,25 @@ export class SubStatusComponent implements OnInit, OnDestroy {
       extraClasses: ['bg-success']
     });
   }
-
-  restart(ev: Event) {
+  operate(ev: Event, action: string) {
     ev.stopImmediatePropagation();
     ev.stopPropagation();
     ev.preventDefault();
-    this.api.restart(this.status.addr).subscribe(isOk => {
-      if (isOk) {
-        if (this.task) {
-          this.close();
-        }
-        this.startTask();
-      }
-    });
+    console.log('Action: ', action);
+  }
+  reboot(ev: Event) {
+    ev.stopImmediatePropagation();
+    ev.stopPropagation();
+    ev.preventDefault();
+    console.log('reboot');
+    // this.api.restart(this.status.addr).subscribe(isOk => {
+    //   if (isOk) {
+    //     if (this.task) {
+    //       this.close();
+    //     }
+    //     this.startTask();
+    //   }
+    // });
   }
 
   shutDown(ev: Event) {

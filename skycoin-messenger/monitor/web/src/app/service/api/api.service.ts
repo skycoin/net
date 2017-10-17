@@ -70,7 +70,8 @@ export interface App {
 }
 
 export interface Transports {
-  type?: string;
-  from?: string;
-  to?: string;
+  from_node?: string;
+  to_node?: string;
+  from_app?: string;
+  to_app?: string;
 }

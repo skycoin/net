@@ -7,10 +7,22 @@ app-sub-status {
     margin-bottom: .5rem;
     color: #73879c;
   }
-  .node-key {
-    border-bottom: 1px solid $light-dark-2x;
+  .status-title-box {
+    float: left;
+    width: 50%;
+  }
+  .operations-title {
     padding-bottom: .5rem;
     margin-bottom: 1.5rem;
+  }
+  .node-key {
+    padding-bottom: .5rem;
+    margin-bottom: 1.5rem;
+  }
+  .transport-key {
+    word-break: break-all;
+    padding: 1rem;
+    text-align: center;
   }
   .mat-table {
     margin-bottom: 2rem;

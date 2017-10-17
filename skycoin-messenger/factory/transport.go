@@ -23,8 +23,8 @@ type transport struct {
 	// app
 	appNet net.Listener
 
-	fromNode, toNode cipher.PubKey
-	fromApp, toApp   cipher.PubKey
+	FromNode, ToNode cipher.PubKey
+	FromApp, ToApp   cipher.PubKey
 
 	conns      map[uint32]net.Conn
 	connsMutex sync.RWMutex
@@ -35,10 +35,10 @@ type transport struct {
 func NewTransport(creator *MessengerFactory, fromNode, toNode, fromApp, toApp cipher.PubKey) *transport {
 	t := &transport{
 		creator:  creator,
-		fromNode: fromNode,
-		toNode:   toNode,
-		fromApp:  fromApp,
-		toApp:    toApp,
+		FromNode: fromNode,
+		ToNode:   toNode,
+		FromApp:  fromApp,
+		ToApp:    toApp,
 		factory:  NewMessengerFactory(),
 		conns:    make(map[uint32]net.Conn),
 	}
@@ -59,10 +59,10 @@ func (t *transport) Connect(address, appAddress string) (err error) {
 		OnConnected: func(connection *Connection) {
 			connection.writeOP(OP_BUILD_APP_CONN_OK,
 				&buildConnResp{
-					FromNode: t.fromNode,
-					Node:     t.toNode,
-					FromApp:  t.fromApp,
-					App:      t.toApp,
+					FromNode: t.FromNode,
+					Node:     t.ToNode,
+					FromApp:  t.FromApp,
+					App:      t.ToApp,
 				})
 		},
 		Creator: t.creator,
@@ -308,16 +308,4 @@ func writeAll(conn io.Writer, m []byte) error {
 		i += n
 	}
 	return nil
-}
-
-type FromAndTo struct {
-	Type string `json:"type"`
-	From string `json:"from"`
-	To   string `json:"to"`
-}
-
-func (t *transport) GetTransportBundle() (node,app FromAndTo) {
-	node = FromAndTo{Type: "Node", From: t.fromNode.Hex(), To: t.toNode.Hex()}
-	app = FromAndTo{Type: "App", From: t.fromApp.Hex(), To: t.toApp.Hex()}
-	return
 }
