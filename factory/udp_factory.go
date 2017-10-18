@@ -73,7 +73,7 @@ func (factory *UDPFactory) createConn(c *net.UDPConn, addr *net.UDPAddr) *conn.U
 	udpConn.SetStatusToConnected()
 	connection := &Connection{Connection: udpConn, factory: factory}
 	connection.SetContextLogger(connection.GetContextLogger().WithField("type", "udp"))
-	factory.AddServerConn(connection)
+	factory.AddAcceptedConn(connection)
 	go factory.AcceptedCallback(connection)
 	return udpConn
 }
@@ -153,23 +153,23 @@ func (factory *UDPFactory) ConnectAfterListen(address string) (conn *Connection,
 	cn.SetStatusToConnected()
 	conn = &Connection{Connection: cn, factory: factory}
 	conn.SetContextLogger(conn.GetContextLogger().WithField("type", "udpe"))
-	factory.AddServerConn(conn)
+	factory.AddAcceptedConn(conn)
 	return
 }
 
-func (factory *UDPFactory) AddServerConn(conn *Connection) {
-	factory.serverConnectionsMutex.Lock()
-	factory.serverConnections[conn] = struct{}{}
-	factory.serverConnectionsMutex.Unlock()
+func (factory *UDPFactory) AddAcceptedConn(conn *Connection) {
+	factory.acceptedConnectionsMutex.Lock()
+	factory.acceptedConnections[conn] = struct{}{}
+	factory.acceptedConnectionsMutex.Unlock()
 	go func() {
 		conn.WriteLoop()
-		factory.RemoveServerConn(conn)
+		factory.RemoveAcceptedConn(conn)
 	}()
 }
 
-func (factory *UDPFactory) RemoveServerConn(conn *Connection) {
+func (factory *UDPFactory) RemoveAcceptedConn(conn *Connection) {
 	factory.udpConnMapMutex.Lock()
 	delete(factory.udpConnMap, conn.GetRemoteAddr().String())
 	factory.udpConnMapMutex.Unlock()
-	factory.FactoryCommonFields.RemoveServerConn(conn)
+	factory.FactoryCommonFields.RemoveAcceptedConn(conn)
 }
