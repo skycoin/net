@@ -2,6 +2,7 @@ package monitor
 
 import (
 	"encoding/json"
+	"github.com/rs/cors"
 	log "github.com/sirupsen/logrus"
 	"github.com/skycoin/net/skycoin-messenger/factory"
 	"github.com/skycoin/skycoin/src/cipher"
@@ -55,9 +56,11 @@ func (m *Monitor) Close() error {
 	return m.srv.Shutdown(nil)
 }
 func (m *Monitor) Start(webDir string) {
-	http.Handle("/", http.FileServer(http.Dir(webDir)))
-	http.HandleFunc("/conn/getAll", m.getAllNode)
-	http.HandleFunc("/conn/getNode", m.getNode)
+	mux := http.NewServeMux()
+	mux.Handle("/", http.FileServer(http.Dir(webDir)))
+	mux.HandleFunc("/conn/getAll", m.getAllNode)
+	mux.HandleFunc("/conn/getNode", m.getNode)
+	m.srv.Handler = cors.Default().Handler(mux)
 	go func() {
 		if err := m.srv.ListenAndServe(); err != nil {
 			log.Printf("http server: ListenAndServe() error: %s", err)
@@ -87,7 +90,7 @@ func (m *Monitor) getAllNode(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), SERVER_ERROR)
 		return
 	}
-	w.Header().Add("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Content-Type", "application/json")
 	w.Write(js)
 }
 
@@ -149,6 +152,6 @@ func (m *Monitor) getNode(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), SERVER_ERROR)
 		return
 	}
-	w.Header().Add("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Content-Type", "application/json")
 	w.Write(js)
 }
