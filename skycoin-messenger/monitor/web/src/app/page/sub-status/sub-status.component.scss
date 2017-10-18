@@ -1,5 +1,8 @@
 @import '../../../app.scss';
 app-sub-status {
+  .close-status {
+    color: rgba(0, 0, 0, 0.2);
+  }
   .mat-cell {
     color: #73879c;
   }

@@ -25,6 +25,8 @@ export class SubStatusComponent implements OnInit, OnDestroy {
   apps: Array<App> = [];
   task = null;
   isManager = false;
+  socketColor = 'close-status';
+  sshColor = 'close-status';
   constructor(
     private router: Router,
     private route: ActivatedRoute,
@@ -54,40 +56,39 @@ export class SubStatusComponent implements OnInit, OnDestroy {
       extraClasses: ['bg-success']
     });
   }
-  operate(ev: Event, action: string) {
+  runSocketServer(ev: Event) {
     ev.stopImmediatePropagation();
     ev.stopPropagation();
     ev.preventDefault();
-    console.log('Action: ', action);
+    this.api.runSockServer(this.status.addr).subscribe(isOk => {
+      if (isOk) {
+        this.socketColor = 'mat-primary';
+        console.log('start socket server');
+      }
+    });
+  }
+  runSSHServer(ev: Event) {
+    ev.stopImmediatePropagation();
+    ev.stopPropagation();
+    ev.preventDefault();
+    this.api.runSSHServer(this.status.addr).subscribe(isOk => {
+      if (isOk) {
+        this.sshColor = 'mat-primary';
+        console.log('start ssh server');
+      }
+    });
   }
   reboot(ev: Event) {
     ev.stopImmediatePropagation();
     ev.stopPropagation();
     ev.preventDefault();
     console.log('reboot');
-    // this.api.restart(this.status.addr).subscribe(isOk => {
-    //   if (isOk) {
-    //     if (this.task) {
-    //       this.close();
-    //     }
-    //     this.startTask();
-    //   }
-    // });
-  }
-
-  shutDown(ev: Event) {
-    ev.stopImmediatePropagation();
-    ev.stopPropagation();
-    ev.preventDefault();
-    this.api.shutDown(this.status.addr).subscribe(isOk => {
+    this.api.reboot(this.status.addr).subscribe(isOk => {
       if (isOk) {
-        this.power = '';
-        this.snackBar.open('Closed', 'Dismiss', {
-          duration: 3000,
-          verticalPosition: 'top',
-          extraClasses: ['bg-success']
-        });
-        this.close();
+        if (this.task) {
+          this.close();
+        }
+        this.startTask();
       }
     });
   }

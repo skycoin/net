@@ -73,7 +73,7 @@
           <small>Shadowsocks</small>
         </p>
         <p class="status-box-item-content">
-          <button md-icon-button color="primary" (click)="operate($event,'shadowsocks')">
+          <button md-icon-button (click)="runSocketServer($event)" [ngClass]="socketColor">
             <md-icon aria-label="Shadowsocks">near_me</md-icon>
           </button>
         </p>
@@ -83,7 +83,7 @@
           <small>SSH</small>
         </p>
         <p class="status-box-item-content">
-          <button md-icon-button color="primary" (click)="operate($event,'ssh')">
+          <button md-icon-button (click)="runSSHServer($event)" [ngClass]="sshColor">
             <md-icon aria-label="SSH">computer</md-icon>
           </button>
         </p>

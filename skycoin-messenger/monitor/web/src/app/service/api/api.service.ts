@@ -9,6 +9,7 @@ import 'rxjs/add/observable/throw';
 export class ApiService {
   private url = 'http://127.0.0.1:8000/';
   private connUrl = this.url + 'conn/';
+  private callbackParm = 'callback';
   constructor(private httpClient: HttpClient) {
     if (environment.production) {
       this.connUrl = '/conn/';
@@ -22,13 +23,22 @@ export class ApiService {
     return this.handlePost(this.connUrl + 'getNode', data);
   }
   getTransport(addr: string) {
-    return this.handleGet('http://' + addr + '/node/getTransports');
+    return this.jsonp('http://' + addr + '/node/getTransports');
   }
-  restart(addr: string) {
-    return this.handleGet('http://' + addr + '/node/restart');
+  reboot(addr: string) {
+    return this.jsonp('http://' + addr + '/node/reboot');
   }
-  shutDown(addr: string) {
-    return this.handleGet('http://' + addr + '/node/shutDown');
+  runSSHServer(addr: string) {
+    return this.jsonp('http://' + addr + '/node/run/sshs');
+  }
+  runSockServer(addr: string) {
+    return this.jsonp('http://' + addr + '/node/run/sockss');
+  }
+  jsonp(url: string) {
+    if (url === '') {
+      return Observable.throw('Url is empty.');
+    }
+    return this.httpClient.jsonp(url, this.callbackParm).catch(err => Observable.throw(err));
   }
   handleGet(url: string) {
     if (url === '') {

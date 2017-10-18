@@ -2,12 +2,12 @@ package monitor
 
 import (
 	"encoding/json"
-	"github.com/rs/cors"
 	log "github.com/sirupsen/logrus"
 	"github.com/skycoin/net/skycoin-messenger/factory"
 	"github.com/skycoin/skycoin/src/cipher"
 	"net"
 	"net/http"
+	"github.com/pkg/errors"
 )
 
 type Conn struct {
@@ -56,11 +56,9 @@ func (m *Monitor) Close() error {
 	return m.srv.Shutdown(nil)
 }
 func (m *Monitor) Start(webDir string) {
-	mux := http.NewServeMux()
-	mux.Handle("/", http.FileServer(http.Dir(webDir)))
-	mux.HandleFunc("/conn/getAll", m.getAllNode)
-	mux.HandleFunc("/conn/getNode", m.getNode)
-	m.srv.Handler = cors.Default().Handler(mux)
+	http.Handle("/", http.FileServer(http.Dir(webDir)))
+	http.HandleFunc("/conn/getAll", bundle(m.getAllNode))
+	http.HandleFunc("/conn/getNode", bundle(m.getNode))
 	go func() {
 		if err := m.srv.ListenAndServe(); err != nil {
 			log.Printf("http server: ListenAndServe() error: %s", err)
@@ -69,7 +67,22 @@ func (m *Monitor) Start(webDir string) {
 	log.Debugf("http server listen on %s", m.address)
 }
 
-func (m *Monitor) getAllNode(w http.ResponseWriter, r *http.Request) {
+func bundle(fn func(w http.ResponseWriter, r *http.Request) (result []byte, err error, code int)) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		result, err, code := fn(w, r)
+		if err != nil {
+			if code == 0 {
+				code = SERVER_ERROR
+			}
+			http.Error(w, err.Error(), code)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.Write(result)
+	}
+}
+
+func (m *Monitor) getAllNode(w http.ResponseWriter, r *http.Request) (result []byte, err error, code int) {
 	cs := make([]Conn, 0)
 	m.factory.ForEachAcceptedConnection(func(key cipher.PubKey, conn *factory.Connection) {
 		content := Conn{
@@ -85,28 +98,29 @@ func (m *Monitor) getAllNode(w http.ResponseWriter, r *http.Request) {
 		}
 		cs = append(cs, content)
 	})
-	js, err := json.Marshal(cs)
+	result, err = json.Marshal(cs)
 	if err != nil {
-		http.Error(w, err.Error(), SERVER_ERROR)
+		code = SERVER_ERROR
 		return
 	}
-	w.Header().Set("Content-Type", "application/json")
-	w.Write(js)
+	return
 }
 
-func (m *Monitor) getNode(w http.ResponseWriter, r *http.Request) {
+func (m *Monitor) getNode(w http.ResponseWriter, r *http.Request) (result []byte, err error, code int) {
 	if r.Method != "POST" {
-		http.Error(w, "please use post method", BAD_REQUEST)
+		code = BAD_REQUEST
+		err = errors.New("please use post method")
 		return
 	}
 	key, err := cipher.PubKeyFromHex(r.FormValue("key"))
 	if err != nil {
-		http.Error(w, err.Error(), BAD_REQUEST)
+		code = BAD_REQUEST
 		return
 	}
 	c, ok := m.factory.GetConnection(key)
 	if !ok {
-		http.Error(w, "No connection is found", NOT_FOUND)
+		code = NOT_FOUND
+		err = errors.New("No connection is found")
 		return
 	}
 	nodeService := NodeServices{
@@ -135,23 +149,23 @@ func (m *Monitor) getNode(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if webPort != "" {
-		host, _, err := net.SplitHostPort(c.GetRemoteAddr().String())
+		var host,port string
+		host, _, err = net.SplitHostPort(c.GetRemoteAddr().String())
 		if err != nil {
-			http.Error(w, err.Error(), SERVER_ERROR)
+			code = SERVER_ERROR
 			return
 		}
-		_, port, err := net.SplitHostPort(webPort)
+		_, port, err = net.SplitHostPort(webPort)
 		if err != nil {
-			http.Error(w, err.Error(), SERVER_ERROR)
+			code = SERVER_ERROR
 			return
 		}
 		nodeService.Addr = net.JoinHostPort(host, port)
 	}
-	js, err := json.Marshal(nodeService)
+	result, err = json.Marshal(nodeService)
 	if err != nil {
-		http.Error(w, err.Error(), SERVER_ERROR)
+		code = SERVER_ERROR
 		return
 	}
-	w.Header().Set("Content-Type", "application/json")
-	w.Write(js)
+	return
 }
