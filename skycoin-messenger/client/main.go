@@ -18,7 +18,6 @@ import (
 
 var (
 	webDir           string
-	rpcAddress       string
 	webSocketAddress string
 	openBrowser      bool
 	// dir path for seeds, public key and private key
@@ -27,10 +26,9 @@ var (
 
 func parseFlags() {
 	flag.StringVar(&webDir, "web-dir", "../web/dist", "directory of web files")
-	flag.StringVar(&rpcAddress, "rpc-address", "localhost:8083", "rpc address to listen on")
 	flag.StringVar(&webSocketAddress, "websocket-address", "localhost:8082", "websocket address to listen on")
 	flag.BoolVar(&openBrowser, "open-browser", true, "whether to open browser")
-	flag.StringVar(&seedPath, "seedPath", "", "dir path to save seeds info(default:$HOME/.skyim/account/)")
+	flag.StringVar(&seedPath, "seed-path", filepath.Join(file.UserHome(), ".skyim", "account"), "dir path to save seeds info")
 	flag.Parse()
 }
 
