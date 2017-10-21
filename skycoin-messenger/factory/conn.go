@@ -2,13 +2,11 @@ package factory
 
 import (
 	"encoding/json"
-	"errors"
-	"sync"
-	"time"
-
 	"github.com/skycoin/net/factory"
 	"github.com/skycoin/skycoin/src/cipher"
+	"sync"
 	"sync/atomic"
+	"time"
 )
 
 type Connection struct {
@@ -192,14 +190,14 @@ func (c *Connection) RegWithKey(key cipher.PubKey) error {
 
 // register services to discovery
 func (c *Connection) UpdateServices(ns *NodeServices) error {
-	if ns == nil || len(ns.Services) < 1 {
-		return errors.New("invalid arguments")
+	c.setServices(ns)
+	if ns == nil {
+		ns = &NodeServices{}
 	}
 	err := c.writeOP(OP_OFFER_SERVICE, ns)
 	if err != nil {
 		return err
 	}
-	c.setServices(ns)
 	return nil
 }
 
@@ -210,6 +208,12 @@ func (c *Connection) OfferService(attrs ...string) error {
 
 // register a service to discovery
 func (c *Connection) OfferServiceWithAddress(address string, attrs ...string) error {
+	return c.UpdateServices(&NodeServices{Services: []*Service{{Key: c.GetKey(), Attributes: attrs, Address: address}}})
+}
+
+// register a service to discovery
+func (c *Connection) OfferStaticServiceWithAddress(address string, attrs ...string) error {
+	c.factory.register(c.GetKey(), c)
 	return c.UpdateServices(&NodeServices{Services: []*Service{{Key: c.GetKey(), Attributes: attrs, Address: address}}})
 }
 

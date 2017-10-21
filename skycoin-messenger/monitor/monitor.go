@@ -2,13 +2,13 @@ package monitor
 
 import (
 	"encoding/json"
+	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/skycoin/net/skycoin-messenger/factory"
 	"github.com/skycoin/skycoin/src/cipher"
+	"io/ioutil"
 	"net"
 	"net/http"
-	"github.com/pkg/errors"
-	"io/ioutil"
 )
 
 type Conn struct {
