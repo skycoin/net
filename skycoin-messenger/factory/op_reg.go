@@ -75,6 +75,7 @@ const (
 
 type regWithKey struct {
 	PublicKey cipher.PubKey
+	Context   map[string]string
 }
 
 func (reg *regWithKey) Execute(f *MessengerFactory, conn *Connection) (r resp, err error) {
@@ -82,9 +83,12 @@ func (reg *regWithKey) Execute(f *MessengerFactory, conn *Connection) (r resp, e
 		conn.GetContextLogger().Infof("reg %s already", conn.key.Hex())
 		return
 	}
-	conn.context.Store(publicKey, reg.PublicKey)
+	for k, v := range reg.Context {
+		conn.StoreContext(k, v)
+	}
+	conn.StoreContext(publicKey, reg.PublicKey)
 	n := cipher.RandByte(64)
-	conn.context.Store(randomBytes, n)
+	conn.StoreContext(randomBytes, n)
 	r = &regWithKeyResp{Num: n}
 	return
 }

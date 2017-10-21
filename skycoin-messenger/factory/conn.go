@@ -184,8 +184,8 @@ func (c *Connection) Reg() error {
 	return c.Write(GenRegMsg())
 }
 
-func (c *Connection) RegWithKey(key cipher.PubKey) error {
-	return c.writeOP(OP_REG_KEY, &regWithKey{PublicKey: key})
+func (c *Connection) RegWithKey(key cipher.PubKey, context map[string]string) error {
+	return c.writeOP(OP_REG_KEY, &regWithKey{PublicKey: key, Context: context})
 }
 
 // register services to discovery
@@ -394,4 +394,12 @@ func (c *Connection) GetTransports() (ts map[cipher.PubKey]*transport) {
 	ts = c.appTransports
 	c.appTransportsMutex.RUnlock()
 	return
+}
+
+func (c *Connection) StoreContext(key, value interface{}) {
+	c.context.Store(key, value)
+}
+
+func (c *Connection) LoadContext(key interface{}) (value interface{}, ok bool) {
+	return c.context.Load(key)
 }

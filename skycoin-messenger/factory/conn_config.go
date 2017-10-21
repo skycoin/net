@@ -21,8 +21,8 @@ type ConnConfig struct {
 	SeedConfigPath string
 	SeedConfig     *SeedConfig
 
-	// skip factory reg
-	SkipFactoryReg bool
+	// context
+	Context map[string]string
 
 	// callbacks
 

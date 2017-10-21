@@ -154,34 +154,30 @@ func (m *Monitor) getNode(w http.ResponseWriter, r *http.Request) (result []byte
 	} else {
 		nodeService.Type = "UDP"
 	}
-	var webPort = ""
 	ns := c.GetServices()
 	if ns != nil {
 		for i, v := range ns.Services {
-			var app App
-			for _, attr := range v.Attributes {
-				if attr == "node-api" {
-					webPort = v.Address
-					break
-				}
-			}
-			app = App{Index: i + 1, Key: v.Key.Hex(), Attributes: v.Attributes}
+			app := App{Index: i + 1, Key: v.Key.Hex(), Attributes: v.Attributes}
 			nodeService.Apps = append(nodeService.Apps, app)
 		}
 	}
-	if webPort != "" {
-		var host, port string
-		host, _, err = net.SplitHostPort(c.GetRemoteAddr().String())
-		if err != nil {
-			code = SERVER_ERROR
-			return
+	v, ok := c.LoadContext("node-api")
+	if ok {
+		webPort, ok := v.(string)
+		if ok && len(webPort) > 1 {
+			var host, port string
+			host, _, err = net.SplitHostPort(c.GetRemoteAddr().String())
+			if err != nil {
+				code = SERVER_ERROR
+				return
+			}
+			_, port, err = net.SplitHostPort(webPort)
+			if err != nil {
+				code = SERVER_ERROR
+				return
+			}
+			nodeService.Addr = net.JoinHostPort(host, port)
 		}
-		_, port, err = net.SplitHostPort(webPort)
-		if err != nil {
-			code = SERVER_ERROR
-			return
-		}
-		nodeService.Addr = net.JoinHostPort(host, port)
 	}
 	result, err = json.Marshal(nodeService)
 	if err != nil {

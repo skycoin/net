@@ -236,8 +236,10 @@ func (f *MessengerFactory) ConnectWithConfig(address string, config *ConnConfig)
 	conn = newClientConnection(c, f)
 	conn.SetContextLogger(conn.GetContextLogger().WithField("app", "messenger"))
 	if config != nil {
-		if config.SkipFactoryReg {
-			conn.EnableSkipFactoryReg()
+		if len(config.Context) > 0 {
+			for k, v := range config.Context {
+				conn.StoreContext(k, v)
+			}
 		}
 		var sc *SeedConfig
 		if config.SeedConfig != nil {
@@ -276,7 +278,7 @@ func (f *MessengerFactory) ConnectWithConfig(address string, config *ConnConfig)
 					return
 				}
 				conn.SetSecKey(sk)
-				err = conn.RegWithKey(k)
+				err = conn.RegWithKey(k, config.Context)
 			}()
 		} else {
 			err = conn.Reg()
