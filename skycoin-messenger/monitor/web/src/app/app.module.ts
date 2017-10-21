@@ -13,7 +13,7 @@ import {
   MatButtonModule
 } from '@angular/material';
 import { AppComponent } from './app.component';
-import { HttpClientModule, HttpClientJsonpModule } from '@angular/common/http';
+import { HttpClientModule } from '@angular/common/http';
 import { ApiService } from './service';
 import { TimeAgoPipe, ByteToPipe } from './pipe';
 import { DashboardComponent, SubStatusComponent } from './page';
@@ -31,7 +31,6 @@ import { AppRoutingModule } from './route/app-routing.module';
   imports: [
     BrowserModule,
     HttpClientModule,
-    HttpClientJsonpModule,
     BrowserAnimationsModule,
     AppRoutingModule,
     MatGridListModule,

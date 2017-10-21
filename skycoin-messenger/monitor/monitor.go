@@ -8,6 +8,7 @@ import (
 	"net"
 	"net/http"
 	"github.com/pkg/errors"
+	"io/ioutil"
 )
 
 type Conn struct {
@@ -59,6 +60,7 @@ func (m *Monitor) Start(webDir string) {
 	http.Handle("/", http.FileServer(http.Dir(webDir)))
 	http.HandleFunc("/conn/getAll", bundle(m.getAllNode))
 	http.HandleFunc("/conn/getNode", bundle(m.getNode))
+	http.HandleFunc("/node", bundle(requestNode))
 	go func() {
 		if err := m.srv.ListenAndServe(); err != nil {
 			log.Printf("http server: ListenAndServe() error: %s", err)
@@ -80,6 +82,25 @@ func bundle(fn func(w http.ResponseWriter, r *http.Request) (result []byte, err 
 		w.Header().Set("Content-Type", "application/json")
 		w.Write(result)
 	}
+}
+
+func requestNode(w http.ResponseWriter, r *http.Request) (result []byte, err error, code int) {
+	if r.Method != "POST" {
+		code = BAD_REQUEST
+		err = errors.New("please use post method")
+		return
+	}
+	addr := r.FormValue("addr")
+	res, err := http.Get(addr)
+	if err != nil {
+		return result, err, res.StatusCode
+	}
+	defer res.Body.Close()
+	result, err = ioutil.ReadAll(res.Body)
+	if err != nil {
+		return result, err, SERVER_ERROR
+	}
+	return
 }
 
 func (m *Monitor) getAllNode(w http.ResponseWriter, r *http.Request) (result []byte, err error, code int) {
@@ -149,7 +170,7 @@ func (m *Monitor) getNode(w http.ResponseWriter, r *http.Request) (result []byte
 		}
 	}
 	if webPort != "" {
-		var host,port string
+		var host, port string
 		host, _, err = net.SplitHostPort(c.GetRemoteAddr().String())
 		if err != nil {
 			code = SERVER_ERROR

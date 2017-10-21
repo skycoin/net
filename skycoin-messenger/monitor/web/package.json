@@ -6,7 +6,7 @@
     "ng": "ng",
     "start": "ng serve",
     "build-d": "ng build --prod --env=discovery",
-    "build-m": "ng build --prod --env=manager",
+    "build-m": "ng build --prod --env=manager -op dist-manager",
     "test": "ng test",
     "lint": "ng lint",
     "e2e": "ng e2e"

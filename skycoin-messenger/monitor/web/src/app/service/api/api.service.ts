@@ -9,10 +9,12 @@ import 'rxjs/add/observable/throw';
 export class ApiService {
   private url = 'http://127.0.0.1:8000/';
   private connUrl = this.url + 'conn/';
+  private nodeUrl = this.url + 'node/';
   private callbackParm = 'callback';
   constructor(private httpClient: HttpClient) {
     if (environment.production) {
       this.connUrl = '/conn/';
+      this.nodeUrl = '/node';
     }
   }
   getAllNode() {
@@ -23,16 +25,16 @@ export class ApiService {
     return this.handlePost(this.connUrl + 'getNode', data);
   }
   getTransport(addr: string) {
-    return this.jsonp('http://' + addr + '/node/getTransports');
+    return this.handleNodePost('http://' + addr + '/node/getTransports');
   }
   reboot(addr: string) {
-    return this.jsonp('http://' + addr + '/node/reboot');
+    return this.handleNodePost('http://' + addr + '/node/reboot');
   }
   runSSHServer(addr: string) {
-    return this.jsonp('http://' + addr + '/node/run/sshs');
+    return this.handleNodePost('http://' + addr + '/node/run/sshs');
   }
   runSockServer(addr: string) {
-    return this.jsonp('http://' + addr + '/node/run/sockss');
+    return this.handleNodePost('http://' + addr + '/node/run/sockss');
   }
   jsonp(url: string) {
     if (url === '') {
@@ -45,6 +47,11 @@ export class ApiService {
       return Observable.throw('Url is empty.');
     }
     return this.httpClient.get(url).catch(err => Observable.throw(err));
+  }
+  handleNodePost(nodeAddr: any) {
+    const data = new FormData();
+    data.append('addr', nodeAddr);
+    return this.handlePost(this.nodeUrl, data);
   }
   handlePost(url: string, data: FormData) {
     if (url === '') {
