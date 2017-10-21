@@ -213,8 +213,9 @@ func (c *Connection) OfferServiceWithAddress(address string, attrs ...string) er
 
 // register a service to discovery
 func (c *Connection) OfferStaticServiceWithAddress(address string, attrs ...string) error {
-	c.factory.register(c.GetKey(), c)
-	return c.UpdateServices(&NodeServices{Services: []*Service{{Key: c.GetKey(), Attributes: attrs, Address: address}}})
+	ns := &NodeServices{Services: []*Service{{Key: c.GetKey(), Attributes: attrs, Address: address}}}
+	c.factory.discoveryRegister(c, ns)
+	return c.UpdateServices(ns)
 }
 
 // find services by attributes

@@ -160,7 +160,7 @@ func (m *Monitor) getNode(w http.ResponseWriter, r *http.Request) (result []byte
 		for i, v := range ns.Services {
 			var app App
 			for _, attr := range v.Attributes {
-				if attr == "node-web" {
+				if attr == "node-api" {
 					webPort = v.Address
 					break
 				}
