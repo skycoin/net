@@ -47,10 +47,19 @@ type Monitor struct {
 	factory *factory.MessengerFactory
 	address string
 	srv     *http.Server
+
+	code    string
+	version string
 }
 
-func New(f *factory.MessengerFactory, addr string) *Monitor {
-	return &Monitor{factory: f, address: addr, srv: &http.Server{Addr: addr}}
+func New(f *factory.MessengerFactory, addr, code, version string) *Monitor {
+	return &Monitor{
+		factory: f,
+		address: addr,
+		srv:     &http.Server{Addr: addr},
+		code:    code,
+		version: version,
+	}
 }
 
 func (m *Monitor) Close() error {
