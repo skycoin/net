@@ -63,7 +63,16 @@
         <p class="status-box-item-content">{{status?.recv_bytes | byteTo}}</p>
       </mat-grid-tile>
     </mat-grid-list>
-
+  </mat-card-content>
+</mat-card>
+<mat-card>
+  <!-- <mat-card-title>
+    <span>Node Status</span>
+    <small>
+      <mat-icon (click)="refresh($event)">refresh</mat-icon>
+    </small>
+  </mat-card-title> -->
+  <mat-card-content>
     <h2 class="operations-title" *ngIf="isManager">
       Operations
     </h2>
@@ -111,7 +120,6 @@
     </mat-grid-list>
   </mat-card-content>
 </mat-card>
-
 
 <ng-container *ngIf="transports?.length > 0">
   <h3 class="status-app-title">

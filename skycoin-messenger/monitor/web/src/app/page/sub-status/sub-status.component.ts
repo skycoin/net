@@ -74,7 +74,7 @@ export class SubStatusComponent implements OnInit, OnDestroy {
     ev.preventDefault();
     this.api.runSockServer(this.status.addr).subscribe(isOk => {
       if (isOk) {
-        this.socketColor = 'mat-primary';
+        this.init();
         console.log('start socket server');
       }
     });
@@ -85,7 +85,7 @@ export class SubStatusComponent implements OnInit, OnDestroy {
     ev.preventDefault();
     this.api.runSSHServer(this.status.addr).subscribe(isOk => {
       if (isOk) {
-        this.sshColor = 'mat-primary';
+        this.init();
         console.log('start ssh server');
       }
     });
@@ -114,12 +114,27 @@ export class SubStatusComponent implements OnInit, OnDestroy {
     clearInterval(this.task);
     this.task = null;
   }
+  isExist(search: string) {
+    const result = this.status.apps.find(el => {
+      const tmp = el.attributes.find(attr => {
+        return search === attr;
+      });
+      return search === tmp;
+    });
+    return result !== undefined && result !== null;
+  }
   init() {
     const data = new FormData();
     data.append('key', this.key);
     this.api.getNodeStatus(data).subscribe((nodeServices: NodeServices) => {
       if (nodeServices) {
         this.status = nodeServices;
+        if (this.isExist('skywire_ssh')) {
+          this.sshColor = 'mat-primary';
+        }
+        if (this.isExist('skywire_socket')) {
+          this.socketColor = 'mat-primary';
+        }
         if (env.isManager && nodeServices.addr) {
           this.api.getTransport(nodeServices.addr).subscribe((allTransports: Array<Transports>) => {
             if (allTransports && allTransports.length > 0) {
