@@ -1,23 +1,16 @@
 package factory
 
 import (
-	"sync"
-
 	"encoding/json"
-
-	"time"
-
 	"errors"
-
-	"io/ioutil"
-
-	"os"
-
 	"fmt"
-
 	log "github.com/sirupsen/logrus"
 	"github.com/skycoin/net/factory"
 	"github.com/skycoin/skycoin/src/cipher"
+	"io/ioutil"
+	"os"
+	"sync"
+	"time"
 )
 
 type MessengerFactory struct {

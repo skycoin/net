@@ -153,12 +153,6 @@ func (req *forwardNodeConn) Execute(f *MessengerFactory, conn *Connection) (r re
 		return
 	}
 
-	_, ok = c.getService(req.App)
-	if !ok {
-		conn.GetContextLogger().Debugf("node %x app %x not exists", req.Node, req.App)
-		return
-	}
-
 	conn.GetContextLogger().Debugf("conn remote addr %v", conn.GetRemoteAddr())
 	err = c.writeOP(OP_BUILD_NODE_CONN|RESP_PREFIX,
 		&buildConn{
@@ -211,6 +205,20 @@ func (req *buildConn) Run(conn *Connection) (err error) {
 	if !ok {
 		conn.GetContextLogger().Debugf("node %x app %x not exists", req.Node, req.App)
 		return
+	}
+
+	if len(s.AllowNodes) > 0 {
+		allow := false
+		for _, k := range s.AllowNodes {
+			if k == req.FromNode.Hex() {
+				allow = true
+				break
+			}
+		}
+		if !allow {
+			conn.GetContextLogger().Debugf("node %x app %x forbid %x only allow %v", req.Node, req.App, req.FromNode, s.AllowNodes)
+			return
+		}
 	}
 
 	tr := NewTransport(conn.factory, req.FromNode, req.Node, req.FromApp, req.App)

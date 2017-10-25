@@ -7,9 +7,11 @@ import (
 )
 
 type Service struct {
-	Key        cipher.PubKey
-	Attributes []string `json:",omitempty"`
-	Address    string
+	Key               cipher.PubKey
+	Attributes        []string `json:",omitempty"`
+	Address           string
+	HideFromDiscovery bool
+	AllowNodes        []string
 }
 
 type NodeServices struct {
@@ -90,6 +92,9 @@ func (sd *serviceDiscovery) register(conn *Connection, ns *NodeServices) {
 				am[service.Key] = struct{}{}
 			}
 
+			if service.HideFromDiscovery {
+				continue
+			}
 			km, ok := sd.key2Attributes[service.Key]
 			if !ok {
 				km = make(map[string]struct{})
@@ -118,12 +123,7 @@ func (sd *serviceDiscovery) _unregister(conn *Connection) {
 		if len(m.nodes) < 1 {
 			delete(sd.subscription2Subscriber, service.Key)
 
-			as, ok := sd.key2Attributes[service.Key]
-			if !ok {
-				continue
-			}
-			delete(sd.key2Attributes, service.Key)
-			for attr := range as {
+			for _, attr := range service.Attributes {
 				am, ok := sd.attribute2Keys[attr]
 				if !ok {
 					continue
@@ -133,6 +133,14 @@ func (sd *serviceDiscovery) _unregister(conn *Connection) {
 					delete(sd.attribute2Keys, attr)
 				}
 			}
+			if service.HideFromDiscovery {
+				continue
+			}
+			_, ok = sd.key2Attributes[service.Key]
+			if !ok {
+				continue
+			}
+			delete(sd.key2Attributes, service.Key)
 		}
 	}
 	conn.setServices(nil)
