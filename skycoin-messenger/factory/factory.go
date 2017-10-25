@@ -351,6 +351,9 @@ func (f *MessengerFactory) Close() (err error) {
 
 // Execute fn for each connection that connected to server
 func (f *MessengerFactory) ForEachConn(fn func(connection *Connection)) {
+	if f.factory == nil {
+		return
+	}
 	f.factory.ForEachConn(func(conn *factory.Connection) {
 		real := conn.RealObject
 		if real == nil {
