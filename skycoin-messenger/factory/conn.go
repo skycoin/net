@@ -212,6 +212,18 @@ func (c *Connection) OfferServiceWithAddress(address string, attrs ...string) er
 }
 
 // register a service to discovery
+func (c *Connection) OfferPrivateServiceWithAddress(address string, allowNodes []string, attrs ...string) error {
+	return c.UpdateServices(&NodeServices{
+		Services: []*Service{{
+			Key:               c.GetKey(),
+			Attributes:        attrs,
+			Address:           address,
+			HideFromDiscovery: true,
+			AllowNodes:        allowNodes,
+		}}})
+}
+
+// register a service to discovery
 func (c *Connection) OfferStaticServiceWithAddress(address string, attrs ...string) error {
 	ns := &NodeServices{Services: []*Service{{Key: c.GetKey(), Attributes: attrs, Address: address}}}
 	c.factory.discoveryRegister(c, ns)
