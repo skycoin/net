@@ -7,16 +7,10 @@ import 'rxjs/add/observable/throw';
 
 @Injectable()
 export class ApiService {
-  private url = 'http://127.0.0.1:8000/';
-  private connUrl = this.url + 'conn/';
-  private nodeUrl = this.url + 'node/';
+  private connUrl = '/conn/';
+  private nodeUrl = '/node';
   private callbackParm = 'callback';
-  constructor(private httpClient: HttpClient) {
-    if (environment.production) {
-      this.connUrl = '/conn/';
-      this.nodeUrl = '/node';
-    }
-  }
+  constructor(private httpClient: HttpClient) {}
   getAllNode() {
     return this.handleGet(this.connUrl + 'getAll');
   }
@@ -25,16 +19,21 @@ export class ApiService {
     return this.handlePost(this.connUrl + 'getNode', data);
   }
   getTransport(addr: string) {
-    return this.handleNodePost('http://' + addr + '/node/getTransports');
+    return this.handleNodePost(addr, '/node/getTransports');
   }
   reboot(addr: string) {
-    return this.handleNodePost('http://' + addr + '/node/reboot');
+    return this.handleNodePost(addr, '/node/reboot');
   }
   runSSHServer(addr: string) {
-    return this.handleNodePost('http://' + addr + '/node/run/sshs');
+    return this.handleNodePost(addr, '/node/run/sshs');
   }
   runSockServer(addr: string) {
-    return this.handleNodePost('http://' + addr + '/node/run/sockss');
+    return this.handleNodePost(addr, '/node/run/sockss');
+  }
+  checkUpdate(channel, vesrion: string) {
+    const data = new FormData();
+    data.append('addr', `http://messenger.skycoin.net:8100/api/version?c=${channel}&v=${vesrion}`);
+    return this.handlePost(this.nodeUrl, data);
   }
   jsonp(url: string) {
     if (url === '') {
@@ -48,7 +47,13 @@ export class ApiService {
     }
     return this.httpClient.get(url).catch(err => Observable.throw(err));
   }
-  handleNodePost(nodeAddr: any) {
+  handleNodePost(nodeAddr: string, api: string, format: boolean = true) {
+    if (format) {
+      if (nodeAddr === '' || api === '') {
+        return Observable.throw('nodeAddr or api is empty.');
+      }
+      nodeAddr = 'http://' + nodeAddr + api;
+    }
     const data = new FormData();
     data.append('addr', nodeAddr);
     return this.handlePost(this.nodeUrl, data);

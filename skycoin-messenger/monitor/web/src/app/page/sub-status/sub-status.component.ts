@@ -2,9 +2,10 @@ import { Component, OnInit, ViewEncapsulation, OnDestroy } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { environment as env } from '../../../environments/environment';
 import { ApiService, NodeServices, App, Transports } from '../../service';
-import { MatSnackBar } from '@angular/material';
+import { MatSnackBar, MatDialog } from '@angular/material';
 import { DataSource } from '@angular/cdk/collections';
 import { Observable } from 'rxjs/Observable';
+import { UpdateCardComponent } from '../../components/update-card/update-card.component';
 import 'rxjs/add/observable/of';
 
 @Component({
@@ -31,7 +32,8 @@ export class SubStatusComponent implements OnInit, OnDestroy {
     private router: Router,
     private route: ActivatedRoute,
     private api: ApiService,
-    private snackBar: MatSnackBar) {
+    private snackBar: MatSnackBar,
+    private dialog: MatDialog) {
   }
 
   ngOnInit() {
@@ -44,6 +46,16 @@ export class SubStatusComponent implements OnInit, OnDestroy {
   }
   ngOnDestroy() {
     this.close();
+  }
+  checkUpdate(ev: Event) {
+    ev.stopImmediatePropagation();
+    ev.stopPropagation();
+    ev.preventDefault();
+    this.dialog.open(UpdateCardComponent, {
+      panelClass: 'update-panel',
+      width: '370px',
+      disableClose: true
+    });
   }
   refresh(ev: Event) {
     ev.stopImmediatePropagation();

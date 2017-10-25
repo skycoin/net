@@ -10,14 +10,16 @@ import {
   MatChipsModule,
   MatSnackBarModule,
   MatCardModule,
-  MatButtonModule
+  MatButtonModule,
+  MatDialogModule,
+  MatProgressBarModule
 } from '@angular/material';
 import { AppComponent } from './app.component';
 import { HttpClientModule } from '@angular/common/http';
 import { ApiService } from './service';
 import { TimeAgoPipe, ByteToPipe } from './pipe';
 import { DashboardComponent, SubStatusComponent } from './page';
-
+import { UpdateCardComponent } from './components';
 import { AppRoutingModule } from './route/app-routing.module';
 
 @NgModule({
@@ -26,8 +28,10 @@ import { AppRoutingModule } from './route/app-routing.module';
     DashboardComponent,
     TimeAgoPipe,
     ByteToPipe,
-    SubStatusComponent
+    SubStatusComponent,
+    UpdateCardComponent,
   ],
+  entryComponents: [UpdateCardComponent],
   imports: [
     BrowserModule,
     HttpClientModule,
@@ -41,7 +45,9 @@ import { AppRoutingModule } from './route/app-routing.module';
     MatChipsModule,
     MatSnackBarModule,
     MatCardModule,
-    MatButtonModule
+    MatButtonModule,
+    MatDialogModule,
+    MatProgressBarModule
   ],
   providers: [ApiService],
   bootstrap: [AppComponent]
