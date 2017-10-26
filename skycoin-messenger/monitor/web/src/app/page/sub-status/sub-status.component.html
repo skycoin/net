@@ -203,9 +203,11 @@
         <mat-hint align="start" class="hint-text">Multiple public keys are separated by commas</mat-hint>
       </mat-form-field>
       <p class="text-right">
-        <button mat-raised-button color="primary">save</button>
+        <button mat-raised-button color="primary" (click)="setSSH($event)">save</button>
       </p>
     </div>
+
+    <h3>Allow Nodes</h3>
     <mat-table #table [dataSource]="sshSource">
       <ng-container matColumnDef="index">
         <mat-header-cell *matHeaderCellDef [style.flex]="'0 0 3rem'"> # </mat-header-cell>
@@ -213,12 +215,12 @@
       </ng-container>
       <ng-container matColumnDef="key">
         <mat-header-cell *matHeaderCellDef [style.flex]="'0 0 30rem'"> Key </mat-header-cell>
-        <mat-cell *matCellDef="let data" [style.flex]="'0 0 30rem'"> {{data.key}} </mat-cell>
+        <mat-cell *matCellDef="let data" [style.flex]="'0 0 30rem'"> {{data}} </mat-cell>
       </ng-container>
       <ng-container matColumnDef="del">
         <mat-header-cell *matHeaderCellDef></mat-header-cell>
-        <mat-cell *matCellDef="let data" class="text-right">
-          <mat-icon class="del" color="primary">delete_forever</mat-icon>
+        <mat-cell *matCellDef="let i = index;" class="text-right">
+          <mat-icon class="del" color="primary" (click)="delAllowNode($event,i)">delete_forever</mat-icon>
         </mat-cell>
       </ng-container>
       <mat-header-row *matHeaderRowDef="sshColumns"></mat-header-row>

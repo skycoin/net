@@ -32,6 +32,7 @@ export class SubStatusComponent implements OnInit, OnDestroy {
   sshColor = 'close-status';
   dialogTitle = '';
   sshTextarea = '';
+  sshAllowNodes = [];
   socksTextarea = '';
   sshConnectKey = '';
   constructor(
@@ -43,11 +44,6 @@ export class SubStatusComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit() {
-    this.sshSource = new SubStatusDataSource([
-      { key: '0243d884e11f63ba0dbb86c6b1b2328177bfa566b69fc493cc6fbbc0b56c5797c8' },
-      { key: '0243d884e11f63ba0dbb86c6b1b2328177bfa566b69fc493cc6fbbc0b56c5797c7' },
-      { key: '0243d884e11f63ba0dbb86c6b1b2328177bfa566b69fc493cc6fbbc0b56c5797c6' },
-    ]);
     this.route.queryParams.subscribe(params => {
       this.key = params.key;
       this.startTask();
@@ -57,6 +53,31 @@ export class SubStatusComponent implements OnInit, OnDestroy {
   }
   ngOnDestroy() {
     this.close();
+  }
+  delAllowNode(ev: Event, index: number) {
+    this.sshAllowNodes.splice(index, 1);
+    this.api.runSSHServer(this.status.addr, this.sshAllowNodes.toString()).subscribe(result => {
+      if (result) {
+        console.log('set ssh result:', result);
+        this.sshTextarea = '';
+        this.init();
+      }
+    });
+  }
+  setSSH(ev: Event) {
+    let data = '';
+    if (this.sshTextarea.trim()) {
+      data = this.sshAllowNodes + ',' + this.sshTextarea.trim();
+    } else {
+      data = this.sshAllowNodes.toString();
+    }
+    this.api.runSSHServer(this.status.addr, data).subscribe(result => {
+      if (result) {
+        console.log('set ssh result:', result);
+        this.sshTextarea = '';
+        this.init();
+      }
+    });
   }
   checkUpdate(ev: Event) {
     ev.stopImmediatePropagation();
@@ -124,10 +145,20 @@ export class SubStatusComponent implements OnInit, OnDestroy {
     if (!title) {
       return;
     }
+    this.sshSource = new SubStatusDataSource(this.findService('ssh').allow_nodes);
     this.dialogTitle = title;
     this.dialog.open(content, {
       width: '800px',
     });
+  }
+  findService(search: string): App {
+    const result = this.status.apps.find(el => {
+      const tmp = el.attributes.find(attr => {
+        return search === attr;
+      });
+      return search === tmp;
+    });
+    return result;
   }
   startTask() {
     this.init();
@@ -152,6 +183,8 @@ export class SubStatusComponent implements OnInit, OnDestroy {
     this.sshColor = 'close-status';
     this.socketColor = 'close-status';
     if (this.status.apps) {
+      this.sshAllowNodes = this.findService('ssh').allow_nodes;
+      this.sshSource = new SubStatusDataSource(this.sshAllowNodes);
       if (this.isExist('ssh')) {
         this.sshColor = 'mat-primary';
       }

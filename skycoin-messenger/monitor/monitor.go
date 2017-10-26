@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"net"
 	"net/http"
+	"net/url"
 )
 
 type Conn struct {
@@ -100,7 +101,8 @@ func requestNode(w http.ResponseWriter, r *http.Request) (result []byte, err err
 		return
 	}
 	addr := r.FormValue("addr")
-	res, err := http.Get(addr)
+	data := r.FormValue("data")
+	res, err := http.PostForm(addr, url.Values{"data": {data}})
 	if err != nil {
 		return result, err, res.StatusCode
 	}
