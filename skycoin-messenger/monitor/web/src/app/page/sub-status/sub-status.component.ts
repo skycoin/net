@@ -5,6 +5,7 @@ import { ApiService, NodeServices, App, Transports } from '../../service';
 import { MatSnackBar, MatDialog } from '@angular/material';
 import { DataSource } from '@angular/cdk/collections';
 import { Observable } from 'rxjs/Observable';
+import { FormControl, FormGroup, Validators } from '@angular/forms';
 import { UpdateCardComponent } from '../../components/update-card/update-card.component';
 import 'rxjs/add/observable/of';
 
@@ -30,11 +31,17 @@ export class SubStatusComponent implements OnInit, OnDestroy {
   isManager = false;
   socketColor = 'close-status';
   sshColor = 'close-status';
+  socketClientColor = 'close-status';
+  sshClientColor = 'close-status';
   dialogTitle = '';
   sshTextarea = '';
   sshAllowNodes = [];
   socksTextarea = '';
   sshConnectKey = '';
+  sshClientForm = new FormGroup({
+    nodeKey: new FormControl('', Validators.required),
+    appKey: new FormControl('', Validators.required),
+  });
   constructor(
     private router: Router,
     private route: ActivatedRoute,
@@ -54,9 +61,25 @@ export class SubStatusComponent implements OnInit, OnDestroy {
   ngOnDestroy() {
     this.close();
   }
+  connectSSH(ev: Event) {
+    ev.stopImmediatePropagation();
+    ev.stopPropagation();
+    ev.preventDefault();
+    if (this.sshClientForm.valid) {
+      const data = new FormData();
+      data.append('toNode', this.sshClientForm.get('nodeKey').value);
+      data.append('toApp', this.sshClientForm.get('appKey').value);
+      this.api.connectSSHClient(this.status.addr, data).subscribe(result => {
+        console.log('conect ssh client:', result);
+      });
+    }
+    this.dialog.closeAll();
+  }
   delAllowNode(ev: Event, index: number) {
     this.sshAllowNodes.splice(index, 1);
-    this.api.runSSHServer(this.status.addr, this.sshAllowNodes.toString()).subscribe(result => {
+    const data = new FormData();
+    data.append('data', this.sshAllowNodes.toString());
+    this.api.runSSHServer(this.status.addr, data).subscribe(result => {
       if (result) {
         console.log('set ssh result:', result);
         this.sshTextarea = '';
@@ -65,12 +88,14 @@ export class SubStatusComponent implements OnInit, OnDestroy {
     });
   }
   setSSH(ev: Event) {
-    let data = '';
-    if (this.sshTextarea.trim()) {
-      data = this.sshAllowNodes + ',' + this.sshTextarea.trim();
+    let dataStr = '';
+    if (this.sshAllowNodes.length > 0 && this.sshTextarea.trim()) {
+      dataStr = this.sshAllowNodes + ',' + this.sshTextarea.trim();
     } else {
-      data = this.sshAllowNodes.toString();
+      dataStr = this.sshAllowNodes.toString();
     }
+    const data = new FormData();
+    data.append('data', dataStr);
     this.api.runSSHServer(this.status.addr, data).subscribe(result => {
       if (result) {
         console.log('set ssh result:', result);
@@ -185,11 +210,17 @@ export class SubStatusComponent implements OnInit, OnDestroy {
     if (this.status.apps) {
       this.sshAllowNodes = this.findService('ssh').allow_nodes;
       this.sshSource = new SubStatusDataSource(this.sshAllowNodes);
-      if (this.isExist('ssh')) {
+      if (this.isExist('sshs')) {
         this.sshColor = 'mat-primary';
       }
-      if (this.isExist('socks')) {
+      if (this.isExist('sockss')) {
         this.socketColor = 'mat-primary';
+      }
+      if (this.isExist('sshc')) {
+        this.sshClientColor = 'mat-primary';
+      }
+      if (this.isExist('socksc')) {
+        this.socketClientColor = 'mat-primary';
       }
     }
   }

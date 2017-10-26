@@ -113,7 +113,7 @@
           <small>Shadowsocks Client</small>
         </p>
         <p class="status-box-item-content">
-          <button mat-icon-button>
+          <button mat-icon-button [ngClass]="socketClientColor">
             <mat-icon aria-label="Shadowsocks">near_me</mat-icon>
           </button>
         </p>
@@ -123,7 +123,7 @@
           <small>SSH Client</small>
         </p>
         <p class="status-box-item-content">
-          <button mat-icon-button>
+          <button mat-icon-button [ngClass]="sshClientColor">
             <mat-icon aria-label="SSH" (click)="inputKeys($event,sshClientDialog)">computer</mat-icon>
           </button>
         </p>
@@ -270,14 +270,16 @@
     <mat-icon>network_locked </mat-icon>
   </h1>
   <div mat-dialog-content class="setting-dialog">
-    <mat-form-field>
-      <input matInput placeholder="Input keys">
-    </mat-form-field>
-    <mat-form-field>
-      <input matInput placeholder="Input keys">
-    </mat-form-field>
+    <form [formGroup]="sshClientForm">
+      <mat-form-field>
+        <input matInput placeholder="Input Node Key" formControlName="nodeKey">
+      </mat-form-field>
+      <mat-form-field>
+        <input matInput placeholder="Input App Key" formControlName="appKey">
+      </mat-form-field>
+    </form>
     <p class="text-right">
-      <button mat-raised-button color="primary" [(ngModel)]="sshConnectKey" name="sshConnectKey" ngDefaultControl>Connect</button>
+      <button mat-raised-button  color="primary" [disabled]="!sshClientForm.valid" (click)="connectSSH($event)">Connect</button>
     </p>
   </div>
 </ng-template>

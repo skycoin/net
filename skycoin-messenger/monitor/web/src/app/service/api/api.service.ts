@@ -29,7 +29,10 @@ export class ApiService {
   reboot(addr: string) {
     return this.handleNodePost(addr, '/node/reboot');
   }
-  runSSHServer(addr: string, data?: string) {
+  connectSSHClient(addr: string, data?: FormData) {
+    return this.handleNodePost(addr, '/node/run/sshc', data);
+  }
+  runSSHServer(addr: string, data?: FormData) {
     return this.handleNodePost(addr, '/node/run/sshs', data);
   }
   runSockServer(addr: string) {
@@ -52,17 +55,16 @@ export class ApiService {
     }
     return this.httpClient.get(url).catch(err => Observable.throw(err));
   }
-  handleNodePost(nodeAddr: string, api: string, data?: string) {
+  handleNodePost(nodeAddr: string, api: string, data?: FormData) {
     if (nodeAddr === '' || api === '') {
       return Observable.throw('nodeAddr or api is empty.');
     }
     nodeAddr = 'http://' + nodeAddr + api;
-    const formData = new FormData();
-    formData.append('addr', nodeAddr);
-    if (data) {
-      formData.append('data', data);
+    if (!data) {
+      data = new FormData();
     }
-    return this.handlePost(this.nodeUrl, formData);
+    data.append('addr', nodeAddr);
+    return this.handlePost(this.nodeUrl, data);
   }
   handlePost(url: string, data: FormData) {
     if (url === '') {
