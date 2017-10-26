@@ -9,7 +9,7 @@ import (
 	"io/ioutil"
 	"net"
 	"net/http"
-	"net/url"
+	"time"
 )
 
 type Conn struct {
@@ -101,8 +101,7 @@ func requestNode(w http.ResponseWriter, r *http.Request) (result []byte, err err
 		return
 	}
 	addr := r.FormValue("addr")
-	data := r.FormValue("data")
-	res, err := http.PostForm(addr, url.Values{"data": {data}})
+	res, err := http.PostForm(addr, r.PostForm)
 	if err != nil {
 		return result, err, res.StatusCode
 	}
@@ -155,11 +154,12 @@ func (m *Monitor) getNode(w http.ResponseWriter, r *http.Request) (result []byte
 		err = errors.New("No connection is found")
 		return
 	}
+	now := time.Now().Unix()
 	nodeService := NodeServices{
 		SendBytes:   c.GetSentBytes(),
 		RecvBytes:   c.GetReceivedBytes(),
-		StartTime:   c.GetConnectTime(),
-		LastAckTime: c.GetLastTime()}
+		StartTime:   now - c.GetConnectTime(),
+		LastAckTime: now - c.GetLastTime()}
 	if c.IsTCP() {
 		nodeService.Type = "TCP"
 	} else {
