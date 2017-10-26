@@ -5,9 +5,14 @@
   </mat-card-title>
   <mat-card-content>
     <div class="node-key">
-      Public Key:
-      <strong>{{key}}</strong>
+      <p> Public Key:
+        <strong>{{key}}</strong>
+      </p>
+      <p>Address:
+        <span style="color: red">{{status?.addr}}</span>
+      </p>
     </div>
+
     <mat-grid-list cols="6" rowHeight="2:1">
       <mat-grid-tile>
         <p class="status-box-item-title">
@@ -279,7 +284,7 @@
       </mat-form-field>
     </form>
     <p class="text-right">
-      <button mat-raised-button  color="primary" [disabled]="!sshClientForm.valid" (click)="connectSSH($event)">Connect</button>
+      <button mat-raised-button color="primary" [disabled]="!sshClientForm.valid" (click)="connectSSH($event)">Connect</button>
     </p>
   </div>
 </ng-template>

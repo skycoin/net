@@ -33,6 +33,7 @@ export class SubStatusComponent implements OnInit, OnDestroy {
   sshColor = 'close-status';
   socketClientColor = 'close-status';
   sshClientColor = 'close-status';
+  statrStatusCss = 'mat-primary';
   dialogTitle = '';
   sshTextarea = '';
   sshAllowNodes = [];
@@ -71,6 +72,7 @@ export class SubStatusComponent implements OnInit, OnDestroy {
       data.append('toApp', this.sshClientForm.get('appKey').value);
       this.api.connectSSHClient(this.status.addr, data).subscribe(result => {
         console.log('conect ssh client:', result);
+        this.init();
       });
     }
     this.dialog.closeAll();
@@ -170,7 +172,11 @@ export class SubStatusComponent implements OnInit, OnDestroy {
     if (!title) {
       return;
     }
-    this.sshSource = new SubStatusDataSource(this.findService('ssh').allow_nodes);
+    let nodes = [];
+    if (this.status.apps) {
+      nodes = this.findService('ssh').allow_nodes;
+    }
+    this.sshSource = new SubStatusDataSource(nodes);
     this.dialogTitle = title;
     this.dialog.open(content, {
       width: '800px',
@@ -206,26 +212,32 @@ export class SubStatusComponent implements OnInit, OnDestroy {
   }
   setServiceStatus() {
     this.sshColor = 'close-status';
+    this.sshClientColor = 'close-status';
     this.socketColor = 'close-status';
+    this.socketClientColor = 'close-status';
     if (this.status.apps) {
-      this.sshAllowNodes = this.findService('ssh').allow_nodes;
+      if (this.findService('sshs')) {
+        this.sshAllowNodes = this.findService('sshs').allow_nodes;
+      }
       this.sshSource = new SubStatusDataSource(this.sshAllowNodes);
       if (this.isExist('sshs')) {
-        this.sshColor = 'mat-primary';
-      }
-      if (this.isExist('sockss')) {
-        this.socketColor = 'mat-primary';
+        this.sshColor = this.statrStatusCss;
       }
       if (this.isExist('sshc')) {
-        this.sshClientColor = 'mat-primary';
+        this.sshClientColor = this.statrStatusCss;
+      }
+      if (this.isExist('sockss')) {
+        this.socketColor = this.statrStatusCss;
       }
       if (this.isExist('socksc')) {
-        this.socketClientColor = 'mat-primary';
+        this.socketClientColor = this.statrStatusCss;
       }
     }
   }
   fillTransport() {
     if (env.isManager && this.status.addr) {
+      this.transportSource = null;
+      this.transports = [];
       this.api.getTransport(this.status.addr).subscribe((allTransports: Array<Transports>) => {
         if (allTransports && allTransports.length > 0) {
           this.transports = allTransports;
