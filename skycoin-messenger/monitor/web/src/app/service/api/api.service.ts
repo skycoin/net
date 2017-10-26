@@ -10,7 +10,7 @@ export class ApiService {
   private connUrl = '/conn/';
   private nodeUrl = '/node';
   private callbackParm = 'callback';
-  constructor(private httpClient: HttpClient) {}
+  constructor(private httpClient: HttpClient) { }
   getAllNode() {
     return this.handleGet(this.connUrl + 'getAll');
   }
@@ -18,6 +18,11 @@ export class ApiService {
   getNodeStatus(data: FormData) {
     return this.handlePost(this.connUrl + 'getNode', data);
   }
+
+  getApps(addr: string) {
+    return this.handleNodePost(addr, '/node/getApps');
+  }
+
   getTransport(addr: string) {
     return this.handleNodePost(addr, '/node/getTransports');
   }
@@ -89,6 +94,7 @@ export interface App {
   index?: number;
   key?: string;
   attributes?: Array<string>;
+  allow_nodes?: Array<string>;
 }
 
 export interface Transports {

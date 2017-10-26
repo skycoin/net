@@ -15,9 +15,11 @@ import 'rxjs/add/observable/of';
   encapsulation: ViewEncapsulation.None
 })
 export class SubStatusComponent implements OnInit, OnDestroy {
+  sshColumns = ['index', 'key', 'del'];
   displayedColumns = ['index', 'key', 'app'];
   transportColumns = ['index', 'fromNode', 'fromApp', 'toNode', 'toApp'];
   appSource: SubStatusDataSource = null;
+  sshSource: SubStatusDataSource = null;
   transportSource: SubStatusDataSource = null;
   key = '';
   power = '';
@@ -28,6 +30,10 @@ export class SubStatusComponent implements OnInit, OnDestroy {
   isManager = false;
   socketColor = 'close-status';
   sshColor = 'close-status';
+  dialogTitle = '';
+  sshTextarea = '';
+  socksTextarea = '';
+  sshConnectKey = '';
   constructor(
     private router: Router,
     private route: ActivatedRoute,
@@ -37,6 +43,11 @@ export class SubStatusComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit() {
+    this.sshSource = new SubStatusDataSource([
+      { key: '0243d884e11f63ba0dbb86c6b1b2328177bfa566b69fc493cc6fbbc0b56c5797c8' },
+      { key: '0243d884e11f63ba0dbb86c6b1b2328177bfa566b69fc493cc6fbbc0b56c5797c7' },
+      { key: '0243d884e11f63ba0dbb86c6b1b2328177bfa566b69fc493cc6fbbc0b56c5797c6' },
+    ]);
     this.route.queryParams.subscribe(params => {
       this.key = params.key;
       this.startTask();
@@ -104,11 +115,25 @@ export class SubStatusComponent implements OnInit, OnDestroy {
       }
     });
   }
+  inputKeys(ev: Event, content: any) {
+    this.dialog.open(content, {
+      width: '450px'
+    });
+  }
+  openSettings(ev: Event, content: any, title: string) {
+    if (!title) {
+      return;
+    }
+    this.dialogTitle = title;
+    this.dialog.open(content, {
+      width: '800px',
+    });
+  }
   startTask() {
     this.init();
     this.task = setInterval(() => {
       this.init();
-    }, 10000);
+    }, 15000);
   }
   close() {
     clearInterval(this.task);
@@ -123,29 +148,50 @@ export class SubStatusComponent implements OnInit, OnDestroy {
     });
     return result !== undefined && result !== null;
   }
+  setServiceStatus() {
+    this.sshColor = 'close-status';
+    this.socketColor = 'close-status';
+    if (this.status.apps) {
+      if (this.isExist('ssh')) {
+        this.sshColor = 'mat-primary';
+      }
+      if (this.isExist('socks')) {
+        this.socketColor = 'mat-primary';
+      }
+    }
+  }
+  fillTransport() {
+    if (env.isManager && this.status.addr) {
+      this.api.getTransport(this.status.addr).subscribe((allTransports: Array<Transports>) => {
+        if (allTransports && allTransports.length > 0) {
+          this.transports = allTransports;
+          this.transportSource = new SubStatusDataSource(allTransports);
+        }
+      });
+    }
+  }
+  fillApps() {
+    if (this.status.apps) {
+      this.appSource = new SubStatusDataSource(this.status.apps);
+      this.setServiceStatus();
+    } else {
+      if (env.isManager) {
+        this.api.getApps(this.status.addr).subscribe((apps: Array<App>) => {
+          this.status.apps = apps;
+          this.appSource = new SubStatusDataSource(this.status.apps);
+          this.setServiceStatus();
+        });
+      }
+    }
+  }
   init() {
     const data = new FormData();
     data.append('key', this.key);
     this.api.getNodeStatus(data).subscribe((nodeServices: NodeServices) => {
       if (nodeServices) {
         this.status = nodeServices;
-        if (this.isExist('skywire_ssh')) {
-          this.sshColor = 'mat-primary';
-        }
-        if (this.isExist('skywire_socket')) {
-          this.socketColor = 'mat-primary';
-        }
-        if (env.isManager && nodeServices.addr) {
-          this.api.getTransport(nodeServices.addr).subscribe((allTransports: Array<Transports>) => {
-            if (allTransports && allTransports.length > 0) {
-              this.transports = allTransports;
-              this.transportSource = new SubStatusDataSource(allTransports);
-            }
-          });
-        }
-        if (nodeServices.apps) {
-          this.appSource = new SubStatusDataSource(this.status.apps);
-        }
+        this.fillTransport();
+        this.fillApps();
       }
     });
   }

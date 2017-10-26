@@ -100,7 +100,9 @@
   @extend .bg-primary;
   @extend .monitor-chip-text;
 }
-
+.icon-pointer {
+  cursor: pointer;
+}
 
 snack-bar-container {
   .mat-simple-snackbar {

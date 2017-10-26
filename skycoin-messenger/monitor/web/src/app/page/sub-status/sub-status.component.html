@@ -1,14 +1,7 @@
-<!-- <div class="text-right" *ngIf="isManager">
-  <button mat-icon-button color="primary" (click)="reboot($event)">
-    <mat-icon aria-label="Restart">rotate_right</mat-icon>
-  </button>
-</div> -->
 <mat-card>
   <mat-card-title>
     <span>Node Status</span>
-    <small>
-      <mat-icon (click)="refresh($event)">refresh</mat-icon>
-    </small>
+    <mat-icon (click)="refresh($event)">refresh</mat-icon>
   </mat-card-title>
   <mat-card-content>
     <div class="node-key">
@@ -65,21 +58,16 @@
     </mat-grid-list>
   </mat-card-content>
 </mat-card>
-<mat-card>
-  <!-- <mat-card-title>
-    <span>Node Status</span>
-    <small>
-      <mat-icon (click)="refresh($event)">refresh</mat-icon>
-    </small>
-  </mat-card-title> -->
+<mat-card *ngIf="isManager">
+  <mat-card-title>
+    <span>Operations</span>
+  </mat-card-title>
   <mat-card-content>
-    <h2 class="operations-title" *ngIf="isManager">
-      Operations
-    </h2>
-    <mat-grid-list cols="6" rowHeight="2:1" *ngIf="isManager">
+    <mat-grid-list cols="6" rowHeight="2:1">
       <mat-grid-tile>
         <p class="status-box-item-title">
           <small>Shadowsocks</small>
+          <!-- <mat-icon (click)="openSettings($event,socksSettings,'Socks')" class="icon-pointer">more_vert</mat-icon> -->
         </p>
         <p class="status-box-item-content">
           <button mat-icon-button (click)="runSocketServer($event)" [ngClass]="socketColor">
@@ -89,7 +77,8 @@
       </mat-grid-tile>
       <mat-grid-tile>
         <p class="status-box-item-title">
-          <small>SSH</small>
+          <small style="margin-left: 1.5rem;">SSH</small>
+          <mat-icon (click)="openSettings($event,sshSettings,'SSH')" class="icon-pointer">more_vert</mat-icon>
         </p>
         <p class="status-box-item-content">
           <button mat-icon-button (click)="runSSHServer($event)" [ngClass]="sshColor">
@@ -114,6 +103,28 @@
         <p class="status-box-item-content">
           <button mat-icon-button color="primary" (click)="reboot($event)">
             <mat-icon aria-label="Reboot">rotate_right</mat-icon>
+          </button>
+        </p>
+      </mat-grid-tile>
+    </mat-grid-list>
+    <mat-grid-list cols="6" rowHeight="2:1">
+      <mat-grid-tile>
+        <p class="status-box-item-title">
+          <small>Shadowsocks Client</small>
+        </p>
+        <p class="status-box-item-content">
+          <button mat-icon-button>
+            <mat-icon aria-label="Shadowsocks">near_me</mat-icon>
+          </button>
+        </p>
+      </mat-grid-tile>
+      <mat-grid-tile>
+        <p class="status-box-item-title">
+          <small>SSH Client</small>
+        </p>
+        <p class="status-box-item-content">
+          <button mat-icon-button>
+            <mat-icon aria-label="SSH" (click)="inputKeys($event,sshClientDialog)">computer</mat-icon>
           </button>
         </p>
       </mat-grid-tile>
@@ -161,7 +172,7 @@
   <mat-table #table [dataSource]="appSource">
     <ng-container matColumnDef="index">
       <mat-header-cell *matHeaderCellDef [style.flex]="'0 0 3rem'"> # </mat-header-cell>
-      <mat-cell *matCellDef="let data" [style.flex]="'0 0 3rem'"> {{data.index}} </mat-cell>
+      <mat-cell *matCellDef="let i = index" [style.flex]="'0 0 3rem'"> {{i + 1}} </mat-cell>
     </ng-container>
     <ng-container matColumnDef="key">
       <mat-header-cell *matHeaderCellDef [style.flex]="'0 0 35rem'"> Key </mat-header-cell>
@@ -179,3 +190,92 @@
     <mat-row *matRowDef="let row; columns: displayedColumns;"></mat-row>
   </mat-table>
 </ng-container>
+
+<ng-template #sshSettings>
+  <h1 mat-dialog-title>
+    <span>SSH Settings</span>
+    <mat-icon>settings</mat-icon>
+  </h1>
+  <div mat-dialog-content class="setting-dialog">
+    <div class="dialog-form">
+      <mat-form-field>
+        <textarea matInput placeholder="Input Public keys" rows="5" [(ngModel)]="sshTextarea" name="sshTextarea" ngDefaultControl></textarea>
+        <mat-hint align="start" class="hint-text">Multiple public keys are separated by commas</mat-hint>
+      </mat-form-field>
+      <p class="text-right">
+        <button mat-raised-button color="primary">save</button>
+      </p>
+    </div>
+    <mat-table #table [dataSource]="sshSource">
+      <ng-container matColumnDef="index">
+        <mat-header-cell *matHeaderCellDef [style.flex]="'0 0 3rem'"> # </mat-header-cell>
+        <mat-cell *matCellDef="let i = index;" [style.flex]="'0 0 3rem'"> {{i+1}} </mat-cell>
+      </ng-container>
+      <ng-container matColumnDef="key">
+        <mat-header-cell *matHeaderCellDef [style.flex]="'0 0 30rem'"> Key </mat-header-cell>
+        <mat-cell *matCellDef="let data" [style.flex]="'0 0 30rem'"> {{data.key}} </mat-cell>
+      </ng-container>
+      <ng-container matColumnDef="del">
+        <mat-header-cell *matHeaderCellDef></mat-header-cell>
+        <mat-cell *matCellDef="let data" class="text-right">
+          <mat-icon class="del" color="primary">delete_forever</mat-icon>
+        </mat-cell>
+      </ng-container>
+      <mat-header-row *matHeaderRowDef="sshColumns"></mat-header-row>
+      <mat-row *matRowDef="let row; columns: sshColumns;"></mat-row>
+    </mat-table>
+  </div>
+</ng-template>
+<ng-template #socksSettings>
+  <h1 mat-dialog-title>
+    <span>Socks Settings</span>
+    <mat-icon>settings</mat-icon>
+  </h1>
+  <div mat-dialog-content class="setting-dialog">
+    <div class="dialog-form">
+      <mat-form-field>
+        <textarea matInput placeholder="Input Public keys" rows="5"></textarea>
+        <mat-hint align="start" class="hint-text">Multiple public keys are separated by commas</mat-hint>
+      </mat-form-field>
+      <p class="text-right">
+        <button mat-raised-button color="primary">save</button>
+      </p>
+    </div>
+    <mat-table #table [dataSource]="sshSource">
+      <ng-container matColumnDef="index">
+        <mat-header-cell *matHeaderCellDef [style.flex]="'0 0 3rem'"> # </mat-header-cell>
+        <mat-cell *matCellDef="let i = index;" [style.flex]="'0 0 3rem'"> {{i+1}} </mat-cell>
+      </ng-container>
+      <ng-container matColumnDef="key">
+        <mat-header-cell *matHeaderCellDef [style.flex]="'0 0 30rem'"> Key </mat-header-cell>
+        <mat-cell *matCellDef="let data" [style.flex]="'0 0 30rem'"> {{data.key}} </mat-cell>
+      </ng-container>
+      <ng-container matColumnDef="del">
+        <mat-header-cell *matHeaderCellDef></mat-header-cell>
+        <mat-cell *matCellDef="let data" class="text-right">
+          <mat-icon class="del" color="primary">delete_forever</mat-icon>
+        </mat-cell>
+      </ng-container>
+      <mat-header-row *matHeaderRowDef="sshColumns"></mat-header-row>
+      <mat-row *matRowDef="let row; columns: sshColumns;"></mat-row>
+    </mat-table>
+  </div>
+</ng-template>
+
+<ng-template #sshClientDialog>
+  <h1 mat-dialog-title>
+    <span>SSH Service keys</span>
+    <mat-icon>network_locked </mat-icon>
+  </h1>
+  <div mat-dialog-content class="setting-dialog">
+    <mat-form-field>
+      <input matInput placeholder="Input keys">
+    </mat-form-field>
+    <mat-form-field>
+      <input matInput placeholder="Input keys">
+    </mat-form-field>
+    <p class="text-right">
+      <button mat-raised-button color="primary" [(ngModel)]="sshConnectKey" name="sshConnectKey" ngDefaultControl>Connect</button>
+    </p>
+  </div>
+</ng-template>

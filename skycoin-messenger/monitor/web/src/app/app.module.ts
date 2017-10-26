@@ -1,4 +1,5 @@
 import { BrowserModule } from '@angular/platform-browser';
+import { FormsModule } from '@angular/forms';
 import { NgModule } from '@angular/core';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 import {
@@ -12,7 +13,10 @@ import {
   MatCardModule,
   MatButtonModule,
   MatDialogModule,
-  MatProgressBarModule
+  MatProgressBarModule,
+  MatTabsModule,
+  MatFormFieldModule,
+  MatInputModule
 } from '@angular/material';
 import { AppComponent } from './app.component';
 import { HttpClientModule } from '@angular/common/http';
@@ -34,6 +38,7 @@ import { AppRoutingModule } from './route/app-routing.module';
   entryComponents: [UpdateCardComponent],
   imports: [
     BrowserModule,
+    FormsModule,
     HttpClientModule,
     BrowserAnimationsModule,
     AppRoutingModule,
@@ -47,7 +52,10 @@ import { AppRoutingModule } from './route/app-routing.module';
     MatCardModule,
     MatButtonModule,
     MatDialogModule,
-    MatProgressBarModule
+    MatProgressBarModule,
+    MatTabsModule,
+    MatFormFieldModule,
+    MatInputModule
   ],
   providers: [ApiService],
   bootstrap: [AppComponent]
