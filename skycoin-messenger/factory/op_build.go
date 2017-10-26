@@ -5,6 +5,7 @@ import (
 
 	"net"
 
+	"fmt"
 	"github.com/skycoin/skycoin/src/cipher"
 )
 
@@ -79,8 +80,10 @@ func (req *appConn) Execute(f *MessengerFactory, conn *Connection) (r resp, err 
 }
 
 type AppConnResp struct {
-	Host string `json:",omitempty"`
-	Port int
+	Host   string `json:",omitempty"`
+	Port   int
+	Failed bool
+	Msg    string
 }
 
 // run on app
@@ -165,9 +168,16 @@ func (req *forwardNodeConn) Execute(f *MessengerFactory, conn *Connection) (r re
 	return
 }
 
-type forwardNodeConnResp forwardNodeConn
+type forwardNodeConnResp struct {
+	Node     cipher.PubKey
+	App      cipher.PubKey
+	FromApp  cipher.PubKey
+	FromNode cipher.PubKey
+	Failed   bool
+	Msg      string
+}
 
-// run on manager, conn is udp conn from node B
+// run on manager, conn is tcp/udp from node B
 func (req *forwardNodeConnResp) Execute(f *MessengerFactory, conn *Connection) (r resp, err error) {
 	c, ok := f.GetConnection(req.FromNode)
 	if !ok {
@@ -175,14 +185,29 @@ func (req *forwardNodeConnResp) Execute(f *MessengerFactory, conn *Connection) (
 		return
 	}
 
-	err = c.writeOP(OP_FORWARD_NODE_CONN|RESP_PREFIX,
-		&buildConnResp{
-			Address:  conn.GetRemoteAddr().String(),
-			Node:     req.Node,
-			App:      req.App,
-			FromApp:  req.FromApp,
-			FromNode: req.FromNode,
-		})
+	if req.Failed {
+		err = c.writeOP(OP_FORWARD_NODE_CONN_RESP|RESP_PREFIX, req)
+		return
+	}
+
+	err = c.writeOP(OP_FORWARD_NODE_CONN_RESP|RESP_PREFIX, req)
+	return
+}
+
+// run on node A, from manager
+func (req *forwardNodeConnResp) Run(conn *Connection) (err error) {
+	appConn, ok := conn.factory.GetConnection(req.FromApp)
+	if !ok {
+		conn.GetContextLogger().Debugf("forwardNodeConnResp app %x not found", req.FromApp)
+		return
+	}
+	tr, ok := appConn.getTransport(req.App)
+	if !ok {
+		conn.GetContextLogger().Debugf("forwardNodeConnResp tr %x not found", req.App)
+		return
+	}
+	conn.GetContextLogger().Debugf("recv %#v tr %#v", req, tr)
+	appConn.writeOP(OP_BUILD_APP_CONN|RESP_PREFIX, &AppConnResp{Failed: req.Failed, Msg: req.Msg})
 	return
 }
 
@@ -216,7 +241,19 @@ func (req *buildConn) Run(conn *Connection) (err error) {
 			}
 		}
 		if !allow {
-			conn.GetContextLogger().Debugf("node %x app %x forbid %x only allow %v", req.Node, req.App, req.FromNode, s.AllowNodes)
+			cause := fmt.Sprintf("node %x app %x forbid %x only allow %v", req.Node, req.App, req.FromNode, s.AllowNodes)
+			conn.GetContextLogger().Debugf(cause)
+			err = conn.writeOP(OP_FORWARD_NODE_CONN_RESP, &forwardNodeConnResp{
+				Node:     req.Node,
+				App:      req.App,
+				FromApp:  req.FromApp,
+				FromNode: req.FromNode,
+				Failed:   true,
+				Msg:      cause,
+			})
+			if err != nil {
+				return
+			}
 			return
 		}
 	}
@@ -226,7 +263,12 @@ func (req *buildConn) Run(conn *Connection) (err error) {
 	if err != nil {
 		return
 	}
-	err = connection.writeOP(OP_FORWARD_NODE_CONN_RESP, &forwardNodeConnResp{Node: req.Node, App: req.App, FromApp: req.FromApp, FromNode: req.FromNode})
+	err = connection.writeOP(OP_FORWARD_NODE_CONN_RESP, &forwardNodeConnResp{
+		Node:     req.Node,
+		App:      req.App,
+		FromApp:  req.FromApp,
+		FromNode: req.FromNode,
+	})
 	if err != nil {
 		return
 	}

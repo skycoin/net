@@ -64,7 +64,7 @@ func New(f *factory.MessengerFactory, addr, code, version string) *Monitor {
 }
 
 func (m *Monitor) Close() error {
-	return m.srv.Shutdown(nil)
+	return m.srv.Close()
 }
 func (m *Monitor) Start(webDir string) {
 	http.Handle("/", http.FileServer(http.Dir(webDir)))
