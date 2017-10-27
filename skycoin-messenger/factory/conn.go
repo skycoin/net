@@ -35,6 +35,9 @@ type Connection struct {
 	connectTime int64
 
 	skipFactoryReg bool
+
+	appMessages      map[string]PriorityMsg
+	appMessagesMutex sync.Mutex
 	// callbacks
 
 	// call after received response for FindServiceNodesByKeys
@@ -414,4 +417,28 @@ func (c *Connection) StoreContext(key, value interface{}) {
 
 func (c *Connection) LoadContext(key interface{}) (value interface{}, ok bool) {
 	return c.context.Load(key)
+}
+
+func (c *Connection) PutMessage(k string, v PriorityMsg) {
+	c.appMessagesMutex.Lock()
+	if c.appMessages == nil {
+		c.appMessages = make(map[string]PriorityMsg)
+	}
+	c.appMessages[k] = v
+	c.appMessagesMutex.Unlock()
+}
+
+func (c *Connection) GetMessages() []PriorityMsg {
+	c.appMessagesMutex.Lock()
+	if len(c.appMessages) < 1 {
+		c.appMessagesMutex.Unlock()
+		return nil
+	}
+	var result []PriorityMsg
+	for _, v := range c.appMessages {
+		result = append(result, v)
+	}
+	c.appMessages = nil
+	c.appMessagesMutex.Unlock()
+	return result
 }

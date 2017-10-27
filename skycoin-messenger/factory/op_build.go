@@ -30,6 +30,11 @@ func init() {
 			return new(forwardNodeConnResp)
 		},
 	}
+	resps[OP_FORWARD_NODE_CONN_RESP] = &sync.Pool{
+		New: func() interface{} {
+			return new(forwardNodeConnResp)
+		},
+	}
 	resps[OP_FORWARD_NODE_CONN] = &sync.Pool{
 		New: func() interface{} {
 			return new(buildConnResp)
@@ -79,11 +84,28 @@ func (req *appConn) Execute(f *MessengerFactory, conn *Connection) (r resp, err 
 	return
 }
 
+type MsgType int
+
+const (
+	SUCCESS MsgType = iota
+	FAILED
+)
+
+type PriorityMsg struct {
+	Priority int
+	Msg      string
+	Type     MsgType
+}
+
+func msgKey(a, b cipher.PubKey) string {
+	return fmt.Sprintf("%s:%s", a.Hex(), b.Hex())
+}
+
 type AppConnResp struct {
 	Host   string `json:",omitempty"`
 	Port   int
 	Failed bool
-	Msg    string
+	Msg    PriorityMsg
 }
 
 // run on app
@@ -119,7 +141,10 @@ func (req *buildConnResp) Execute(f *MessengerFactory, conn *Connection) (r resp
 	tr.setUDPConn(conn)
 	conn.writeOP(OP_APP_CONN_ACK|RESP_PREFIX, &connAck{})
 	fnOK := func(port int) {
-		appConn.writeOP(OP_BUILD_APP_CONN|RESP_PREFIX, &AppConnResp{Port: port})
+		msg := fmt.Sprintf("connected to node %x app %x, serving on localhost:%d", req.Node, req.App, port)
+		priorityMsg := PriorityMsg{Priority: 2, Msg: msg}
+		appConn.PutMessage(msgKey(req.FromApp, req.App), priorityMsg)
+		appConn.writeOP(OP_BUILD_APP_CONN|RESP_PREFIX, &AppConnResp{Port: port, Msg: priorityMsg})
 	}
 	err = tr.ListenForApp(fnOK)
 	if err != nil {
@@ -174,7 +199,7 @@ type forwardNodeConnResp struct {
 	FromApp  cipher.PubKey
 	FromNode cipher.PubKey
 	Failed   bool
-	Msg      string
+	Msg      PriorityMsg
 }
 
 // run on manager, conn is tcp/udp from node B
@@ -182,11 +207,6 @@ func (req *forwardNodeConnResp) Execute(f *MessengerFactory, conn *Connection) (
 	c, ok := f.GetConnection(req.FromNode)
 	if !ok {
 		conn.GetContextLogger().Debugf("node %x not exists", req.FromNode)
-		return
-	}
-
-	if req.Failed {
-		err = c.writeOP(OP_FORWARD_NODE_CONN_RESP|RESP_PREFIX, req)
 		return
 	}
 
@@ -207,6 +227,7 @@ func (req *forwardNodeConnResp) Run(conn *Connection) (err error) {
 		return
 	}
 	conn.GetContextLogger().Debugf("recv %#v tr %#v", req, tr)
+	appConn.PutMessage(msgKey(req.FromApp, req.App), req.Msg)
 	appConn.writeOP(OP_BUILD_APP_CONN|RESP_PREFIX, &AppConnResp{Failed: req.Failed, Msg: req.Msg})
 	return
 }
@@ -249,7 +270,7 @@ func (req *buildConn) Run(conn *Connection) (err error) {
 				FromApp:  req.FromApp,
 				FromNode: req.FromNode,
 				Failed:   true,
-				Msg:      cause,
+				Msg:      PriorityMsg{Priority: 2, Msg: cause, Type: FAILED},
 			})
 			if err != nil {
 				return
@@ -268,11 +289,13 @@ func (req *buildConn) Run(conn *Connection) (err error) {
 		App:      req.App,
 		FromApp:  req.FromApp,
 		FromNode: req.FromNode,
+		Msg:      PriorityMsg{Priority: 1, Msg: "trying to build udp connection"},
 	})
 	if err != nil {
 		return
 	}
 	err = tr.Connect(req.Address, s.Address)
+	appConn.setTransport(req.FromApp, tr)
 	return
 }
 
