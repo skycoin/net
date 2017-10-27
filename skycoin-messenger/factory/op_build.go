@@ -55,6 +55,11 @@ func init() {
 			return new(connAck)
 		},
 	}
+	ops[OP_APP_FEEDBACK] = &sync.Pool{
+		New: func() interface{} {
+			return new(AppFeedback)
+		},
+	}
 }
 
 type appConn struct {
@@ -114,8 +119,20 @@ func (req *AppConnResp) Run(conn *Connection) (err error) {
 			return err
 		}
 		req.Host = host
-		conn.appConnectionInitCallback(req)
+		fb := conn.appConnectionInitCallback(req)
+		err = conn.writeOP(OP_APP_FEEDBACK, fb)
 	}
+	return
+}
+
+type AppFeedback struct {
+	Port   int
+	Failed bool
+	Msg    PriorityMsg
+}
+
+func (req *AppFeedback) Execute(f *MessengerFactory, conn *Connection) (r resp, err error) {
+	conn.appFeedback.Store(req)
 	return
 }
 
@@ -137,7 +154,7 @@ func (req *buildConnResp) Execute(f *MessengerFactory, conn *Connection) (r resp
 	tr.setUDPConn(conn)
 	conn.writeOP(OP_APP_CONN_ACK|RESP_PREFIX, &connAck{})
 	fnOK := func(port int) {
-		msg := fmt.Sprintf("connected to node %x app %x, serving on localhost:%d", req.Node, req.App, port)
+		msg := fmt.Sprintf("connected app %x", req.App)
 		priorityMsg := PriorityMsg{Priority: 2, Msg: msg}
 		appConn.PutMessage(priorityMsg)
 		appConn.writeOP(OP_BUILD_APP_CONN|RESP_PREFIX, &AppConnResp{Port: port, Msg: priorityMsg})

@@ -38,6 +38,7 @@ type Connection struct {
 
 	appMessages      []PriorityMsg
 	appMessagesMutex sync.Mutex
+	appFeedback      atomic.Value
 	// callbacks
 
 	// call after received response for FindServiceNodesByKeys
@@ -47,7 +48,7 @@ type Connection struct {
 	findServiceNodesByAttributesCallback func(resp *QueryByAttrsResp)
 
 	// call after received response for BuildAppConnection
-	appConnectionInitCallback func(resp *AppConnResp)
+	appConnectionInitCallback func(resp *AppConnResp) *AppFeedback
 }
 
 // Used by factory to spawn connections for server side
@@ -435,4 +436,12 @@ func (c *Connection) GetMessages() []PriorityMsg {
 	c.appMessages = nil
 	c.appMessagesMutex.Unlock()
 	return result
+}
+
+func (c *Connection) GetAppFeedback() *AppFeedback {
+	v, ok := c.appFeedback.Load().(*AppFeedback)
+	if !ok {
+		return nil
+	}
+	return v
 }
