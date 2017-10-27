@@ -137,7 +137,7 @@
   </mat-card-content>
 </mat-card>
 
-<ng-container *ngIf="transports?.length > 0">
+<div [hidden]="transports?.length < 0">
   <h3 class="status-app-title">
     <span>Transports</span>
     <mat-icon>compare_arrows</mat-icon>
@@ -166,10 +166,10 @@
     <mat-header-row *matHeaderRowDef="transportColumns"></mat-header-row>
     <mat-row *matRowDef="let row; columns: transportColumns;"></mat-row>
   </mat-table>
-</ng-container>
+</div>
 
 
-<ng-container *ngIf="status?.apps?.length > 0">
+<div [hidden]="status?.apps?.length < 0">
   <h3 class="status-app-title">
     <span>Apps</span>
     <mat-icon>apps</mat-icon>
@@ -194,7 +194,7 @@
     <mat-header-row *matHeaderRowDef="displayedColumns"></mat-header-row>
     <mat-row *matRowDef="let row; columns: displayedColumns;"></mat-row>
   </mat-table>
-</ng-container>
+</div>
 
 <ng-template #sshSettings>
   <h1 mat-dialog-title>

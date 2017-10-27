@@ -78,6 +78,9 @@ export class SubStatusComponent implements OnInit, OnDestroy {
     this.dialog.closeAll();
   }
   delAllowNode(ev: Event, index: number) {
+    ev.stopImmediatePropagation();
+    ev.stopPropagation();
+    ev.preventDefault();
     this.sshAllowNodes.splice(index, 1);
     const data = new FormData();
     data.append('data', this.sshAllowNodes.toString());
@@ -90,6 +93,9 @@ export class SubStatusComponent implements OnInit, OnDestroy {
     });
   }
   setSSH(ev: Event) {
+    ev.stopImmediatePropagation();
+    ev.stopPropagation();
+    ev.preventDefault();
     let dataStr = '';
     if (this.sshAllowNodes.length > 0 && this.sshTextarea.trim()) {
       dataStr = this.sshAllowNodes + ',' + this.sshTextarea.trim();
@@ -164,6 +170,9 @@ export class SubStatusComponent implements OnInit, OnDestroy {
     });
   }
   inputKeys(ev: Event, content: any) {
+    ev.stopImmediatePropagation();
+    ev.stopPropagation();
+    ev.preventDefault();
     this.dialog.open(content, {
       width: '450px'
     });
@@ -173,10 +182,11 @@ export class SubStatusComponent implements OnInit, OnDestroy {
       return;
     }
     let nodes = [];
-    if (this.status.apps) {
-      nodes = this.findService('ssh').allow_nodes;
+    if (this.status.apps && this.findService('sshs')) {
+      console.log('get sshs nodes');
+      nodes = this.findService('sshs').allow_nodes;
+      this.sshSource = new SubStatusDataSource(nodes);
     }
-    this.sshSource = new SubStatusDataSource(nodes);
     this.dialogTitle = title;
     this.dialog.open(content, {
       width: '800px',
@@ -236,7 +246,7 @@ export class SubStatusComponent implements OnInit, OnDestroy {
   }
   fillTransport() {
     if (env.isManager && this.status.addr) {
-      this.transportSource = null;
+      // this.transportSource = null;
       this.transports = [];
       this.api.getTransport(this.status.addr).subscribe((allTransports: Array<Transports>) => {
         if (allTransports && allTransports.length > 0) {
