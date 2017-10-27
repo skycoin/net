@@ -36,7 +36,7 @@ type Connection struct {
 
 	skipFactoryReg bool
 
-	appMessages      map[string]PriorityMsg
+	appMessages      []PriorityMsg
 	appMessagesMutex sync.Mutex
 	// callbacks
 
@@ -419,12 +419,9 @@ func (c *Connection) LoadContext(key interface{}) (value interface{}, ok bool) {
 	return c.context.Load(key)
 }
 
-func (c *Connection) PutMessage(k string, v PriorityMsg) {
+func (c *Connection) PutMessage(v PriorityMsg) {
 	c.appMessagesMutex.Lock()
-	if c.appMessages == nil {
-		c.appMessages = make(map[string]PriorityMsg)
-	}
-	c.appMessages[k] = v
+	c.appMessages = append(c.appMessages, v)
 	c.appMessagesMutex.Unlock()
 }
 
@@ -434,10 +431,7 @@ func (c *Connection) GetMessages() []PriorityMsg {
 		c.appMessagesMutex.Unlock()
 		return nil
 	}
-	var result []PriorityMsg
-	for _, v := range c.appMessages {
-		result = append(result, v)
-	}
+	result := c.appMessages
 	c.appMessages = nil
 	c.appMessagesMutex.Unlock()
 	return result

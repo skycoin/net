@@ -97,10 +97,6 @@ type PriorityMsg struct {
 	Type     MsgType
 }
 
-func msgKey(a, b cipher.PubKey) string {
-	return fmt.Sprintf("%s:%s", a.Hex(), b.Hex())
-}
-
 type AppConnResp struct {
 	Host   string `json:",omitempty"`
 	Port   int
@@ -143,7 +139,7 @@ func (req *buildConnResp) Execute(f *MessengerFactory, conn *Connection) (r resp
 	fnOK := func(port int) {
 		msg := fmt.Sprintf("connected to node %x app %x, serving on localhost:%d", req.Node, req.App, port)
 		priorityMsg := PriorityMsg{Priority: 2, Msg: msg}
-		appConn.PutMessage(msgKey(req.FromApp, req.App), priorityMsg)
+		appConn.PutMessage(priorityMsg)
 		appConn.writeOP(OP_BUILD_APP_CONN|RESP_PREFIX, &AppConnResp{Port: port, Msg: priorityMsg})
 	}
 	err = tr.ListenForApp(fnOK)
@@ -227,7 +223,7 @@ func (req *forwardNodeConnResp) Run(conn *Connection) (err error) {
 		return
 	}
 	conn.GetContextLogger().Debugf("recv %#v tr %#v", req, tr)
-	appConn.PutMessage(msgKey(req.FromApp, req.App), req.Msg)
+	appConn.PutMessage(req.Msg)
 	appConn.writeOP(OP_BUILD_APP_CONN|RESP_PREFIX, &AppConnResp{Failed: req.Failed, Msg: req.Msg})
 	return
 }
@@ -262,7 +258,7 @@ func (req *buildConn) Run(conn *Connection) (err error) {
 			}
 		}
 		if !allow {
-			cause := fmt.Sprintf("node %x app %x forbid %x only allow %v", req.Node, req.App, req.FromNode, s.AllowNodes)
+			cause := fmt.Sprintf("node %x app %x forbid %x", req.Node, req.App, req.FromNode)
 			conn.GetContextLogger().Debugf(cause)
 			err = conn.writeOP(OP_FORWARD_NODE_CONN_RESP, &forwardNodeConnResp{
 				Node:     req.Node,
@@ -289,7 +285,7 @@ func (req *buildConn) Run(conn *Connection) (err error) {
 		App:      req.App,
 		FromApp:  req.FromApp,
 		FromNode: req.FromNode,
-		Msg:      PriorityMsg{Priority: 1, Msg: "trying to build udp connection"},
+		Msg:      PriorityMsg{Priority: 1, Msg: "building udp connection"},
 	})
 	if err != nil {
 		return

@@ -25,6 +25,7 @@ type transport struct {
 
 	FromNode, ToNode cipher.PubKey
 	FromApp, ToApp   cipher.PubKey
+	servingPort      int
 
 	conns      map[uint32]net.Conn
 	connsMutex sync.RWMutex
@@ -220,6 +221,7 @@ func (t *transport) ListenForApp(fn func(port int)) (err error) {
 OK:
 	t.fieldsMutex.Lock()
 	t.appNet = ln
+	t.servingPort = port
 	t.fieldsMutex.Unlock()
 
 	fn(port)
@@ -308,4 +310,11 @@ func writeAll(conn io.Writer, m []byte) error {
 		i += n
 	}
 	return nil
+}
+
+func (t *transport) GetServingPort() int {
+	t.fieldsMutex.RLock()
+	port := t.servingPort
+	t.fieldsMutex.RUnlock()
+	return port
 }
