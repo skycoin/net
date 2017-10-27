@@ -111,3 +111,11 @@ snack-bar-container {
     }
   }
 }
+
+.alert {
+  .mat-dialog-container {
+    box-shadow: 0 3px 5px rgba(0, 0, 0, 0.15);
+    border: 1px solid #ccc;
+    border-radius: .25rem;
+  }
+}

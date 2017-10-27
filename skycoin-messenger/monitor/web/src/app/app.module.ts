@@ -23,7 +23,7 @@ import { HttpClientModule } from '@angular/common/http';
 import { ApiService } from './service';
 import { TimeAgoPipe, ByteToPipe } from './pipe';
 import { DashboardComponent, SubStatusComponent } from './page';
-import { UpdateCardComponent } from './components';
+import { UpdateCardComponent, AlertComponent } from './components';
 import { AppRoutingModule } from './route/app-routing.module';
 
 @NgModule({
@@ -34,8 +34,12 @@ import { AppRoutingModule } from './route/app-routing.module';
     ByteToPipe,
     SubStatusComponent,
     UpdateCardComponent,
+    AlertComponent
   ],
-  entryComponents: [UpdateCardComponent],
+  entryComponents: [
+    UpdateCardComponent,
+    AlertComponent
+  ],
   imports: [
     BrowserModule,
     FormsModule,

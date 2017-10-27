@@ -1,12 +1,13 @@
-import { Component, OnInit, ViewEncapsulation, OnDestroy } from '@angular/core';
+import { Component, OnInit, ViewEncapsulation, OnDestroy, ViewChild, TemplateRef } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { environment as env } from '../../../environments/environment';
-import { ApiService, NodeServices, App, Transports } from '../../service';
-import { MatSnackBar, MatDialog } from '@angular/material';
+import { ApiService, NodeServices, App, Transports, NodeInfo, Message } from '../../service';
+import { MatSnackBar, MatDialog, MatDialogRef } from '@angular/material';
 import { DataSource } from '@angular/cdk/collections';
 import { Observable } from 'rxjs/Observable';
 import { FormControl, FormGroup, Validators } from '@angular/forms';
 import { UpdateCardComponent } from '../../components/update-card/update-card.component';
+import { AlertComponent } from '../../components/alert/alert.component';
 import 'rxjs/add/observable/of';
 
 @Component({
@@ -16,9 +17,11 @@ import 'rxjs/add/observable/of';
   encapsulation: ViewEncapsulation.None
 })
 export class SubStatusComponent implements OnInit, OnDestroy {
+  @ViewChild('alert') alertRef: TemplateRef<any>;
+  alertMsg = '';
   sshColumns = ['index', 'key', 'del'];
   displayedColumns = ['index', 'key', 'app'];
-  transportColumns = ['index', 'fromNode', 'fromApp', 'toNode', 'toApp'];
+  transportColumns = ['index', 'fromApp', 'fromNode', 'toNode', 'toApp'];
   appSource: SubStatusDataSource = null;
   sshSource: SubStatusDataSource = null;
   transportSource: SubStatusDataSource = null;
@@ -61,6 +64,12 @@ export class SubStatusComponent implements OnInit, OnDestroy {
   }
   ngOnDestroy() {
     this.close();
+  }
+  transportsTrackBy(index, transport) {
+    return transport ? transport.from_node : undefined;
+  }
+  appTrackBy(index, app) {
+    return app ? app.key : undefined;
   }
   connectSSH(ev: Event) {
     ev.stopImmediatePropagation();
@@ -248,13 +257,56 @@ export class SubStatusComponent implements OnInit, OnDestroy {
     if (env.isManager && this.status.addr) {
       // this.transportSource = null;
       this.transports = [];
-      this.api.getTransport(this.status.addr).subscribe((allTransports: Array<Transports>) => {
-        if (allTransports && allTransports.length > 0) {
-          this.transports = allTransports;
-          this.transportSource = new SubStatusDataSource(allTransports);
+      this.api.getNodeInfo(this.status.addr).subscribe((info: NodeInfo) => {
+        if (info) {
+          if (info.transports && info.transports.length > 0) {
+            this.transports = info.transports;
+            this.transportSource = new SubStatusDataSource(info.transports);
+          }
+          this.showMessage(info.messages);
         }
       });
     }
+  }
+  showMessage(msgs: Array<Array<Message>>) {
+    if (!msgs || msgs[0] == null) {
+      return;
+    } else {
+      msgs.sort((m1, m2) => {
+        m1.sort(this.compareMsg);
+        m2.sort(this.compareMsg);
+        if (m1[0].Priority < m2[0].Priority) {
+          return 1;
+        }
+        if (m1[0].Priority < m2[0].Priority) {
+          return -1;
+        }
+        return 0;
+      });
+      this.alertMsg = msgs[0][0].Msg;
+      this.dialog.open(this.alertRef, {
+        width: '45rem',
+        panelClass: 'alert'
+      });
+      setTimeout(() => {
+        this.dialog.open(AlertComponent, {
+          width: '45rem',
+          panelClass: 'alert',
+          data: {
+            msg: msgs[0][0].Msg
+          }
+        });
+      }, 500);
+    }
+  }
+  compareMsg(msg1, msg2) {
+    if (msg1.Priority < msg2.Priority) {
+      return 1;
+    }
+    if (msg1.Priority > msg2.Priority) {
+      return -1;
+    }
+    return 0;
   }
   fillApps() {
     if (this.status.apps) {

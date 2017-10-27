@@ -137,7 +137,7 @@
   </mat-card-content>
 </mat-card>
 
-<div [hidden]="transports?.length < 0">
+<div [hidden]="transports?.length <= 0">
   <h3 class="status-app-title">
     <span>Transports</span>
     <mat-icon>compare_arrows</mat-icon>
@@ -148,19 +148,19 @@
       <mat-cell *matCellDef="let i = index" [style.flex]="'0 0 3rem'" class="text-center"> {{i + 1}} </mat-cell>
     </ng-container>
     <ng-container matColumnDef="toNode">
-      <mat-header-cell *matHeaderCellDef class="text-center"> ToNode </mat-header-cell>
+      <mat-header-cell *matHeaderCellDef class="text-center"> To Node </mat-header-cell>
       <mat-cell *matCellDef="let data" class="transport-key"> {{data.to_node}} </mat-cell>
     </ng-container>
     <ng-container matColumnDef="fromNode">
-      <mat-header-cell *matHeaderCellDef class="text-center"> FromNode </mat-header-cell>
+      <mat-header-cell *matHeaderCellDef class="text-center"> From Node </mat-header-cell>
       <mat-cell *matCellDef="let data" class="transport-key"> {{data.from_node}} </mat-cell>
     </ng-container>
     <ng-container matColumnDef="fromApp">
-      <mat-header-cell *matHeaderCellDef class="text-center"> FromApp </mat-header-cell>
+      <mat-header-cell *matHeaderCellDef class="text-center"> From App </mat-header-cell>
       <mat-cell *matCellDef="let data" class="transport-key"> {{data.from_app}} </mat-cell>
     </ng-container>
     <ng-container matColumnDef="toApp">
-      <mat-header-cell *matHeaderCellDef class="text-center"> ToApp </mat-header-cell>
+      <mat-header-cell *matHeaderCellDef class="text-center"> To App </mat-header-cell>
       <mat-cell *matCellDef="let data" class="transport-key"> {{data.to_app}} </mat-cell>
     </ng-container>
     <mat-header-row *matHeaderRowDef="transportColumns"></mat-header-row>
@@ -169,7 +169,7 @@
 </div>
 
 
-<div [hidden]="status?.apps?.length < 0">
+<div [hidden]="status?.apps?.length <= 0">
   <h3 class="status-app-title">
     <span>Apps</span>
     <mat-icon>apps</mat-icon>
@@ -287,4 +287,18 @@
       <button mat-raised-button color="primary" [disabled]="!sshClientForm.valid" (click)="connectSSH($event)">Connect</button>
     </p>
   </div>
+</ng-template>
+
+<ng-template #alert>
+  <h1 mat-dialog-title class="text-center">
+    <span>Information</span>
+    <!-- <mat-icon>file_download</mat-icon> -->
+  </h1>
+  <div mat-dialog-content class="text-center">
+    <p>{{alertMsg}}</p>
+    <!-- <p class="text-center">
+      <button mat-raised-button color="primary" tabindex="-1" mat-dialog-close>Close</button>
+    </p> -->
+  </div>
+
 </ng-template>

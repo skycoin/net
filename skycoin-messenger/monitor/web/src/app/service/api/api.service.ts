@@ -18,13 +18,15 @@ export class ApiService {
   getNodeStatus(data: FormData) {
     return this.handlePost(this.connUrl + 'getNode', data);
   }
-
+  getMsgs(addr) {
+    return this.handleNodePost(addr, '/node/getMsgs');
+  }
   getApps(addr: string) {
     return this.handleNodePost(addr, '/node/getApps');
   }
 
-  getTransport(addr: string) {
-    return this.handleNodePost(addr, '/node/getTransports');
+  getNodeInfo(addr: string) {
+    return this.handleNodePost(addr, '/node/getInfo');
   }
   reboot(addr: string) {
     return this.handleNodePost(addr, '/node/reboot');
@@ -105,4 +107,13 @@ export interface Transports {
   to_node?: string;
   from_app?: string;
   to_app?: string;
+}
+export interface Message {
+  Priority?: number;
+  Type?: number;
+  Msg?: string;
+}
+export interface NodeInfo {
+  transports?: Array<Transports>;
+  messages?: Array<Array<Message>>;
 }
