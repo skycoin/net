@@ -37,6 +37,7 @@ type Connection struct {
 	skipFactoryReg bool
 
 	appMessages      []PriorityMsg
+	appMessagesPty   int
 	appMessagesMutex sync.Mutex
 	appFeedback      atomic.Value
 	// callbacks
@@ -371,16 +372,18 @@ func (c *Connection) writeOP(op byte, object interface{}) error {
 
 func (c *Connection) setTransport(to cipher.PubKey, tr *transport) {
 	c.appTransportsMutex.Lock()
-	defer c.appTransportsMutex.Unlock()
-
-	c.appTransports[to] = tr
+	if tr == nil {
+		delete(c.appTransports, to)
+	} else {
+		c.appTransports[to] = tr
+	}
+	c.appTransportsMutex.Unlock()
 }
 
 func (c *Connection) getTransport(to cipher.PubKey) (tr *transport, ok bool) {
 	c.appTransportsMutex.RLock()
-	defer c.appTransportsMutex.RUnlock()
-
 	tr, ok = c.appTransports[to]
+	c.appTransportsMutex.RUnlock()
 	return
 }
 
@@ -420,10 +423,16 @@ func (c *Connection) LoadContext(key interface{}) (value interface{}, ok bool) {
 	return c.context.Load(key)
 }
 
-func (c *Connection) PutMessage(v PriorityMsg) {
+func (c *Connection) PutMessage(v PriorityMsg) bool {
 	c.appMessagesMutex.Lock()
+	if c.appMessagesPty > v.Priority {
+		c.appMessagesMutex.Unlock()
+		return false
+	}
 	c.appMessages = append(c.appMessages, v)
+	c.appMessagesPty = v.Priority
 	c.appMessagesMutex.Unlock()
+	return true
 }
 
 func (c *Connection) GetMessages() []PriorityMsg {

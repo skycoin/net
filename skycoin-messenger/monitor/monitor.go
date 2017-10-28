@@ -103,7 +103,10 @@ func requestNode(w http.ResponseWriter, r *http.Request) (result []byte, err err
 	addr := r.FormValue("addr")
 	res, err := http.PostForm(addr, r.PostForm)
 	if err != nil {
-		return result, err, res.StatusCode
+		if res != nil {
+			return result, err, res.StatusCode
+		}
+		return result, err, 404
 	}
 	defer res.Body.Close()
 	result, err = ioutil.ReadAll(res.Body)

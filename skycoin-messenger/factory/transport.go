@@ -12,6 +12,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	cn "github.com/skycoin/net/conn"
 	"github.com/skycoin/skycoin/src/cipher"
+	"time"
 )
 
 type transport struct {
@@ -29,6 +30,8 @@ type transport struct {
 
 	conns      map[uint32]net.Conn
 	connsMutex sync.RWMutex
+
+	timeoutTimer *time.Timer
 
 	fieldsMutex sync.RWMutex
 }
@@ -205,6 +208,12 @@ func getAppPort() (port int) {
 }
 
 func (t *transport) ListenForApp(fn func(port int)) (err error) {
+	t.fieldsMutex.Lock()
+	defer t.fieldsMutex.Unlock()
+	if t.appNet != nil {
+		return
+	}
+
 	var ln net.Listener
 	var port int
 	for i := 0; i < 3; i++ {
@@ -219,10 +228,8 @@ func (t *transport) ListenForApp(fn func(port int)) (err error) {
 	return
 
 OK:
-	t.fieldsMutex.Lock()
 	t.appNet = ln
 	t.servingPort = port
-	t.fieldsMutex.Unlock()
 
 	fn(port)
 
@@ -317,4 +324,34 @@ func (t *transport) GetServingPort() int {
 	port := t.servingPort
 	t.fieldsMutex.RUnlock()
 	return port
+}
+
+func (t *transport) SetupTimeout(key cipher.PubKey, conn *Connection) {
+	t.fieldsMutex.Lock()
+	if t.timeoutTimer != nil {
+		if !t.timeoutTimer.Stop() {
+			<-t.timeoutTimer.C
+		}
+	}
+	t.timeoutTimer = time.AfterFunc(30*time.Second, func() {
+		t.Close()
+		conn.setTransport(key, nil)
+		conn.PutMessage(PriorityMsg{
+			Type:     FAILED,
+			Msg:      "Timeout",
+			Priority: 100,
+		})
+	})
+	t.fieldsMutex.Unlock()
+}
+
+func (t *transport) StopTimeout() {
+	t.fieldsMutex.Lock()
+	if t.timeoutTimer != nil {
+		if !t.timeoutTimer.Stop() {
+			<-t.timeoutTimer.C
+		}
+	}
+	t.timeoutTimer = nil
+	t.fieldsMutex.Unlock()
 }

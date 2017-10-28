@@ -318,6 +318,9 @@ func (f *MessengerFactory) connectUDPWithConfig(address string, config *ConnConf
 		return nil, err
 	}
 	conn = newUDPClientConnection(c, f)
+	if config != nil && config.Creator != nil {
+		conn.factory = config.Creator
+	}
 	conn.SetContextLogger(conn.GetContextLogger().WithField("app", "transport"))
 	if config != nil {
 		if config.OnConnected != nil {
