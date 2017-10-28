@@ -41,6 +41,7 @@ export class SubStatusComponent implements OnInit, OnDestroy {
   sshAllowNodes = [];
   socksTextarea = '';
   sshConnectKey = '';
+  taskTime = 15000;
   feedBacks: Array<FeedBackItem> = [];
   sshClientForm = new FormGroup({
     nodeKey: new FormControl('', Validators.required),
@@ -55,14 +56,15 @@ export class SubStatusComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit() {
+    if (env.production) {
+      this.taskTime = 1000;
+    }
     this.route.queryParams.subscribe(params => {
       this.key = params.key;
       this.startTask();
       this.power = 'warn';
       this.isManager = env.isManager;
     });
-    setTimeout(() => {
-    }, 3000);
   }
   ngOnDestroy() {
     this.close();
@@ -83,7 +85,6 @@ export class SubStatusComponent implements OnInit, OnDestroy {
       data.append('toApp', this.sshClientForm.get('appKey').value);
       this.api.connectSSHClient(this.status.addr, data).subscribe(result => {
         console.log('conect ssh client');
-        this.init();
       });
     }
     this.dialog.closeAll();
@@ -99,7 +100,6 @@ export class SubStatusComponent implements OnInit, OnDestroy {
       if (result) {
         console.log('set ssh result:', result);
         this.sshTextarea = '';
-        this.init();
       }
     });
   }
@@ -119,7 +119,6 @@ export class SubStatusComponent implements OnInit, OnDestroy {
       if (result) {
         console.log('set ssh result:', result);
         this.sshTextarea = '';
-        this.init();
       }
     });
   }
@@ -150,7 +149,6 @@ export class SubStatusComponent implements OnInit, OnDestroy {
     ev.preventDefault();
     this.api.runSockServer(this.status.addr).subscribe(isOk => {
       if (isOk) {
-        this.init();
         console.log('start socket server');
       }
     });
@@ -161,7 +159,6 @@ export class SubStatusComponent implements OnInit, OnDestroy {
     ev.preventDefault();
     this.api.runSSHServer(this.status.addr).subscribe(isOk => {
       if (isOk) {
-        this.init();
         console.log('start ssh server');
       }
     });
@@ -219,7 +216,7 @@ export class SubStatusComponent implements OnInit, OnDestroy {
     this.init();
     this.task = setInterval(() => {
       this.init();
-    }, 15000);
+    }, this.taskTime);
   }
   close() {
     clearInterval(this.task);
@@ -275,7 +272,7 @@ export class SubStatusComponent implements OnInit, OnDestroy {
   }
   getClientPort(client: string) {
     const app = this.findService(client);
-    if (!app) {
+    if (!app || !this.feedBacks) {
       return null;
     } else {
       const result = this.feedBacks.find(el => {
@@ -357,5 +354,6 @@ export class SubStatusDataSource extends DataSource<any> {
     return Observable.of(this.apps);
   }
 
-  disconnect() { }
+  disconnect() {
+  }
 }

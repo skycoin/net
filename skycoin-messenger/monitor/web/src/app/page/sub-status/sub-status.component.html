@@ -151,7 +151,7 @@
   </mat-card-content>
 </mat-card>
 
-<div *ngIf="transports?.length > 0">
+<div *ngIf="transportSource">
   <h3 class="status-app-title">
     <span>Transports</span>
     <mat-icon>compare_arrows</mat-icon>
@@ -183,7 +183,7 @@
 </div>
 
 
-<div *ngIf="status?.apps?.length > 0">
+<div *ngIf="appSource">
   <h3 class="status-app-title">
     <span>Apps</span>
     <mat-icon>apps</mat-icon>
