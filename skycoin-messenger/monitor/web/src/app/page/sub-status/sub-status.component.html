@@ -132,12 +132,26 @@
             <mat-icon aria-label="SSH" (click)="inputKeys($event,sshClientDialog)">computer</mat-icon>
           </button>
         </p>
+        <div>
+          <div *ngIf="getClientPort('sshc')">
+            <p *ngIf="!getClientPort('sshc')?.feedbacks?.failed">
+              <span>Port:</span>
+              <span>{{getClientPort('sshc')?.feedbacks?.port}}</span>
+            </p>
+            <p *ngIf="getClientPort('sshc')?.feedbacks?.failed">
+              <span style="color:red">{{getClientPort('sshc')?.feedbacks?.msg?.msg}}</span>
+            </p>
+          </div>
+          <p *ngIf="!getClientPort('sshc')">
+            <span>No Open Client</span>
+          </p>
+        </div>
       </mat-grid-tile>
     </mat-grid-list>
   </mat-card-content>
 </mat-card>
 
-<div [hidden]="transports?.length <= 0">
+<div *ngIf="transports?.length > 0">
   <h3 class="status-app-title">
     <span>Transports</span>
     <mat-icon>compare_arrows</mat-icon>
@@ -169,7 +183,7 @@
 </div>
 
 
-<div [hidden]="status?.apps?.length <= 0">
+<div *ngIf="status?.apps?.length > 0">
   <h3 class="status-app-title">
     <span>Apps</span>
     <mat-icon>apps</mat-icon>

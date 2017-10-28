@@ -1,7 +1,7 @@
-import { Component, OnInit, ViewEncapsulation, OnDestroy, ViewChild, TemplateRef } from '@angular/core';
+import { Component, OnInit, ViewEncapsulation, OnDestroy } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { environment as env } from '../../../environments/environment';
-import { ApiService, NodeServices, App, Transports, NodeInfo, Message } from '../../service';
+import { ApiService, NodeServices, App, Transports, NodeInfo, Message, FeedBackItem } from '../../service';
 import { MatSnackBar, MatDialog, MatDialogRef } from '@angular/material';
 import { DataSource } from '@angular/cdk/collections';
 import { Observable } from 'rxjs/Observable';
@@ -17,7 +17,6 @@ import 'rxjs/add/observable/of';
   encapsulation: ViewEncapsulation.None
 })
 export class SubStatusComponent implements OnInit, OnDestroy {
-  @ViewChild('alert') alertRef: TemplateRef<any>;
   alertMsg = '';
   sshColumns = ['index', 'key', 'del'];
   displayedColumns = ['index', 'key', 'app'];
@@ -42,6 +41,7 @@ export class SubStatusComponent implements OnInit, OnDestroy {
   sshAllowNodes = [];
   socksTextarea = '';
   sshConnectKey = '';
+  feedBacks: Array<FeedBackItem> = [];
   sshClientForm = new FormGroup({
     nodeKey: new FormControl('', Validators.required),
     appKey: new FormControl('', Validators.required),
@@ -61,6 +61,8 @@ export class SubStatusComponent implements OnInit, OnDestroy {
       this.power = 'warn';
       this.isManager = env.isManager;
     });
+    setTimeout(() => {
+    }, 3000);
   }
   ngOnDestroy() {
     this.close();
@@ -80,7 +82,7 @@ export class SubStatusComponent implements OnInit, OnDestroy {
       data.append('toNode', this.sshClientForm.get('nodeKey').value);
       data.append('toApp', this.sshClientForm.get('appKey').value);
       this.api.connectSSHClient(this.status.addr, data).subscribe(result => {
-        console.log('conect ssh client:', result);
+        console.log('conect ssh client');
         this.init();
       });
     }
@@ -202,6 +204,9 @@ export class SubStatusComponent implements OnInit, OnDestroy {
     });
   }
   findService(search: string): App {
+    if (!this.status || !this.status.apps) {
+      return null;
+    }
     const result = this.status.apps.find(el => {
       const tmp = el.attributes.find(attr => {
         return search === attr;
@@ -255,17 +260,28 @@ export class SubStatusComponent implements OnInit, OnDestroy {
   }
   fillTransport() {
     if (env.isManager && this.status.addr) {
-      // this.transportSource = null;
       this.transports = [];
       this.api.getNodeInfo(this.status.addr).subscribe((info: NodeInfo) => {
         if (info) {
+          this.transports = info.transports;
           if (info.transports && info.transports.length > 0) {
-            this.transports = info.transports;
             this.transportSource = new SubStatusDataSource(info.transports);
           }
+          this.feedBacks = info.app_feedbacks;
           this.showMessage(info.messages);
         }
       });
+    }
+  }
+  getClientPort(client: string) {
+    const app = this.findService(client);
+    if (!app) {
+      return null;
+    } else {
+      const result = this.feedBacks.find(el => {
+        return el.key === app.key;
+      });
+      return result;
     }
   }
   showMessage(msgs: Array<Array<Message>>) {
@@ -275,25 +291,21 @@ export class SubStatusComponent implements OnInit, OnDestroy {
       msgs.sort((m1, m2) => {
         m1.sort(this.compareMsg);
         m2.sort(this.compareMsg);
-        if (m1[0].Priority < m2[0].Priority) {
+        if (m1[0].priority < m2[0].priority) {
           return 1;
         }
-        if (m1[0].Priority < m2[0].Priority) {
+        if (m1[0].priority < m2[0].priority) {
           return -1;
         }
         return 0;
       });
-      this.alertMsg = msgs[0][0].Msg;
-      this.dialog.open(this.alertRef, {
-        width: '45rem',
-        panelClass: 'alert'
-      });
+      this.alertMsg = msgs[0][0].msg;
       setTimeout(() => {
         this.dialog.open(AlertComponent, {
           width: '45rem',
           panelClass: 'alert',
           data: {
-            msg: msgs[0][0].Msg
+            msg: msgs[0][0].msg
           }
         });
       }, 500);
@@ -316,8 +328,10 @@ export class SubStatusComponent implements OnInit, OnDestroy {
       if (env.isManager) {
         this.api.getApps(this.status.addr).subscribe((apps: Array<App>) => {
           this.status.apps = apps;
-          this.appSource = new SubStatusDataSource(this.status.apps);
-          this.setServiceStatus();
+          if (apps) {
+            this.appSource = new SubStatusDataSource(this.status.apps);
+            this.setServiceStatus();
+          }
         });
       }
     }

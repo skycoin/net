@@ -96,7 +96,6 @@ export interface NodeServices extends Conn {
 }
 
 export interface App {
-  index?: number;
   key?: string;
   attributes?: Array<string>;
   allow_nodes?: Array<string>;
@@ -109,11 +108,21 @@ export interface Transports {
   to_app?: string;
 }
 export interface Message {
-  Priority?: number;
-  Type?: number;
-  Msg?: string;
+  priority?: number;
+  type?: number;
+  msg?: string;
+}
+export interface FeedBack {
+  port?: number;
+  failed?: boolean;
+  msg?: Message;
+}
+export interface FeedBackItem {
+  key?: string;
+  feedbacks?: FeedBack;
 }
 export interface NodeInfo {
   transports?: Array<Transports>;
   messages?: Array<Array<Message>>;
+  app_feedbacks?: Array<FeedBackItem>;
 }
