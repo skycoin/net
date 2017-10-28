@@ -97,9 +97,9 @@ const (
 )
 
 type PriorityMsg struct {
-	Priority int
-	Msg      string
-	Type     MsgType
+	Priority int     `json:"priority"`
+	Msg      string  `json:"msg"`
+	Type     MsgType `json:"type"`
 }
 
 type AppConnResp struct {
@@ -126,9 +126,9 @@ func (req *AppConnResp) Run(conn *Connection) (err error) {
 }
 
 type AppFeedback struct {
-	Port   int
-	Failed bool
-	Msg    PriorityMsg
+	Port   int         `json:"port"`
+	Failed bool        `json:"failed"`
+	Msg    PriorityMsg `json:"msg"`
 }
 
 func (req *AppFeedback) Execute(f *MessengerFactory, conn *Connection) (r resp, err error) {
