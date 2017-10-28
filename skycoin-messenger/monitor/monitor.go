@@ -116,12 +116,13 @@ func requestNode(w http.ResponseWriter, r *http.Request) (result []byte, err err
 func (m *Monitor) getAllNode(w http.ResponseWriter, r *http.Request) (result []byte, err error, code int) {
 	cs := make([]Conn, 0)
 	m.factory.ForEachAcceptedConnection(func(key cipher.PubKey, conn *factory.Connection) {
+		now := time.Now().Unix()
 		content := Conn{
 			Key:         key.Hex(),
 			SendBytes:   conn.GetSentBytes(),
 			RecvBytes:   conn.GetReceivedBytes(),
-			StartTime:   conn.GetConnectTime(),
-			LastAckTime: conn.GetLastTime()}
+			StartTime:   now - conn.GetConnectTime(),
+			LastAckTime: now - conn.GetLastTime()}
 		if conn.IsTCP() {
 			content.Type = "TCP"
 		} else {

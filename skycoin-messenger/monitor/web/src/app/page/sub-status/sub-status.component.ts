@@ -42,6 +42,7 @@ export class SubStatusComponent implements OnInit, OnDestroy {
   socksTextarea = '';
   sshConnectKey = '';
   taskTime = 15000;
+  startRequest = false;
   feedBacks: Array<FeedBackItem> = [];
   sshClientForm = new FormGroup({
     nodeKey: new FormControl('', Validators.required),
@@ -57,7 +58,7 @@ export class SubStatusComponent implements OnInit, OnDestroy {
 
   ngOnInit() {
     if (env.production) {
-      this.taskTime = 1000;
+      this.taskTime = 5000;
     }
     this.route.queryParams.subscribe(params => {
       this.key = params.key;
@@ -85,6 +86,7 @@ export class SubStatusComponent implements OnInit, OnDestroy {
       data.append('toApp', this.sshClientForm.get('appKey').value);
       this.api.connectSSHClient(this.status.addr, data).subscribe(result => {
         console.log('conect ssh client');
+        this.init();
       });
     }
     this.dialog.closeAll();
@@ -100,6 +102,7 @@ export class SubStatusComponent implements OnInit, OnDestroy {
       if (result) {
         console.log('set ssh result:', result);
         this.sshTextarea = '';
+        this.init();
       }
     });
   }
@@ -119,6 +122,7 @@ export class SubStatusComponent implements OnInit, OnDestroy {
       if (result) {
         console.log('set ssh result:', result);
         this.sshTextarea = '';
+        this.init();
       }
     });
   }
@@ -150,6 +154,7 @@ export class SubStatusComponent implements OnInit, OnDestroy {
     this.api.runSockServer(this.status.addr).subscribe(isOk => {
       if (isOk) {
         console.log('start socket server');
+        this.init();
       }
     });
   }
@@ -160,6 +165,7 @@ export class SubStatusComponent implements OnInit, OnDestroy {
     this.api.runSSHServer(this.status.addr).subscribe(isOk => {
       if (isOk) {
         console.log('start ssh server');
+        this.init();
       }
     });
   }
@@ -334,15 +340,19 @@ export class SubStatusComponent implements OnInit, OnDestroy {
     }
   }
   init() {
-    const data = new FormData();
-    data.append('key', this.key);
-    this.api.getNodeStatus(data).subscribe((nodeServices: NodeServices) => {
-      if (nodeServices) {
-        this.status = nodeServices;
-        this.fillTransport();
-        this.fillApps();
-      }
-    });
+    if (!this.startRequest) {
+      this.startRequest = true;
+      const data = new FormData();
+      data.append('key', this.key);
+      this.api.getNodeStatus(data).subscribe((nodeServices: NodeServices) => {
+        if (nodeServices) {
+          this.status = nodeServices;
+          this.fillTransport();
+          this.fillApps();
+          this.startRequest = false;
+        }
+      });
+    }
   }
 }
 export class SubStatusDataSource extends DataSource<any> {
