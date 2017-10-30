@@ -23,6 +23,8 @@ type transport struct {
 	conn *Connection
 	// app
 	appNet net.Listener
+	// is this client side transport
+	clientSide bool
 
 	FromNode, ToNode cipher.PubKey
 	FromApp, ToApp   cipher.PubKey
@@ -31,20 +33,32 @@ type transport struct {
 	conns      map[uint32]net.Conn
 	connsMutex sync.RWMutex
 
-	timeoutTimer *time.Timer
+	timeoutTimer  *time.Timer
+	appConnHolder *Connection
 
 	fieldsMutex sync.RWMutex
 }
 
-func NewTransport(creator *MessengerFactory, fromNode, toNode, fromApp, toApp cipher.PubKey) *transport {
+func NewTransport(creator *MessengerFactory, appConn *Connection, fromNode, toNode, fromApp, toApp cipher.PubKey) *transport {
+	if appConn == nil {
+		panic("appConn can not be nil")
+	}
+	cs := false
+	if appConn.GetKey() == fromApp {
+		cs = true
+	} else if appConn.GetKey() != toApp {
+		panic("invalid appConn value")
+	}
 	t := &transport{
-		creator:  creator,
-		FromNode: fromNode,
-		ToNode:   toNode,
-		FromApp:  fromApp,
-		ToApp:    toApp,
-		factory:  NewMessengerFactory(),
-		conns:    make(map[uint32]net.Conn),
+		creator:       creator,
+		appConnHolder: appConn,
+		FromNode:      fromNode,
+		ToNode:        toNode,
+		FromApp:       fromApp,
+		ToApp:         toApp,
+		clientSide:    cs,
+		factory:       NewMessengerFactory(),
+		conns:         make(map[uint32]net.Conn),
 	}
 	return t
 }
@@ -306,6 +320,24 @@ func (t *transport) Close() {
 	}
 	t.factory.Close()
 	t.factory = nil
+
+	if t.clientSide {
+		t.appConnHolder.setTransport(t.ToApp, nil)
+	} else {
+		t.appConnHolder.setTransport(t.FromApp, nil)
+	}
+	t.appConnHolder.SetAppFeedback(&AppFeedback{
+		App:    t.ToApp,
+		Failed: true,
+		Msg:    PriorityMsg{Priority: TransportClosed, Msg: "transport closed", Type: Failed},
+	})
+}
+
+func (t *transport) IsClientSide() bool {
+	t.fieldsMutex.RLock()
+	defer t.fieldsMutex.RUnlock()
+
+	return t.clientSide
 }
 
 func writeAll(conn io.Writer, m []byte) error {
@@ -326,7 +358,7 @@ func (t *transport) GetServingPort() int {
 	return port
 }
 
-func (t *transport) SetupTimeout(key cipher.PubKey, conn *Connection) {
+func (t *transport) SetupTimeout() {
 	t.fieldsMutex.Lock()
 	if t.timeoutTimer != nil {
 		if !t.timeoutTimer.Stop() {
@@ -334,13 +366,12 @@ func (t *transport) SetupTimeout(key cipher.PubKey, conn *Connection) {
 		}
 	}
 	t.timeoutTimer = time.AfterFunc(30*time.Second, func() {
-		t.Close()
-		conn.setTransport(key, nil)
-		conn.PutMessage(PriorityMsg{
-			Type:     FAILED,
+		t.appConnHolder.PutMessage(PriorityMsg{
+			Type:     Failed,
 			Msg:      "Timeout",
-			Priority: 100,
+			Priority: Timeout,
 		})
+		t.Close()
 	})
 	t.fieldsMutex.Unlock()
 }

@@ -37,7 +37,7 @@ type Connection struct {
 	skipFactoryReg bool
 
 	appMessages      []PriorityMsg
-	appMessagesPty   int
+	appMessagesPty   Priority
 	appMessagesMutex sync.Mutex
 	appFeedback      atomic.Value
 	// callbacks
@@ -445,6 +445,10 @@ func (c *Connection) GetMessages() []PriorityMsg {
 	c.appMessages = nil
 	c.appMessagesMutex.Unlock()
 	return result
+}
+
+func (c *Connection) SetAppFeedback(fb *AppFeedback) {
+	c.appFeedback.Store(fb)
 }
 
 func (c *Connection) GetAppFeedback() *AppFeedback {
