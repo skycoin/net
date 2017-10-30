@@ -5,10 +5,13 @@ import { ApiService, NodeServices, App, Transports, NodeInfo, Message, FeedBackI
 import { MatSnackBar, MatDialog, MatDialogRef } from '@angular/material';
 import { DataSource } from '@angular/cdk/collections';
 import { Observable } from 'rxjs/Observable';
+import { Subject } from 'rxjs/Subject';
 import { FormControl, FormGroup, Validators } from '@angular/forms';
 import { UpdateCardComponent } from '../../components/update-card/update-card.component';
 import { AlertComponent } from '../../components/alert/alert.component';
 import 'rxjs/add/observable/of';
+import 'rxjs/add/observable/timer';
+import 'rxjs/add/operator/debounceTime';
 
 @Component({
   selector: 'app-sub-status',
@@ -17,6 +20,7 @@ import 'rxjs/add/observable/of';
   encapsulation: ViewEncapsulation.None
 })
 export class SubStatusComponent implements OnInit, OnDestroy {
+  task = new Subject();
   alertMsg = '';
   sshColumns = ['index', 'key', 'del'];
   displayedColumns = ['index', 'key', 'app'];
@@ -29,7 +33,6 @@ export class SubStatusComponent implements OnInit, OnDestroy {
   transports: Array<Transports> = [];
   status: NodeServices = null;
   apps: Array<App> = [];
-  task = null;
   isManager = false;
   socketColor = 'close-status';
   sshColor = 'close-status';
@@ -41,7 +44,7 @@ export class SubStatusComponent implements OnInit, OnDestroy {
   sshAllowNodes = [];
   socksTextarea = '';
   sshConnectKey = '';
-  taskTime = 15000;
+  taskTime = 5000;
   startRequest = false;
   feedBacks: Array<FeedBackItem> = [];
   sshClientForm = new FormGroup({
@@ -58,7 +61,7 @@ export class SubStatusComponent implements OnInit, OnDestroy {
 
   ngOnInit() {
     if (env.production) {
-      this.taskTime = 5000;
+      this.taskTime = 1000;
     }
     this.route.queryParams.subscribe(params => {
       this.key = params.key;
@@ -86,7 +89,7 @@ export class SubStatusComponent implements OnInit, OnDestroy {
       data.append('toApp', this.sshClientForm.get('appKey').value);
       this.api.connectSSHClient(this.status.addr, data).subscribe(result => {
         console.log('conect ssh client');
-        this.init();
+        this.task.next();
       });
     }
     this.dialog.closeAll();
@@ -102,7 +105,7 @@ export class SubStatusComponent implements OnInit, OnDestroy {
       if (result) {
         console.log('set ssh result:', result);
         this.sshTextarea = '';
-        this.init();
+        this.task.next();
       }
     });
   }
@@ -122,7 +125,7 @@ export class SubStatusComponent implements OnInit, OnDestroy {
       if (result) {
         console.log('set ssh result:', result);
         this.sshTextarea = '';
-        this.init();
+        this.task.next();
       }
     });
   }
@@ -140,7 +143,7 @@ export class SubStatusComponent implements OnInit, OnDestroy {
     ev.stopImmediatePropagation();
     ev.stopPropagation();
     ev.preventDefault();
-    this.init();
+    this.task.next();
     this.snackBar.open('Refreshed', 'Dismiss', {
       duration: 3000,
       verticalPosition: 'top',
@@ -154,7 +157,7 @@ export class SubStatusComponent implements OnInit, OnDestroy {
     this.api.runSockServer(this.status.addr).subscribe(isOk => {
       if (isOk) {
         console.log('start socket server');
-        this.init();
+        this.task.next();
       }
     });
   }
@@ -165,7 +168,7 @@ export class SubStatusComponent implements OnInit, OnDestroy {
     this.api.runSSHServer(this.status.addr).subscribe(isOk => {
       if (isOk) {
         console.log('start ssh server');
-        this.init();
+        this.task.next();
       }
     });
   }
@@ -220,13 +223,16 @@ export class SubStatusComponent implements OnInit, OnDestroy {
   }
   startTask() {
     this.init();
-    this.task = setInterval(() => {
+    this.task.debounceTime(1000).subscribe(() => {
       this.init();
-    }, this.taskTime);
+    });
+    Observable.timer(0, this.taskTime).subscribe(() => {
+      this.task.next();
+    });
   }
   close() {
-    clearInterval(this.task);
-    this.task = null;
+    // clearInterval(this.task);
+    // this.task = null;
   }
   isExist(search: string) {
     const result = this.status.apps.find(el => {
@@ -279,12 +285,12 @@ export class SubStatusComponent implements OnInit, OnDestroy {
   getClientPort(client: string) {
     const app = this.findService(client);
     if (!app || !this.feedBacks) {
-      return null;
+      return 'No Open Client';
     } else {
       const result = this.feedBacks.find(el => {
         return el.key === app.key;
       });
-      return result;
+      return 'Port: ' + result.feedbacks.port;
     }
   }
   showMessage(msgs: Array<Array<Message>>) {
@@ -340,19 +346,19 @@ export class SubStatusComponent implements OnInit, OnDestroy {
     }
   }
   init() {
-    if (!this.startRequest) {
-      this.startRequest = true;
-      const data = new FormData();
-      data.append('key', this.key);
-      this.api.getNodeStatus(data).subscribe((nodeServices: NodeServices) => {
-        if (nodeServices) {
-          this.status = nodeServices;
-          this.fillTransport();
-          this.fillApps();
-          this.startRequest = false;
-        }
-      });
-    }
+    this.startRequest = true;
+    const data = new FormData();
+    data.append('key', this.key);
+    this.api.getNodeStatus(data).subscribe((nodeServices: NodeServices) => {
+      if (nodeServices) {
+        this.status = nodeServices;
+        this.fillTransport();
+        this.fillApps();
+      }
+    });
+    // if (!this.startRequest) {
+
+    // }
   }
 }
 export class SubStatusDataSource extends DataSource<any> {

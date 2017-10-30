@@ -12,7 +12,7 @@ export class TimeAgoPipe implements PipeTransform {
     // const now = parseInt((new Date().getTime() / 1000) + '', 10);
     // const ago = now - value;
     if (!isNumber) {
-      let timeStr = 'unkown';
+      let timeStr = '0 second ago';
       if (value < this.SECOND) {
         timeStr = value + ' second ago';
       } else if (value > this.SECOND && value < this.HOUR) {

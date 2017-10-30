@@ -133,17 +133,8 @@
           </button>
         </p>
         <div>
-          <div *ngIf="getClientPort('sshc')">
-            <p *ngIf="!getClientPort('sshc')?.feedbacks?.failed">
-              <span>Port:</span>
-              <span>{{getClientPort('sshc')?.feedbacks?.port}}</span>
-            </p>
-            <p *ngIf="getClientPort('sshc')?.feedbacks?.failed">
-              <span style="color:red">{{getClientPort('sshc')?.feedbacks?.msg?.msg}}</span>
-            </p>
-          </div>
-          <p *ngIf="!getClientPort('sshc')">
-            <span>No Open Client</span>
+          <p>
+            {{getClientPort('sshc')}}
           </p>
         </div>
       </mat-grid-tile>
