@@ -30,6 +30,7 @@ type UDPConn struct {
 	SendPing bool
 	wmx      sync.Mutex
 	rto      time.Duration
+	rtt      time.Duration
 
 	rtoResendCount  uint32
 	lossResendCount uint32
@@ -39,13 +40,14 @@ type UDPConn struct {
 
 // used for server spawn udp conn
 func NewUDPConn(c *net.UDPConn, addr *net.UDPAddr) *UDPConn {
-	return &UDPConn{
+	conn := &UDPConn{
 		UdpConn:          c,
 		addr:             addr,
 		ConnCommonFields: NewConnCommonFileds(),
-		UDPPendingMap:    NewUDPPendingMap(),
 		rto:              200 * time.Millisecond,
 	}
+	conn.UDPPendingMap = NewUDPPendingMap(conn)
+	return conn
 }
 
 func (c *UDPConn) ReadLoop() error {
@@ -195,21 +197,21 @@ func (c *UDPConn) GetRemoteAddr() net.Addr {
 	return c.addr
 }
 
-func (c *UDPConn) GetRTO() (rto time.Duration) {
+func (c *UDPConn) getRTO() (rto time.Duration) {
 	c.FieldsMutex.RLock()
 	rto = c.rto
 	c.FieldsMutex.RUnlock()
 	return
 }
 
-func (c *UDPConn) SetRTO(rto time.Duration) {
+func (c *UDPConn) setRTO(rto time.Duration) {
 	c.FieldsMutex.Lock()
 	c.rto = rto
 	c.FieldsMutex.Unlock()
 }
 
 func (c *UDPConn) AddMsg(k uint32, v *msg.UDPMessage) {
-	v.SetRTO(c.GetRTO(), func() (err error) {
+	v.SetRTO(c.getRTO(), func() (err error) {
 		c.AddLossResendCount()
 		err = c.WriteBytes(v.PkgBytes())
 		if err != nil {
@@ -267,4 +269,25 @@ func (c *UDPConn) IsTCP() bool {
 
 func (c *UDPConn) IsUDP() bool {
 	return true
+}
+
+func (c *UDPConn) getRTT() time.Duration {
+	return time.Duration(atomic.LoadInt64((*int64)(&c.rtt)))
+}
+
+func (c *UDPConn) updateRTT(t time.Duration) {
+	if t <= 0 {
+		return
+	}
+	for {
+		ot := c.getRTT()
+		if ot == 0 || t < ot {
+			ok := atomic.CompareAndSwapInt64((*int64)(&c.rtt), int64(ot), int64(t))
+			if !ok {
+				continue
+			}
+			c.setRTO(t * 3)
+		}
+		return
+	}
 }

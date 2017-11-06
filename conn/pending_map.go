@@ -103,6 +103,7 @@ func (m *PendingMap) analyse() {
 type UDPPendingMap struct {
 	*PendingMap
 	seqs *btree.BTree
+	conn *UDPConn
 }
 
 type Uint32 uint32
@@ -111,8 +112,12 @@ func (a Uint32) Less(b btree.Item) bool {
 	return a < b.(Uint32)
 }
 
-func NewUDPPendingMap() *UDPPendingMap {
-	m := &UDPPendingMap{PendingMap: NewPendingMap(), seqs: btree.New(2)}
+func NewUDPPendingMap(conn *UDPConn) *UDPPendingMap {
+	m := &UDPPendingMap{
+		PendingMap: NewPendingMap(),
+		seqs:       btree.New(2),
+		conn:       conn,
+	}
 	return m
 }
 
@@ -131,6 +136,7 @@ func (m *UDPPendingMap) DelMsgAndGetLossMsgs(k uint32) (ok bool, loss []*msg.UDP
 		return
 	}
 	v.Acked()
+	m.conn.updateRTT(v.GetRTT())
 	delete(m.Pending, k)
 
 	m.seqs.AscendLessThan(Uint32(k), func(i btree.Item) bool {
