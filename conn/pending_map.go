@@ -137,6 +137,7 @@ func (m *UDPPendingMap) DelMsgAndGetLossMsgs(k uint32) (ok bool, loss []*msg.UDP
 	}
 	v.Acked()
 	m.conn.updateRTT(v.GetRTT())
+	m.conn.AddBytesInFlight(-v.TotalSize())
 	delete(m.Pending, k)
 
 	m.seqs.AscendLessThan(Uint32(k), func(i btree.Item) bool {

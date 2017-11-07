@@ -2,6 +2,7 @@ package conn
 
 import (
 	"encoding/binary"
+	"github.com/google/btree"
 	"hash/crc32"
 	"net"
 	"sync"
@@ -36,6 +37,9 @@ type UDPConn struct {
 	lossResendCount uint32
 	ackCount        uint32
 	overAckCount    uint32
+	bytesInFlight   int32
+
+	rttSamples *linkedBTree
 }
 
 // used for server spawn udp conn
@@ -44,7 +48,8 @@ func NewUDPConn(c *net.UDPConn, addr *net.UDPAddr) *UDPConn {
 		UdpConn:          c,
 		addr:             addr,
 		ConnCommonFields: NewConnCommonFileds(),
-		rto:              200 * time.Millisecond,
+		rto:              300 * time.Millisecond,
+		rttSamples:       newLinkedBTree(32),
 	}
 	conn.UDPPendingMap = NewUDPPendingMap(conn)
 	return conn
@@ -132,11 +137,13 @@ func (c *UDPConn) Write(bytes []byte) (err error) {
 
 func (c *UDPConn) WriteBytes(bytes []byte) error {
 	//c.CTXLogger.Debugf("write %x", bytes)
-	c.AddSentBytes(len(bytes))
+	l := len(bytes)
+	c.AddSentBytes(l)
+	c.AddBytesInFlight(l)
 	c.WriteMutex.Lock()
 	defer c.WriteMutex.Unlock()
 	n, err := c.UdpConn.WriteToUDP(bytes, c.addr)
-	if err == nil && n != len(bytes) {
+	if err == nil && n != l {
 		return errors.New("nothing was written")
 	}
 	return err
@@ -263,6 +270,10 @@ func (c *UDPConn) AddOverAckCount() {
 	atomic.AddUint32(&c.overAckCount, 1)
 }
 
+func (c *UDPConn) AddBytesInFlight(s int) {
+	atomic.AddInt32(&c.bytesInFlight, int32(s))
+}
+
 func (c *UDPConn) IsTCP() bool {
 	return false
 }
@@ -275,10 +286,54 @@ func (c *UDPConn) getRTT() time.Duration {
 	return time.Duration(atomic.LoadInt64((*int64)(&c.rtt)))
 }
 
+type linkedBTree struct {
+	tree  *btree.BTree
+	ring  []rtt
+	mask  int
+	index int
+}
+
+type rtt = time.Duration
+
+func (a rtt) Less(b btree.Item) bool {
+	return a < b.(rtt)
+}
+
+// size should be power of 2
+func newLinkedBTree(size int) *linkedBTree {
+	if size < 2 || (size&(size-1)) > 0 {
+		var n uint
+		for size > 0 {
+			size >>= 1
+			n++
+		}
+		size = 1 << n
+	}
+	return &linkedBTree{
+		ring: make([]rtt, size),
+		mask: size - 1,
+		tree: btree.New(2),
+	}
+}
+
+func (t *linkedBTree) push(r rtt) rtt {
+	if r <= 0 {
+		panic("push rtt <= 0")
+	}
+	or := t.ring[t.index]
+	if or > 0 {
+		t.tree.Delete(or)
+	}
+	t.ring[t.index] = r
+	t.index = (t.index + 1) & t.mask
+	return t.tree.Min().(rtt)
+}
+
 func (c *UDPConn) updateRTT(t time.Duration) {
 	if t <= 0 {
-		return
+		panic("updateRTT t <= 0")
 	}
+	t = c.rttSamples.push(t)
 	for {
 		ot := c.getRTT()
 		if ot == 0 || t < ot {
@@ -286,7 +341,7 @@ func (c *UDPConn) updateRTT(t time.Duration) {
 			if !ok {
 				continue
 			}
-			c.setRTO(t * 3)
+			c.setRTO(t * 2)
 		}
 		return
 	}

@@ -17,6 +17,7 @@ type Interface interface {
 	Transmitted()
 	Acked()
 	GetRTT() time.Duration
+	PkgBytes() []byte
 }
 
 type Message struct {
@@ -31,6 +32,8 @@ type Message struct {
 	TransmittedAt time.Time
 	AckedAt       time.Time
 	rtt           time.Duration
+
+	cache []byte
 }
 
 func NewByHeader(header []byte) *Message {
@@ -59,17 +62,34 @@ func (msg *Message) GetHashId() cipher.SHA256 {
 	return cipher.SumSHA256(msg.Body)
 }
 
-func (msg *Message) Bytes() []byte {
-	result := make([]byte, MSG_HEADER_SIZE+msg.Len)
+func (msg *Message) Bytes() (result []byte) {
+	msg.RLock()
+	result = msg.cache
+	msg.RUnlock()
+	if len(result) > 0 {
+		return
+	}
+
+	result = make([]byte, MSG_HEADER_SIZE+msg.Len)
 	result[0] = byte(msg.Type)
 	binary.BigEndian.PutUint32(result[MSG_SEQ_BEGIN:MSG_SEQ_END], msg.Seq)
 	binary.BigEndian.PutUint32(result[MSG_LEN_BEGIN:MSG_LEN_END], msg.Len)
 	copy(result[MSG_HEADER_END:], msg.Body)
+	msg.Lock()
+	msg.cache = result
+	msg.Unlock()
 	return result
 }
 
-func (msg *Message) PkgBytes() []byte {
-	result := make([]byte, PKG_HEADER_SIZE+MSG_HEADER_SIZE+msg.Len)
+func (msg *Message) PkgBytes() (result []byte) {
+	msg.RLock()
+	result = msg.cache
+	msg.RUnlock()
+	if len(result) > 0 {
+		return
+	}
+
+	result = make([]byte, PKG_HEADER_SIZE+MSG_HEADER_SIZE+msg.Len)
 	m := result[PKG_HEADER_SIZE:]
 	m[0] = byte(msg.Type)
 	binary.BigEndian.PutUint32(m[MSG_SEQ_BEGIN:MSG_SEQ_END], msg.Seq)
@@ -77,7 +97,10 @@ func (msg *Message) PkgBytes() []byte {
 	copy(m[MSG_HEADER_END:], msg.Body)
 	checksum := crc32.ChecksumIEEE(m)
 	binary.BigEndian.PutUint32(result[PKG_CRC32_BEGIN:], checksum)
-	return result
+	msg.Lock()
+	msg.cache = result
+	msg.Unlock()
+	return
 }
 
 func (msg *Message) HeaderBytes() []byte {
@@ -89,6 +112,11 @@ func (msg *Message) HeaderBytes() []byte {
 }
 
 func (msg *Message) TotalSize() int {
+	msg.RLock()
+	defer msg.RUnlock()
+	if len(msg.cache) > 0 {
+		return len(msg.cache)
+	}
 	return MSG_HEADER_SIZE + len(msg.Body)
 }
 
