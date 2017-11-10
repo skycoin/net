@@ -41,7 +41,7 @@ func (c *ClientTCPConn) WriteLoop() (err error) {
 				c.CTXLogger.Debug("conn closed")
 				return nil
 			}
-			c.CTXLogger.Debugf("msg Out %x", m)
+			//c.CTXLogger.Debugf("msg Out %x", m)
 			err := c.Write(m)
 			if err != nil {
 				c.CTXLogger.Debugf("write msg is failed %v", err)

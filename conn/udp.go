@@ -2,18 +2,15 @@ package conn
 
 import (
 	"encoding/binary"
+	"errors"
+	"fmt"
 	"github.com/google/btree"
+	"github.com/skycoin/net/msg"
 	"hash/crc32"
 	"net"
 	"sync"
 	"sync/atomic"
 	"time"
-
-	"fmt"
-
-	"errors"
-
-	"github.com/skycoin/net/msg"
 )
 
 const (
@@ -23,7 +20,7 @@ const (
 type UDPConn struct {
 	ConnCommonFields
 	*UDPPendingMap
-	StreamQueue
+	*streamQueue
 	UdpConn *net.UDPConn
 	addr    *net.UDPAddr
 
@@ -39,8 +36,23 @@ type UDPConn struct {
 	overAckCount    uint32
 	bytesInFlight   int32
 
-	rttSamples *linkedBTree
+	delivered    uint64
+	deliveryTime time.Time
+	rttSamples   *rttSampler
+	rateSamples  *rateSampler
+	cwnd         uint64
+	mode
+	pacingGain float64
+	fullCnt    uint
 }
+
+type mode int
+
+const (
+	startup mode = iota
+	drain
+	probeBW
+)
 
 // used for server spawn udp conn
 func NewUDPConn(c *net.UDPConn, addr *net.UDPAddr) *UDPConn {
@@ -48,10 +60,13 @@ func NewUDPConn(c *net.UDPConn, addr *net.UDPAddr) *UDPConn {
 		UdpConn:          c,
 		addr:             addr,
 		ConnCommonFields: NewConnCommonFileds(),
+		UDPPendingMap:    NewUDPPendingMap(),
+		streamQueue:      newStreamQueue(),
 		rto:              300 * time.Millisecond,
-		rttSamples:       newLinkedBTree(32),
+		rttSamples:       newRttSampler(16),
+		rateSamples:      newRateSampler(16),
+		pacingGain:       highGain,
 	}
-	conn.UDPPendingMap = NewUDPPendingMap(conn)
 	return conn
 }
 
@@ -130,7 +145,7 @@ func (c *UDPConn) Write(bytes []byte) (err error) {
 	c.wmx.Lock()
 	defer c.wmx.Unlock()
 	s := c.GetNextSeq()
-	m := msg.NewUDP(msg.TYPE_NORMAL, s, bytes)
+	m := msg.NewUDP(msg.TYPE_NORMAL, s, bytes, c.delivered, c.deliveryTime)
 	c.AddMsg(s, m)
 	return c.WriteBytes(m.PkgBytes())
 }
@@ -139,7 +154,7 @@ func (c *UDPConn) WriteBytes(bytes []byte) error {
 	//c.CTXLogger.Debugf("write %x", bytes)
 	l := len(bytes)
 	c.AddSentBytes(l)
-	c.AddBytesInFlight(l)
+	c.addBytesInFlight(l)
 	c.WriteMutex.Lock()
 	defer c.WriteMutex.Unlock()
 	n, err := c.UdpConn.WriteToUDP(bytes, c.addr)
@@ -232,8 +247,11 @@ func (c *UDPConn) AddMsg(k uint32, v *msg.UDPMessage) {
 
 func (c *UDPConn) DelMsg(seq uint32) error {
 	c.AddAckCount()
-	ok, msgs := c.DelMsgAndGetLossMsgs(seq)
+	ok, um, msgs := c.DelMsgAndGetLossMsgs(seq)
 	if ok {
+		c.updateRTT(um.GetRTT())
+		c.addBytesInFlight(-um.TotalSize())
+		c.updateDeliveryRate(um)
 		if len(msgs) > 1 {
 			c.CTXLogger.Debugf("resend loss msgs %v", msgs)
 			for _, msg := range msgs {
@@ -270,8 +288,12 @@ func (c *UDPConn) AddOverAckCount() {
 	atomic.AddUint32(&c.overAckCount, 1)
 }
 
-func (c *UDPConn) AddBytesInFlight(s int) {
+func (c *UDPConn) addBytesInFlight(s int) {
 	atomic.AddInt32(&c.bytesInFlight, int32(s))
+}
+
+func (c *UDPConn) GetBytesInFlight() int32 {
+	return atomic.LoadInt32(&c.bytesInFlight)
 }
 
 func (c *UDPConn) IsTCP() bool {
@@ -286,21 +308,21 @@ func (c *UDPConn) getRTT() time.Duration {
 	return time.Duration(atomic.LoadInt64((*int64)(&c.rtt)))
 }
 
-type linkedBTree struct {
+type rttSampler struct {
 	tree  *btree.BTree
 	ring  []rtt
 	mask  int
 	index int
 }
 
-type rtt = time.Duration
+type rtt time.Duration
 
 func (a rtt) Less(b btree.Item) bool {
 	return a < b.(rtt)
 }
 
 // size should be power of 2
-func newLinkedBTree(size int) *linkedBTree {
+func newRttSampler(size int) *rttSampler {
 	if size < 2 || (size&(size-1)) > 0 {
 		var n uint
 		for size > 0 {
@@ -309,14 +331,14 @@ func newLinkedBTree(size int) *linkedBTree {
 		}
 		size = 1 << n
 	}
-	return &linkedBTree{
+	return &rttSampler{
 		ring: make([]rtt, size),
 		mask: size - 1,
 		tree: btree.New(2),
 	}
 }
 
-func (t *linkedBTree) push(r rtt) rtt {
+func (t *rttSampler) push(r rtt) rtt {
 	if r <= 0 {
 		panic("push rtt <= 0")
 	}
@@ -325,7 +347,12 @@ func (t *linkedBTree) push(r rtt) rtt {
 		t.tree.Delete(or)
 	}
 	t.ring[t.index] = r
+	t.tree.ReplaceOrInsert(r)
 	t.index = (t.index + 1) & t.mask
+	return t.tree.Min().(rtt)
+}
+
+func (t *rttSampler) getMin() rtt {
 	return t.tree.Min().(rtt)
 }
 
@@ -333,16 +360,82 @@ func (c *UDPConn) updateRTT(t time.Duration) {
 	if t <= 0 {
 		panic("updateRTT t <= 0")
 	}
-	t = c.rttSamples.push(t)
+	r := c.rttSamples.push(rtt(t))
 	for {
 		ot := c.getRTT()
-		if ot == 0 || t < ot {
-			ok := atomic.CompareAndSwapInt64((*int64)(&c.rtt), int64(ot), int64(t))
+		if ot == 0 || time.Duration(r) < ot {
+			ok := atomic.CompareAndSwapInt64((*int64)(&c.rtt), int64(ot), int64(r))
 			if !ok {
 				continue
 			}
 			c.setRTO(t * 2)
 		}
+		return
+	}
+}
+
+type rateSampler struct {
+	tree  *btree.BTree
+	ring  []rate
+	mask  int
+	index int
+}
+
+type rate uint64
+
+func (a rate) Less(b btree.Item) bool {
+	return a < b.(rate)
+}
+
+// size should be power of 2
+func newRateSampler(size int) *rateSampler {
+	if size < 2 || (size&(size-1)) > 0 {
+		var n uint
+		for size > 0 {
+			size >>= 1
+			n++
+		}
+		size = 1 << n
+	}
+	return &rateSampler{
+		ring: make([]rate, size),
+		mask: size - 1,
+		tree: btree.New(2),
+	}
+}
+
+func (t *rateSampler) push(r rate) rate {
+	if r <= 0 {
+		panic("push rtt <= 0")
+	}
+	or := t.ring[t.index]
+	if or > 0 {
+		t.tree.Delete(or)
+	}
+	t.ring[t.index] = r
+	t.tree.ReplaceOrInsert(r)
+	t.index = (t.index + 1) & t.mask
+	return t.tree.Max().(rate)
+}
+
+func (c *UDPConn) updateDeliveryRate(m *msg.UDPMessage) {
+	c.delivered += uint64(m.TotalSize())
+	d := c.delivered - m.GetDelivered()
+	if d <= 0 {
+		return
+	}
+	c.deliveryTime = time.Now()
+	drate := d / uint64((c.deliveryTime.Sub(m.GetDeliveryTime())).Round(time.Millisecond))
+	max := uint64(c.rateSamples.push(rate(drate)))
+	if max != drate {
+		c.fullCnt++
+	}
+	rtt := uint64(c.rttSamples.getMin())
+	c.GetContextLogger().Debugf("max %d rtt %d", max, rtt)
+	cwnd := uint64(float64(max*rtt) * c.pacingGain)
+	if cwnd > c.cwnd {
+		c.GetContextLogger().Debugf("new cwnd %d", cwnd)
+		c.cwnd = cwnd
 		return
 	}
 }

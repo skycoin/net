@@ -103,20 +103,18 @@ func (m *PendingMap) analyse() {
 type UDPPendingMap struct {
 	*PendingMap
 	seqs *btree.BTree
-	conn *UDPConn
 }
 
-type Uint32 uint32
+type seq uint32
 
-func (a Uint32) Less(b btree.Item) bool {
-	return a < b.(Uint32)
+func (a seq) Less(b btree.Item) bool {
+	return a < b.(seq)
 }
 
-func NewUDPPendingMap(conn *UDPConn) *UDPPendingMap {
+func NewUDPPendingMap() *UDPPendingMap {
 	m := &UDPPendingMap{
 		PendingMap: NewPendingMap(),
 		seqs:       btree.New(2),
-		conn:       conn,
 	}
 	return m
 }
@@ -124,24 +122,24 @@ func NewUDPPendingMap(conn *UDPConn) *UDPPendingMap {
 func (m *UDPPendingMap) AddMsg(k uint32, v msg.Interface) {
 	m.Lock()
 	m.Pending[k] = v
-	m.seqs.ReplaceOrInsert(Uint32(k))
+	m.seqs.ReplaceOrInsert(seq(k))
 	m.Unlock()
+	v.Transmitted()
 }
 
-func (m *UDPPendingMap) DelMsgAndGetLossMsgs(k uint32) (ok bool, loss []*msg.UDPMessage) {
+func (m *UDPPendingMap) DelMsgAndGetLossMsgs(k uint32) (ok bool, um *msg.UDPMessage, loss []*msg.UDPMessage) {
 	m.Lock()
 	v, ok := m.Pending[k]
 	if !ok {
 		m.Unlock()
 		return
 	}
-	v.Acked()
-	m.conn.updateRTT(v.GetRTT())
-	m.conn.AddBytesInFlight(-v.TotalSize())
+	um = v.(*msg.UDPMessage)
+	um.Acked()
 	delete(m.Pending, k)
 
-	m.seqs.AscendLessThan(Uint32(k), func(i btree.Item) bool {
-		v, ok := m.Pending[uint32(i.(Uint32))]
+	m.seqs.AscendLessThan(seq(k), func(i btree.Item) bool {
+		v, ok := m.Pending[uint32(i.(seq))]
 		if ok {
 			v, ok := v.(*msg.UDPMessage)
 			if ok {
@@ -153,28 +151,43 @@ func (m *UDPPendingMap) DelMsgAndGetLossMsgs(k uint32) (ok bool, loss []*msg.UDP
 		}
 		return true
 	})
-	m.seqs.Delete(Uint32(k))
+	m.seqs.Delete(seq(k))
 	m.Unlock()
 
 	m.ackedMessagesMutex.Lock()
-	m.ackedMessages[k] = v
+	m.ackedMessages[k] = um
 	m.ackedMessagesMutex.Unlock()
 
 	return
 }
 
-type StreamQueue struct {
+type streamQueue struct {
 	ackedSeq uint32
-	msgs     [][]byte
+	msgs     *btree.BTree
 }
 
-func (q *StreamQueue) Push(k uint32, m []byte) (ok bool, msgs [][]byte) {
+func newStreamQueue() *streamQueue {
+	return &streamQueue{
+		msgs: btree.New(2),
+	}
+}
+
+type packet struct {
+	seq  uint32
+	data []byte
+}
+
+func (a packet) Less(b btree.Item) bool {
+	return a.seq < b.(packet).seq
+}
+
+func (q *streamQueue) Push(k uint32, m []byte) (ok bool, msgs [][]byte) {
 	if k <= q.ackedSeq {
 		return
 	}
 	if k == q.ackedSeq+1 {
 		ok = true
-		if len(q.msgs) < 1 {
+		if q.msgs.Len() < 1 {
 			msgs = [][]byte{m}
 			q.ackedSeq = k
 			return
@@ -187,37 +200,29 @@ func (q *StreamQueue) Push(k uint32, m []byte) (ok bool, msgs [][]byte) {
 	return
 }
 
-func (q *StreamQueue) pop() (msgs [][]byte) {
-	index := len(q.msgs)
-	for i, mm := range q.msgs {
-		if mm == nil {
-			index = i
+func (q *streamQueue) pop() (msgs [][]byte) {
+	for i := q.ackedSeq + 1; ; i++ {
+		min, ok := q.msgs.Min().(packet)
+		if !ok {
+			break
+		}
+		if min.seq == i {
+			msgs = append(msgs, min.data)
+			q.msgs.DeleteMin()
+			q.ackedSeq = i
+		} else {
 			break
 		}
 	}
-	msgs = q.msgs[:index]
-	q.ackedSeq += uint32(index)
-	if len(q.msgs) > index {
-		for _, mm := range q.msgs[index:] {
-			if mm != nil {
-				q.msgs = q.msgs[index:]
-				return
-			}
-		}
+	if len(msgs) < 1 {
+		panic("streamQueue pop return 0 msg")
 	}
-	q.msgs = nil
 	return
 }
 
-func (q *StreamQueue) push(k uint32, m []byte) {
-	if q.msgs == nil {
-		q.msgs = make([][]byte, 8)
-	}
-	index := k - q.ackedSeq - 1
-	if len(q.msgs) <= int(index) {
-		n := make([][]byte, index+8)
-		copy(n, q.msgs)
-		q.msgs = n
-	}
-	q.msgs[index] = m
+func (q *streamQueue) push(k uint32, m []byte) {
+	q.msgs.ReplaceOrInsert(packet{
+		seq:  k,
+		data: m,
+	})
 }

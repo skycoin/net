@@ -69,7 +69,7 @@ func (c *TCPConn) ReadLoop() (err error) {
 
 			seq := binary.BigEndian.Uint32(header[msg.MSG_SEQ_BEGIN:msg.MSG_SEQ_END])
 			c.Ack(seq)
-			c.CTXLogger.Debugf("c.In <- m.Body %x", m.Body)
+			//c.CTXLogger.Debugf("c.In <- m.Body %x", m.Body)
 			c.In <- m.Body
 		default:
 			c.CTXLogger.Debugf("not implemented msg type %d", t)
@@ -123,7 +123,7 @@ func (c *TCPConn) Write(bytes []byte) error {
 }
 
 func (c *TCPConn) WriteBytes(bytes []byte) error {
-	c.CTXLogger.Debugf("write %x", bytes)
+	//c.CTXLogger.Debugf("write %x", bytes)
 	c.WriteMutex.Lock()
 	defer c.WriteMutex.Unlock()
 	for index := 0; index != len(bytes); {

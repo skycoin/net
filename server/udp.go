@@ -20,7 +20,6 @@ func NewServerUDPConn(c *net.UDPConn) *ServerUDPConn {
 		UDPConn: conn.UDPConn{
 			UdpConn:          c,
 			ConnCommonFields: conn.NewConnCommonFileds(),
-			UDPPendingMap:    conn.NewUDPPendingMap(),
 		},
 	}
 }

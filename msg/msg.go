@@ -28,9 +28,9 @@ type Message struct {
 
 	sync.RWMutex
 
-	Status        int
-	TransmittedAt time.Time
-	AckedAt       time.Time
+	status        int
+	transmittedAt time.Time
+	ackedAt       time.Time
 	rtt           time.Duration
 
 	cache []byte
@@ -122,16 +122,16 @@ func (msg *Message) TotalSize() int {
 
 func (msg *Message) Transmitted() {
 	msg.Lock()
-	msg.Status |= MSG_STATUS_TRANSMITTED
-	msg.TransmittedAt = time.Now()
+	msg.status |= MSG_STATUS_TRANSMITTED
+	msg.transmittedAt = time.Now()
 	msg.Unlock()
 }
 
 func (msg *Message) Acked() {
 	msg.Lock()
-	msg.Status |= MSG_STATUS_ACKED
-	msg.AckedAt = time.Now()
-	msg.rtt = msg.AckedAt.Sub(msg.TransmittedAt)
+	msg.status |= MSG_STATUS_ACKED
+	msg.ackedAt = time.Now()
+	msg.rtt = msg.ackedAt.Sub(msg.transmittedAt)
 	msg.Unlock()
 }
 
@@ -147,18 +147,23 @@ type UDPMessage struct {
 
 	miss        uint32
 	resendTimer *time.Timer
+
+	delivered    uint64
+	deliveryTime time.Time
 }
 
-func NewUDP(t uint8, seq uint32, bytes []byte) *UDPMessage {
+func NewUDP(t uint8, seq uint32, bytes []byte, delivered uint64, deliveredTime time.Time) *UDPMessage {
 	return &UDPMessage{
-		Message: New(t, seq, bytes),
+		Message:      New(t, seq, bytes),
+		delivered:    delivered,
+		deliveryTime: deliveredTime,
 	}
 }
 
 func (msg *UDPMessage) Transmitted() {
 	msg.Lock()
-	msg.Status |= MSG_STATUS_TRANSMITTED
-	msg.TransmittedAt = time.Now()
+	msg.status |= MSG_STATUS_TRANSMITTED
+	msg.transmittedAt = time.Now()
 	msg.Unlock()
 }
 
@@ -171,7 +176,7 @@ func (msg *UDPMessage) SetRTO(rto time.Duration, fn func() error) {
 func (msg *UDPMessage) setRTO(rto time.Duration, fn func() error) {
 	msg.resendTimer = time.AfterFunc(rto, func() {
 		msg.Lock()
-		if msg.Status&MSG_STATUS_ACKED > 0 {
+		if msg.status&MSG_STATUS_ACKED > 0 {
 			msg.Unlock()
 			return
 		}
@@ -186,10 +191,12 @@ func (msg *UDPMessage) setRTO(rto time.Duration, fn func() error) {
 
 func (msg *UDPMessage) Acked() {
 	msg.Lock()
-	msg.Status |= MSG_STATUS_ACKED
-	msg.AckedAt = time.Now()
-	msg.rtt = msg.AckedAt.Sub(msg.TransmittedAt)
-	msg.resendTimer.Stop()
+	msg.status |= MSG_STATUS_ACKED
+	msg.ackedAt = time.Now()
+	msg.rtt = msg.ackedAt.Sub(msg.transmittedAt)
+	if msg.resendTimer != nil {
+		msg.resendTimer.Stop()
+	}
 	msg.Unlock()
 }
 
@@ -199,4 +206,12 @@ func (msg *UDPMessage) Miss() uint32 {
 
 func (msg *UDPMessage) ResetMiss() {
 	atomic.StoreUint32(&msg.miss, 0)
+}
+
+func (msg *UDPMessage) GetDelivered() uint64 {
+	return msg.delivered
+}
+
+func (msg *UDPMessage) GetDeliveryTime() time.Time {
+	return msg.deliveryTime
 }
