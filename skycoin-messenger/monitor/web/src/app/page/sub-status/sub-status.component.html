@@ -128,8 +128,8 @@
           <small>SSH Client</small>
         </p>
         <p class="status-box-item-content">
-          <button mat-icon-button [ngClass]="sshClientColor">
-            <mat-icon aria-label="SSH" (click)="inputKeys($event,sshClientDialog)">computer</mat-icon>
+          <button mat-icon-button (click)="inputKeys($event,sshClientDialog)" [ngClass]="sshClientColor">
+            <mat-icon aria-label="SSH">computer</mat-icon>
           </button>
         </p>
         <div>

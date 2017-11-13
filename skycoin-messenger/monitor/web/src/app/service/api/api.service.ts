@@ -40,11 +40,16 @@ export class ApiService {
   runSockServer(addr: string) {
     return this.handleNodePost(addr, '/node/run/sockss');
   }
+  runNodeupdate(addr: string) {
+    return this.handleNodePost(addr, '/node/run/update');
+  }
+
   checkUpdate(channel, vesrion: string) {
     const data = new FormData();
     data.append('addr', `http://messenger.skycoin.net:8100/api/version?c=${channel}&v=${vesrion}`);
     return this.handlePost(this.nodeUrl, data);
   }
+
   jsonp(url: string) {
     if (url === '') {
       return Observable.throw('Url is empty.');
@@ -122,6 +127,8 @@ export interface FeedBackItem {
   feedbacks?: FeedBack;
 }
 export interface NodeInfo {
+  version?: string;
+  tag?: string;
   transports?: Array<Transports>;
   messages?: Array<Array<Message>>;
   app_feedbacks?: Array<FeedBackItem>;

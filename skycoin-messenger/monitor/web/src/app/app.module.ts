@@ -16,7 +16,8 @@ import {
   MatProgressBarModule,
   MatTabsModule,
   MatFormFieldModule,
-  MatInputModule
+  MatInputModule,
+  MatProgressSpinnerModule
 } from '@angular/material';
 import { AppComponent } from './app.component';
 import { HttpClientModule } from '@angular/common/http';
@@ -60,7 +61,8 @@ import { AppRoutingModule } from './route/app-routing.module';
     MatProgressBarModule,
     MatTabsModule,
     MatFormFieldModule,
-    MatInputModule
+    MatInputModule,
+    MatProgressSpinnerModule
   ],
   providers: [ApiService],
   bootstrap: [AppComponent]

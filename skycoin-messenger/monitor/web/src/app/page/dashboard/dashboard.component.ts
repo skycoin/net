@@ -2,8 +2,10 @@ import { Component, OnInit, ViewEncapsulation, OnDestroy } from '@angular/core';
 import { ApiService, Conn, ConnData, ConnsResponse } from '../../service';
 import { DataSource } from '@angular/cdk/collections';
 import { Observable } from 'rxjs/Observable';
+import { Subscription } from 'rxjs/Subscription';
 import { Router } from '@angular/router';
 import { MatSnackBar } from '@angular/material';
+import 'rxjs/add/observable/timer';
 import 'rxjs/add/operator/map';
 
 @Component({
@@ -16,13 +18,14 @@ export class DashboardComponent implements OnInit, OnDestroy {
   displayedColumns = ['index', 'status', 'key', 'send', 'recv', 'seen'];
   dataSource: ExampleDataSource = null;
   dataSize = 0;
-  refreshTask = null;
+  timer: Subscription = null;
+
   constructor(private api: ApiService, private snackBar: MatSnackBar, private router: Router) { }
   ngOnInit() {
     this.refresh();
-    this.refreshTask = setInterval(() => {
+    this.timer = Observable.timer(0, 5000).subscribe(() => {
       this.refresh();
-    }, 5000);
+    });
   }
   ngOnDestroy() {
     this.close();
@@ -57,7 +60,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.router.navigate(['node'], { queryParams: { key: conn.key } });
   }
   close() {
-    clearInterval(this.refreshTask);
+    this.timer.unsubscribe();
   }
 }
 export class ExampleDataSource extends DataSource<any> {
@@ -68,26 +71,19 @@ export class ExampleDataSource extends DataSource<any> {
   connect(): Observable<Conn[]> {
     return this.api.getAllNode().map((conns: Array<Conn>) => {
       conns.sort((a, b) => {
-        if (a.start_time < b.start_time) {
-          return 1;
-        }
-        if (a.start_time > b.start_time) {
-          return -1;
-        }
-        if (a.start_time === b.start_time) {
+        if (a.key !== b.key) {
           return a.key.localeCompare(b.key);
+        } else {
+          if (a.start_time < b.start_time) {
+            return 1;
+          }
+          if (a.start_time > b.start_time) {
+            return -1;
+          }
+          return 0;
         }
       });
       return conns;
-      // const data: Array<ConnData> = [];
-      // conns.forEach((v, i) => {
-      //   data.push({
-      //     index: i,
-      //     key: v.key,
-
-      //   })
-      // });
-      // return data;
     });
   }
 

@@ -9,6 +9,6 @@
   </mat-progress-bar>
 </div>
 <div mat-dialog-actions class="text-center">
-  <button mat-raised-button color="primary" tabindex="-1" [disabled]="progressValue > 0 || !hasUpdate" (click)="startDownload($event)">Download</button>
+  <button mat-raised-button color="primary" tabindex="-1" [disabled]="progressValue > 0 || !hasUpdate" (click)="startDownload($event)">Update</button>
   <button mat-raised-button tabindex="-1" mat-dialog-close [disabled]="progressValue >0 && progressValue < 100">Close</button>
 </div>

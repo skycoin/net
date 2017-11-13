@@ -5,6 +5,7 @@ import { ApiService, NodeServices, App, Transports, NodeInfo, Message, FeedBackI
 import { MatSnackBar, MatDialog, MatDialogRef } from '@angular/material';
 import { DataSource } from '@angular/cdk/collections';
 import { Observable } from 'rxjs/Observable';
+import { Subscription } from 'rxjs/Subscription';
 import { Subject } from 'rxjs/Subject';
 import { FormControl, FormGroup, Validators } from '@angular/forms';
 import { UpdateCardComponent } from '../../components/update-card/update-card.component';
@@ -45,12 +46,15 @@ export class SubStatusComponent implements OnInit, OnDestroy {
   socksTextarea = '';
   sshConnectKey = '';
   taskTime = 5000;
+  timer: Subscription = null;
   startRequest = false;
   feedBacks: Array<FeedBackItem> = [];
   sshClientForm = new FormGroup({
     nodeKey: new FormControl('', Validators.required),
     appKey: new FormControl('', Validators.required),
   });
+  nodeVersion = '';
+  nodeTag = '';
   constructor(
     private router: Router,
     private route: ActivatedRoute,
@@ -133,11 +137,16 @@ export class SubStatusComponent implements OnInit, OnDestroy {
     ev.stopImmediatePropagation();
     ev.stopPropagation();
     ev.preventDefault();
-    this.dialog.open(UpdateCardComponent, {
+    const ref = this.dialog.open(UpdateCardComponent, {
       panelClass: 'update-panel',
       width: '370px',
-      disableClose: true
+      disableClose: true,
+      data: {
+        vesrion: this.nodeVersion,
+        tag: this.nodeTag
+      }
     });
+    ref.componentInstance.nodeUrl = this.status.addr;
   }
   refresh(ev: Event) {
     ev.stopImmediatePropagation();
@@ -226,13 +235,12 @@ export class SubStatusComponent implements OnInit, OnDestroy {
     this.task.debounceTime(1000).subscribe(() => {
       this.init();
     });
-    Observable.timer(0, this.taskTime).subscribe(() => {
+    this.timer = Observable.timer(0, this.taskTime).subscribe(() => {
       this.task.next();
     });
   }
   close() {
-    // clearInterval(this.task);
-    // this.task = null;
+    this.timer.unsubscribe();
   }
   isExist(search: string) {
     const result = this.status.apps.find(el => {
@@ -272,6 +280,8 @@ export class SubStatusComponent implements OnInit, OnDestroy {
       this.transports = [];
       this.api.getNodeInfo(this.status.addr).subscribe((info: NodeInfo) => {
         if (info) {
+          this.nodeVersion = info.version;
+          this.nodeTag = info.tag;
           this.transports = info.transports;
           if (info.transports && info.transports.length > 0) {
             this.transportSource = new SubStatusDataSource(info.transports);
