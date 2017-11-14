@@ -85,6 +85,7 @@ func (c *ServerUDPConn) ReadLoop(fn func(c *net.UDPConn, addr *net.UDPAddr) *con
 				if err != nil {
 					return
 				}
+				cc.CTXLogger.Debugf("pong")
 			}()
 		case msg.TYPE_NORMAL:
 			func() {
@@ -107,7 +108,9 @@ func (c *ServerUDPConn) ReadLoop(fn func(c *net.UDPConn, addr *net.UDPAddr) *con
 				}
 				if ok, ms := cc.Push(seq, m[msg.MSG_HEADER_END:]); ok {
 					for _, m := range ms {
+						cc.CTXLogger.Debugf("msg in")
 						cc.In <- m
+						cc.CTXLogger.Debugf("msg out")
 					}
 				}
 			}()

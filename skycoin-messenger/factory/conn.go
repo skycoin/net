@@ -274,7 +274,7 @@ OUTER:
 			if !ok {
 				return
 			}
-			c.GetContextLogger().Debugf("read %x", m)
+			//c.GetContextLogger().Debugf("read %x", m)
 			if len(m) < MSG_HEADER_END {
 				return
 			}

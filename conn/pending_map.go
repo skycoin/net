@@ -2,6 +2,7 @@ package conn
 
 import (
 	"fmt"
+	"github.com/sirupsen/logrus"
 	"math/big"
 	"sync"
 	"time"
@@ -182,6 +183,9 @@ func (a packet) Less(b btree.Item) bool {
 }
 
 func (q *streamQueue) Push(k uint32, m []byte) (ok bool, msgs [][]byte) {
+	defer func() {
+		logrus.Debugf("streamQueue push k %d return %t, len %d", k, ok, len(msgs))
+	}()
 	if k <= q.ackedSeq {
 		return
 	}

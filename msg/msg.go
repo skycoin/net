@@ -168,25 +168,25 @@ func (msg *UDPMessage) Transmitted() {
 }
 
 func (msg *UDPMessage) SetRTO(rto time.Duration, fn func() error) {
-	msg.Lock()
 	msg.setRTO(rto, fn)
-	msg.Unlock()
 }
 
 func (msg *UDPMessage) setRTO(rto time.Duration, fn func() error) {
+	msg.Lock()
 	msg.resendTimer = time.AfterFunc(rto, func() {
 		msg.Lock()
 		if msg.status&MSG_STATUS_ACKED > 0 {
 			msg.Unlock()
 			return
 		}
+		msg.Unlock()
 		msg.ResetMiss()
 		err := fn()
 		if err == nil {
 			msg.setRTO(rto, fn)
 		}
-		msg.Unlock()
 	})
+	msg.Unlock()
 }
 
 func (msg *UDPMessage) Acked() {

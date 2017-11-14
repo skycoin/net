@@ -70,6 +70,7 @@ func (c *ClientUDPConn) ReadLoop() (err error) {
 			c.CTXLogger.Debugf("not implemented msg type %d", t)
 			return fmt.Errorf("not implemented msg type %d", t)
 		}
+		c.UpdateLastTime()
 	}
 }
 

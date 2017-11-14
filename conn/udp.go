@@ -8,7 +8,6 @@ import (
 	"github.com/skycoin/net/msg"
 	"hash/crc32"
 	"net"
-	"sync"
 	"sync/atomic"
 	"time"
 )
@@ -26,7 +25,6 @@ type UDPConn struct {
 
 	// write loop with ping
 	SendPing bool
-	wmx      sync.Mutex
 	rto      time.Duration
 	rtt      time.Duration
 
@@ -142,16 +140,15 @@ func (c *UDPConn) writeLoopWithPing() (err error) {
 }
 
 func (c *UDPConn) Write(bytes []byte) (err error) {
-	c.wmx.Lock()
-	defer c.wmx.Unlock()
 	s := c.GetNextSeq()
+	c.CTXLogger.Debugf("write seq %d", s)
 	m := msg.NewUDP(msg.TYPE_NORMAL, s, bytes, c.delivered, c.deliveryTime)
 	c.AddMsg(s, m)
 	return c.WriteBytes(m.PkgBytes())
 }
 
 func (c *UDPConn) WriteBytes(bytes []byte) error {
-	//c.CTXLogger.Debugf("write %x", bytes)
+	c.CTXLogger.Debugf("write %x", bytes)
 	l := len(bytes)
 	c.AddSentBytes(l)
 	c.addBytesInFlight(l)
@@ -165,6 +162,7 @@ func (c *UDPConn) WriteBytes(bytes []byte) error {
 }
 
 func (c *UDPConn) Ack(seq uint32) error {
+	c.CTXLogger.Debugf("ack %d", seq)
 	p := make([]byte, msg.MSG_SEQ_END+msg.PKG_HEADER_SIZE)
 	m := p[msg.PKG_HEADER_SIZE:]
 	m[msg.MSG_TYPE_BEGIN] = msg.TYPE_ACK
@@ -175,6 +173,7 @@ func (c *UDPConn) Ack(seq uint32) error {
 }
 
 func (c *UDPConn) Ping() error {
+	c.CTXLogger.Debug("ping")
 	p := make([]byte, msg.PING_MSG_HEADER_SIZE+msg.PKG_HEADER_SIZE)
 	m := p[msg.PKG_HEADER_SIZE:]
 	m[msg.PING_MSG_TYPE_BEGIN] = msg.TYPE_PING
@@ -246,12 +245,13 @@ func (c *UDPConn) AddMsg(k uint32, v *msg.UDPMessage) {
 }
 
 func (c *UDPConn) DelMsg(seq uint32) error {
+	c.GetContextLogger().Debugf("recv ack %d", seq)
 	c.AddAckCount()
 	ok, um, msgs := c.DelMsgAndGetLossMsgs(seq)
 	if ok {
-		c.updateRTT(um.GetRTT())
+		//c.updateRTT(um.GetRTT())
 		c.addBytesInFlight(-um.TotalSize())
-		c.updateDeliveryRate(um)
+		//c.updateDeliveryRate(um)
 		if len(msgs) > 1 {
 			c.CTXLogger.Debugf("resend loss msgs %v", msgs)
 			for _, msg := range msgs {
@@ -406,7 +406,7 @@ func newRateSampler(size int) *rateSampler {
 
 func (t *rateSampler) push(r rate) rate {
 	if r <= 0 {
-		panic("push rtt <= 0")
+		panic("push rate <= 0")
 	}
 	or := t.ring[t.index]
 	if or > 0 {
@@ -419,13 +419,21 @@ func (t *rateSampler) push(r rate) rate {
 }
 
 func (c *UDPConn) updateDeliveryRate(m *msg.UDPMessage) {
+	c.deliveryTime = time.Now()
+	if m.GetDeliveryTime().IsZero() {
+		return
+	}
 	c.delivered += uint64(m.TotalSize())
 	d := c.delivered - m.GetDelivered()
 	if d <= 0 {
 		return
 	}
-	c.deliveryTime = time.Now()
-	drate := d / uint64((c.deliveryTime.Sub(m.GetDeliveryTime())).Round(time.Millisecond))
+	dt := (c.deliveryTime.Sub(m.GetDeliveryTime())).Round(time.Millisecond)
+	c.GetContextLogger().Debugf("drate d %d dt %d", d, dt)
+	drate := d / uint64(dt)
+	if drate <= 0 {
+		return
+	}
 	max := uint64(c.rateSamples.push(rate(drate)))
 	if max != drate {
 		c.fullCnt++
