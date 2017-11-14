@@ -45,7 +45,7 @@ export class SubStatusComponent implements OnInit, OnDestroy {
   sshAllowNodes = [];
   socksTextarea = '';
   sshConnectKey = '';
-  taskTime = 5000;
+  taskTime = 60000;
   timer: Subscription = null;
   startRequest = false;
   feedBacks: Array<FeedBackItem> = [];
@@ -64,8 +64,8 @@ export class SubStatusComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit() {
-    if (env.production) {
-      this.taskTime = 1000;
+    if (env.taskTime) {
+      this.taskTime = env.taskTime;
     }
     this.route.queryParams.subscribe(params => {
       this.key = params.key;
