@@ -92,12 +92,12 @@ func (c *UDPConn) writeLoop() (err error) {
 		select {
 		case m, ok := <-c.Out:
 			if !ok {
-				c.CTXLogger.Debug("udp conn closed")
+				c.GetContextLogger().Debug("udp conn closed")
 				return nil
 			}
 			err := c.Write(m)
 			if err != nil {
-				c.CTXLogger.Debugf("write msg is failed %v", err)
+				c.GetContextLogger().Debugf("write msg is failed %v", err)
 				return err
 			}
 		}
@@ -127,12 +127,12 @@ func (c *UDPConn) writeLoopWithPing() (err error) {
 			}
 		case m, ok := <-c.Out:
 			if !ok {
-				c.CTXLogger.Debug("udp conn closed")
+				c.GetContextLogger().Debug("udp conn closed")
 				return nil
 			}
 			err := c.Write(m)
 			if err != nil {
-				c.CTXLogger.Debugf("write msg is failed %v", err)
+				c.GetContextLogger().Debugf("write msg is failed %v", err)
 				return err
 			}
 		}
@@ -141,14 +141,14 @@ func (c *UDPConn) writeLoopWithPing() (err error) {
 
 func (c *UDPConn) Write(bytes []byte) (err error) {
 	s := c.GetNextSeq()
-	c.CTXLogger.Debugf("write seq %d", s)
+	c.GetContextLogger().Debugf("write seq %d", s)
 	m := msg.NewUDP(msg.TYPE_NORMAL, s, bytes, c.delivered, c.deliveryTime)
 	c.AddMsg(s, m)
 	return c.WriteBytes(m.PkgBytes())
 }
 
 func (c *UDPConn) WriteBytes(bytes []byte) error {
-	c.CTXLogger.Debugf("write %x", bytes)
+	c.GetContextLogger().Debugf("write %x", bytes)
 	l := len(bytes)
 	c.AddSentBytes(l)
 	c.addBytesInFlight(l)
@@ -162,7 +162,7 @@ func (c *UDPConn) WriteBytes(bytes []byte) error {
 }
 
 func (c *UDPConn) Ack(seq uint32) error {
-	c.CTXLogger.Debugf("ack %d", seq)
+	c.GetContextLogger().Debugf("ack %d", seq)
 	p := make([]byte, msg.ACK_HEADER_SIZE+msg.PKG_HEADER_SIZE)
 	m := p[msg.PKG_HEADER_SIZE:]
 	m[msg.ACK_TYPE_BEGIN] = msg.TYPE_ACK
@@ -197,7 +197,7 @@ func (c *UDPConn) RecvAck(m []byte) (err error) {
 }
 
 func (c *UDPConn) Ping() error {
-	c.CTXLogger.Debug("ping")
+	c.GetContextLogger().Debug("ping")
 	p := make([]byte, msg.PING_MSG_HEADER_SIZE+msg.PKG_HEADER_SIZE)
 	m := p[msg.PKG_HEADER_SIZE:]
 	m[msg.PING_MSG_TYPE_BEGIN] = msg.TYPE_PING
@@ -279,7 +279,7 @@ func (c *UDPConn) delMsg(seq uint32, ignore bool) error {
 			c.updateDeliveryRate(um)
 		}
 		if len(msgs) > 1 {
-			c.CTXLogger.Debugf("resend loss msgs %v", msgs)
+			c.GetContextLogger().Debugf("resend loss msgs %v", msgs)
 			for _, msg := range msgs {
 				err := c.WriteBytes(msg.PkgBytes())
 				if err != nil {
@@ -292,7 +292,7 @@ func (c *UDPConn) delMsg(seq uint32, ignore bool) error {
 		}
 		c.UpdateLastAck(seq)
 	} else {
-		c.CTXLogger.Debugf("over ack %s", c)
+		c.GetContextLogger().Debugf("over ack %s", c)
 		c.AddOverAckCount()
 	}
 	return nil

@@ -30,7 +30,7 @@ type Connection struct {
 
 	proxyConnections map[uint32]*Connection
 
-	appTransports      map[cipher.PubKey]*transport
+	appTransports      map[cipher.PubKey]*Transport
 	appTransportsMutex sync.RWMutex
 
 	connectTime int64
@@ -59,7 +59,7 @@ func newConnection(c *factory.Connection, factory *MessengerFactory) *Connection
 		Connection:    c,
 		factory:       factory,
 		disconnected:  make(chan struct{}),
-		appTransports: make(map[cipher.PubKey]*transport),
+		appTransports: make(map[cipher.PubKey]*Transport),
 	}
 	c.RealObject = connection
 	connection.keySetCond = sync.NewCond(connection.fieldsMutex.RLocker())
@@ -74,7 +74,7 @@ func newClientConnection(c *factory.Connection, factory *MessengerFactory) *Conn
 		in:               make(chan []byte),
 		disconnected:     make(chan struct{}),
 		proxyConnections: make(map[uint32]*Connection),
-		appTransports:    make(map[cipher.PubKey]*transport),
+		appTransports:    make(map[cipher.PubKey]*Transport),
 	}
 	c.RealObject = connection
 	connection.keySetCond = sync.NewCond(connection.fieldsMutex.RLocker())
@@ -373,7 +373,7 @@ func (c *Connection) writeOP(op byte, object interface{}) error {
 	return c.writeOPBytes(op, js)
 }
 
-func (c *Connection) setTransport(to cipher.PubKey, tr *transport) {
+func (c *Connection) setTransport(to cipher.PubKey, tr *Transport) {
 	c.appTransportsMutex.Lock()
 	if tr == nil {
 		delete(c.appTransports, to)
@@ -383,7 +383,7 @@ func (c *Connection) setTransport(to cipher.PubKey, tr *transport) {
 	c.appTransportsMutex.Unlock()
 }
 
-func (c *Connection) getTransport(to cipher.PubKey) (tr *transport, ok bool) {
+func (c *Connection) getTransport(to cipher.PubKey) (tr *Transport, ok bool) {
 	c.appTransportsMutex.RLock()
 	tr, ok = c.appTransports[to]
 	c.appTransportsMutex.RUnlock()
@@ -411,11 +411,12 @@ func (c *Connection) IsSkipFactoryReg() (skip bool) {
 	return
 }
 
-func (c *Connection) GetTransports() (ts map[cipher.PubKey]*transport) {
+func (c *Connection) ForEachTransport(fn func(t *Transport)) {
 	c.appTransportsMutex.RLock()
-	ts = c.appTransports
+	for _, tr := range c.appTransports {
+		fn(tr)
+	}
 	c.appTransportsMutex.RUnlock()
-	return
 }
 
 func (c *Connection) StoreContext(key, value interface{}) {

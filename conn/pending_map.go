@@ -129,11 +129,13 @@ func (m *UDPPendingMap) AddMsg(k uint32, v msg.Interface) {
 }
 
 func (m *UDPPendingMap) getUnAckSeq() (s uint32, ok bool) {
+	m.RLock()
 	r, ok := m.seqs.Min().(seq)
 	if !ok {
 		return
 	}
 	s = uint32(r)
+	m.RUnlock()
 	return
 }
 

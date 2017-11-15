@@ -3,19 +3,19 @@ package factory
 import (
 	"encoding/binary"
 	"errors"
+	"fmt"
+	log "github.com/sirupsen/logrus"
+	cn "github.com/skycoin/net/conn"
+	"github.com/skycoin/skycoin/src/cipher"
 	"io"
 	"net"
 	"strconv"
 	"sync"
 	"sync/atomic"
-
-	log "github.com/sirupsen/logrus"
-	cn "github.com/skycoin/net/conn"
-	"github.com/skycoin/skycoin/src/cipher"
 	"time"
 )
 
-type transport struct {
+type Transport struct {
 	creator *MessengerFactory
 	// node
 	factory *MessengerFactory
@@ -39,7 +39,7 @@ type transport struct {
 	fieldsMutex sync.RWMutex
 }
 
-func NewTransport(creator *MessengerFactory, appConn *Connection, fromNode, toNode, fromApp, toApp cipher.PubKey) *transport {
+func NewTransport(creator *MessengerFactory, appConn *Connection, fromNode, toNode, fromApp, toApp cipher.PubKey) *Transport {
 	if appConn == nil {
 		panic("appConn can not be nil")
 	}
@@ -49,7 +49,7 @@ func NewTransport(creator *MessengerFactory, appConn *Connection, fromNode, toNo
 	} else if appConn.GetKey() != toApp {
 		panic("invalid appConn value")
 	}
-	t := &transport{
+	t := &Transport{
 		creator:       creator,
 		appConnHolder: appConn,
 		FromNode:      fromNode,
@@ -63,8 +63,13 @@ func NewTransport(creator *MessengerFactory, appConn *Connection, fromNode, toNo
 	return t
 }
 
+func (t *Transport) String() string {
+	return fmt.Sprintf("transport From App%s Node%s To Node%s App%s",
+		t.FromApp.Hex(), t.FromNode.Hex(), t.ToNode.Hex(), t.ToApp.Hex())
+}
+
 // Listen and connect to node manager
-func (t *transport) ListenAndConnect(address string) (conn *Connection, err error) {
+func (t *Transport) ListenAndConnect(address string) (conn *Connection, err error) {
 	conn, err = t.factory.connectUDPWithConfig(address, &ConnConfig{
 		Creator: t.creator,
 	})
@@ -72,7 +77,7 @@ func (t *transport) ListenAndConnect(address string) (conn *Connection, err erro
 }
 
 // Connect to node A and server app
-func (t *transport) Connect(address, appAddress string) (err error) {
+func (t *Transport) Connect(address, appAddress string) (err error) {
 	conn, err := t.factory.connectUDPWithConfig(address, &ConnConfig{
 		OnConnected: func(connection *Connection) {
 			connection.writeOP(OP_BUILD_APP_CONN_OK,
@@ -111,7 +116,8 @@ func (t *transport) Connect(address, appAddress string) (err error) {
 	return
 }
 
-func (t *transport) nodeReadLoop(conn *Connection, getAppConn func(id uint32) net.Conn) {
+// Read from node, write to app
+func (t *Transport) nodeReadLoop(conn *Connection, getAppConn func(id uint32) net.Conn) {
 	defer func() {
 		t.Close()
 	}()
@@ -149,7 +155,8 @@ func (t *transport) nodeReadLoop(conn *Connection, getAppConn func(id uint32) ne
 	}
 }
 
-func (t *transport) appReadLoop(id uint32, appConn net.Conn, conn *Connection, create bool) {
+// Read from app, write to node
+func (t *Transport) appReadLoop(id uint32, appConn net.Conn, conn *Connection, create bool) {
 	buf := make([]byte, cn.MAX_UDP_PACKAGE_SIZE-100)
 	binary.BigEndian.PutUint32(buf[PKG_HEADER_ID_BEGIN:PKG_HEADER_ID_END], id)
 	defer func() {
@@ -198,7 +205,7 @@ func (t *transport) appReadLoop(id uint32, appConn net.Conn, conn *Connection, c
 	}
 }
 
-func (t *transport) setUDPConn(conn *Connection) {
+func (t *Transport) setUDPConn(conn *Connection) {
 	t.fieldsMutex.Lock()
 	t.conn = conn
 	t.fieldsMutex.Unlock()
@@ -221,7 +228,7 @@ func getAppPort() (port int) {
 	return
 }
 
-func (t *transport) ListenForApp(fn func(port int)) (err error) {
+func (t *Transport) ListenForApp(fn func(port int)) (err error) {
 	t.fieldsMutex.Lock()
 	defer t.fieldsMutex.Unlock()
 	if t.appNet != nil {
@@ -269,7 +276,7 @@ const (
 	OP_SHUTDOWN
 )
 
-func (t *transport) accept() {
+func (t *Transport) accept() {
 	t.fieldsMutex.RLock()
 	tConn := t.conn
 	t.fieldsMutex.RUnlock()
@@ -294,7 +301,7 @@ func (t *transport) accept() {
 	}
 }
 
-func (t *transport) Close() {
+func (t *Transport) Close() {
 	t.fieldsMutex.Lock()
 	defer t.fieldsMutex.Unlock()
 
@@ -333,7 +340,7 @@ func (t *transport) Close() {
 	})
 }
 
-func (t *transport) IsClientSide() bool {
+func (t *Transport) IsClientSide() bool {
 	t.fieldsMutex.RLock()
 	defer t.fieldsMutex.RUnlock()
 
@@ -351,14 +358,14 @@ func writeAll(conn io.Writer, m []byte) error {
 	return nil
 }
 
-func (t *transport) GetServingPort() int {
+func (t *Transport) GetServingPort() int {
 	t.fieldsMutex.RLock()
 	port := t.servingPort
 	t.fieldsMutex.RUnlock()
 	return port
 }
 
-func (t *transport) SetupTimeout() {
+func (t *Transport) SetupTimeout() {
 	t.fieldsMutex.Lock()
 	if t.timeoutTimer != nil {
 		if !t.timeoutTimer.Stop() {
@@ -376,7 +383,7 @@ func (t *transport) SetupTimeout() {
 	t.fieldsMutex.Unlock()
 }
 
-func (t *transport) StopTimeout() {
+func (t *Transport) StopTimeout() {
 	t.fieldsMutex.Lock()
 	if t.timeoutTimer != nil {
 		if !t.timeoutTimer.Stop() {

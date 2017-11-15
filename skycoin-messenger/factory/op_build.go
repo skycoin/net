@@ -148,6 +148,7 @@ type AppFeedback struct {
 }
 
 func (req *AppFeedback) Execute(f *MessengerFactory, conn *Connection) (r resp, err error) {
+	conn.GetContextLogger().Debugf("recv %#v", req)
 	conn.appFeedback.Store(req)
 	tr, ok := conn.getTransport(req.App)
 	if !ok {
@@ -172,7 +173,7 @@ func (req *buildConnResp) Execute(f *MessengerFactory, conn *Connection) (r resp
 		conn.GetContextLogger().Debugf("buildConnResp tr %x not found", req.App)
 		return
 	}
-	conn.GetContextLogger().Debugf("recv %#v tr %#v", req, tr)
+	conn.GetContextLogger().Debugf("recv %#v tr %s", req, tr)
 	tr.setUDPConn(conn)
 	conn.writeOP(OP_APP_CONN_ACK|RESP_PREFIX, &connAck{
 		FromApp: req.FromApp,

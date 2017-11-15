@@ -23,7 +23,7 @@ func NewClientUDPConn(c *net.UDPConn, addr *net.UDPAddr) *ClientUDPConn {
 func (c *ClientUDPConn) ReadLoop() (err error) {
 	defer func() {
 		if e := recover(); e != nil {
-			c.CTXLogger.Debug(e)
+			c.GetContextLogger().Debug(e)
 			err = fmt.Errorf("readloop panic err:%v", e)
 		}
 		if err != nil {
@@ -67,7 +67,7 @@ func (c *ClientUDPConn) ReadLoop() (err error) {
 				}
 			}
 		default:
-			c.CTXLogger.Debugf("not implemented msg type %d", t)
+			c.GetContextLogger().Debugf("not implemented msg type %d", t)
 			return fmt.Errorf("not implemented msg type %d", t)
 		}
 		c.UpdateLastTime()
