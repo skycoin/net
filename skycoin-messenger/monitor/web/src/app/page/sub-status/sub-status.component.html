@@ -72,7 +72,7 @@
       <mat-grid-tile>
         <p class="status-box-item-title">
           <small>Shadowsocks</small>
-          <!-- <mat-icon (click)="openSettings($event,socksSettings,'Socks')" class="icon-pointer">more_vert</mat-icon> -->
+          <mat-icon (click)="openSettings($event,sockSettings,'SSH')" class="icon-pointer">more_vert</mat-icon>
         </p>
         <p class="status-box-item-content">
           <button mat-icon-button (click)="runSocketServer($event)" [ngClass]="socketColor">
@@ -118,9 +118,12 @@
           <small>Shadowsocks Client</small>
         </p>
         <p class="status-box-item-content">
-          <button mat-icon-button [ngClass]="socketClientColor">
+          <button mat-icon-button (click)="inputKeys($event,socketClientDialog)" [ngClass]="socketClientColor">
             <mat-icon aria-label="Shadowsocks">near_me</mat-icon>
           </button>
+        </p>
+        <p>
+          Port: {{socketClientPort}}
         </p>
       </mat-grid-tile>
       <mat-grid-tile>
@@ -132,22 +135,20 @@
             <mat-icon aria-label="SSH">computer</mat-icon>
           </button>
         </p>
-        <div>
-          <p>
-            {{getClientPort('sshc')}}
-          </p>
-        </div>
+        <p>
+          Port: {{sshClientPort}}
+        </p>
       </mat-grid-tile>
     </mat-grid-list>
   </mat-card-content>
 </mat-card>
 
-<div *ngIf="transportSource">
+<div *ngIf="_transportData?.isShow">
   <h3 class="status-app-title">
     <span>Transports</span>
     <mat-icon>compare_arrows</mat-icon>
   </h3>
-  <mat-table [dataSource]="transportSource">
+  <mat-table [dataSource]="transportSource" [trackBy]="transportsTrackBy">
     <ng-container matColumnDef="index">
       <mat-header-cell *matHeaderCellDef class="text-center" [style.flex]="'0 0 3rem'"> # </mat-header-cell>
       <mat-cell *matCellDef="let i = index" [style.flex]="'0 0 3rem'" class="text-center"> {{i + 1}} </mat-cell>
@@ -174,12 +175,12 @@
 </div>
 
 
-<div *ngIf="appSource">
+<div *ngIf="_appData?.isShow">
   <h3 class="status-app-title">
     <span>Apps</span>
     <mat-icon>apps</mat-icon>
   </h3>
-  <mat-table #table [dataSource]="appSource">
+  <mat-table #table [dataSource]="appSource" [trackBy]="appTrackBy">
     <ng-container matColumnDef="index">
       <mat-header-cell *matHeaderCellDef [style.flex]="'0 0 3rem'"> # </mat-header-cell>
       <mat-cell *matCellDef="let i = index" [style.flex]="'0 0 3rem'"> {{i + 1}} </mat-cell>
@@ -238,7 +239,7 @@
     </mat-table>
   </div>
 </ng-template>
-<ng-template #socksSettings>
+<ng-template #sockSettings>
   <h1 mat-dialog-title>
     <span>Socks Settings</span>
     <mat-icon>settings</mat-icon>
@@ -246,26 +247,26 @@
   <div mat-dialog-content class="setting-dialog">
     <div class="dialog-form">
       <mat-form-field>
-        <textarea matInput placeholder="Input Public keys" rows="5"></textarea>
+        <textarea matInput placeholder="Input Public keys" rows="5" [(ngModel)]="sockTextarea" name="sockTextarea" ngDefaultControl></textarea>
         <mat-hint align="start" class="hint-text">Multiple public keys are separated by commas</mat-hint>
       </mat-form-field>
       <p class="text-right">
-        <button mat-raised-button color="primary">save</button>
+        <button mat-raised-button color="primary" (click)="setSock($event)">save</button>
       </p>
     </div>
-    <mat-table #table [dataSource]="sshSource">
+    <mat-table #table [dataSource]="socketSource">
       <ng-container matColumnDef="index">
         <mat-header-cell *matHeaderCellDef [style.flex]="'0 0 3rem'"> # </mat-header-cell>
         <mat-cell *matCellDef="let i = index;" [style.flex]="'0 0 3rem'"> {{i+1}} </mat-cell>
       </ng-container>
       <ng-container matColumnDef="key">
         <mat-header-cell *matHeaderCellDef [style.flex]="'0 0 30rem'"> Key </mat-header-cell>
-        <mat-cell *matCellDef="let data" [style.flex]="'0 0 30rem'"> {{data.key}} </mat-cell>
+        <mat-cell *matCellDef="let data" [style.flex]="'0 0 30rem'"> {{data}} </mat-cell>
       </ng-container>
       <ng-container matColumnDef="del">
         <mat-header-cell *matHeaderCellDef></mat-header-cell>
-        <mat-cell *matCellDef="let data" class="text-right">
-          <mat-icon class="del" color="primary">delete_forever</mat-icon>
+        <mat-cell *matCellDef="let i = index;" class="text-right">
+          <mat-icon class="del" color="primary" (click)="delAllowSockNode($event,i)">delete_forever</mat-icon>
         </mat-cell>
       </ng-container>
       <mat-header-row *matHeaderRowDef="sshColumns"></mat-header-row>
@@ -294,6 +295,25 @@
   </div>
 </ng-template>
 
+<ng-template #socketClientDialog>
+  <h1 mat-dialog-title>
+    <span>Socket Service keys</span>
+    <mat-icon>network_locked </mat-icon>
+  </h1>
+  <div mat-dialog-content class="setting-dialog">
+    <form [formGroup]="socketClientForm">
+      <mat-form-field>
+        <input matInput placeholder="Input Node Key" formControlName="nodeKey">
+      </mat-form-field>
+      <mat-form-field>
+        <input matInput placeholder="Input App Key" formControlName="appKey">
+      </mat-form-field>
+    </form>
+    <p class="text-right">
+      <button mat-raised-button color="primary" [disabled]="!socketClientForm.valid" (click)="connectSocket($event)">Connect</button>
+    </p>
+  </div>
+</ng-template>
 <ng-template #alert>
   <h1 mat-dialog-title class="text-center">
     <span>Information</span>

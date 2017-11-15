@@ -34,11 +34,14 @@ export class ApiService {
   connectSSHClient(addr: string, data?: FormData) {
     return this.handleNodePost(addr, '/node/run/sshc', data);
   }
+  connectSocketClicent(addr: string, data?: FormData) {
+    return this.handleNodePost(addr, '/node/run/sockc', data);
+  }
   runSSHServer(addr: string, data?: FormData) {
     return this.handleNodePost(addr, '/node/run/sshs', data);
   }
-  runSockServer(addr: string) {
-    return this.handleNodePost(addr, '/node/run/sockss');
+  runSockServer(addr: string, data?: FormData) {
+    return this.handleNodePost(addr, '/node/run/socks', data);
   }
   runNodeupdate(addr: string) {
     return this.handleNodePost(addr, '/node/run/update');

@@ -6,5 +6,5 @@
 export const environment = {
   isManager: true,
   production: false,
-  taskTime: 300000
+  taskTime: 10000
 };

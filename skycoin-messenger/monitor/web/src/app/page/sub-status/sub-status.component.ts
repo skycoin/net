@@ -13,6 +13,7 @@ import { AlertComponent } from '../../components/alert/alert.component';
 import 'rxjs/add/observable/of';
 import 'rxjs/add/observable/timer';
 import 'rxjs/add/operator/debounceTime';
+import { BehaviorSubject } from 'rxjs/BehaviorSubject';
 
 @Component({
   selector: 'app-sub-status',
@@ -28,6 +29,7 @@ export class SubStatusComponent implements OnInit, OnDestroy {
   transportColumns = ['index', 'fromApp', 'fromNode', 'toNode', 'toApp'];
   appSource: SubStatusDataSource = null;
   sshSource: SubStatusDataSource = null;
+  sockSource: SubStatusDataSource = null;
   transportSource: SubStatusDataSource = null;
   key = '';
   power = '';
@@ -43,9 +45,10 @@ export class SubStatusComponent implements OnInit, OnDestroy {
   dialogTitle = '';
   sshTextarea = '';
   sshAllowNodes = [];
-  socksTextarea = '';
+  sockTextarea = '';
+  sockAllowNodes = [];
   sshConnectKey = '';
-  taskTime = 60000;
+  taskTime = 1000;
   timer: Subscription = null;
   startRequest = false;
   feedBacks: Array<FeedBackItem> = [];
@@ -53,8 +56,18 @@ export class SubStatusComponent implements OnInit, OnDestroy {
     nodeKey: new FormControl('', Validators.required),
     appKey: new FormControl('', Validators.required),
   });
+  socketClientForm = new FormGroup({
+    nodeKey: new FormControl('', Validators.required),
+    appKey: new FormControl('', Validators.required),
+  });
+  sshClientPort = 0;
+  socketClientPort = 0;
   nodeVersion = '';
   nodeTag = '';
+  _appData = new SubDatabase();
+  _transportData = new SubDatabase();
+  _sshServerData = new SubDatabase();
+  _socketServerData = new SubDatabase();
   constructor(
     private router: Router,
     private route: ActivatedRoute,
@@ -64,6 +77,10 @@ export class SubStatusComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit() {
+    this.appSource = new SubStatusDataSource(this._appData);
+    this.transportSource = new SubStatusDataSource(this._transportData);
+    this.sshSource = new SubStatusDataSource(this._sshServerData);
+    this.sockSource = new SubStatusDataSource(this._socketServerData);
     if (env.taskTime) {
       this.taskTime = env.taskTime;
     }
@@ -82,6 +99,22 @@ export class SubStatusComponent implements OnInit, OnDestroy {
   }
   appTrackBy(index, app) {
     return app ? app.key : undefined;
+  }
+  connectSocket(ev: Event) {
+    ev.stopImmediatePropagation();
+    ev.stopPropagation();
+    ev.preventDefault();
+    if (this.socketClientForm.valid) {
+      const data = new FormData();
+      data.append('toNode', this.socketClientForm.get('nodeKey').value);
+      data.append('toApp', this.socketClientForm.get('appKey').value);
+      console.log('data:', this.status.addr);
+      this.api.connectSocketClicent(this.status.addr, data).subscribe(result => {
+        console.log('conect socket client');
+        this.task.next();
+      });
+    }
+    this.dialog.closeAll();
   }
   connectSSH(ev: Event) {
     ev.stopImmediatePropagation();
@@ -113,6 +146,21 @@ export class SubStatusComponent implements OnInit, OnDestroy {
       }
     });
   }
+  delAllowSockNode(ev: Event, index: number) {
+    ev.stopImmediatePropagation();
+    ev.stopPropagation();
+    ev.preventDefault();
+    this.sockAllowNodes.splice(index, 1);
+    const data = new FormData();
+    data.append('data', this.sockAllowNodes.toString());
+    this.api.runSockServer(this.status.addr, data).subscribe(result => {
+      if (result) {
+        console.log('set socks result:', result);
+        this.sockTextarea = '';
+        this.task.next();
+      }
+    });
+  }
   setSSH(ev: Event) {
     ev.stopImmediatePropagation();
     ev.stopPropagation();
@@ -122,6 +170,26 @@ export class SubStatusComponent implements OnInit, OnDestroy {
       dataStr = this.sshAllowNodes + ',' + this.sshTextarea.trim();
     } else {
       dataStr = this.sshAllowNodes.toString();
+    }
+    const data = new FormData();
+    data.append('data', dataStr);
+    this.api.runSSHServer(this.status.addr, data).subscribe(result => {
+      if (result) {
+        console.log('set ssh result:', result);
+        this.sshTextarea = '';
+        this.task.next();
+      }
+    });
+  }
+  setSock(ev: Event) {
+    ev.stopImmediatePropagation();
+    ev.stopPropagation();
+    ev.preventDefault();
+    let dataStr = '';
+    if (this.sockAllowNodes.length > 0 && this.sockTextarea.trim()) {
+      dataStr = this.sockAllowNodes + ',' + this.sockTextarea.trim();
+    } else {
+      dataStr = this.sockAllowNodes.toString();
     }
     const data = new FormData();
     data.append('data', dataStr);
@@ -211,7 +279,22 @@ export class SubStatusComponent implements OnInit, OnDestroy {
     if (this.status.apps && this.findService('sshs')) {
       console.log('get sshs nodes');
       nodes = this.findService('sshs').allow_nodes;
-      this.sshSource = new SubStatusDataSource(nodes);
+      this._sshServerData.push(nodes);
+    }
+    this.dialogTitle = title;
+    this.dialog.open(content, {
+      width: '800px',
+    });
+  }
+  openSockSettings(ev: Event, content: any, title: string) {
+    if (!title) {
+      return;
+    }
+    let nodes = [];
+    if (this.status.apps && this.findService('sshs')) {
+      console.log('get socks nodes');
+      nodes = this.findService('socks').allow_nodes;
+      this._socketServerData.push(nodes);
     }
     this.dialogTitle = title;
     this.dialog.open(content, {
@@ -259,18 +342,20 @@ export class SubStatusComponent implements OnInit, OnDestroy {
     if (this.status.apps) {
       if (this.findService('sshs')) {
         this.sshAllowNodes = this.findService('sshs').allow_nodes;
+        this.sockAllowNodes = this.findService('socks').allow_nodes;
       }
-      this.sshSource = new SubStatusDataSource(this.sshAllowNodes);
+      this._sshServerData.push(this.sshAllowNodes);
+      this._socketServerData.push(this.sockAllowNodes);
       if (this.isExist('sshs')) {
         this.sshColor = this.statrStatusCss;
       }
       if (this.isExist('sshc')) {
         this.sshClientColor = this.statrStatusCss;
       }
-      if (this.isExist('sockss')) {
+      if (this.isExist('socks')) {
         this.socketColor = this.statrStatusCss;
       }
-      if (this.isExist('socksc')) {
+      if (this.isExist('sockc')) {
         this.socketClientColor = this.statrStatusCss;
       }
     }
@@ -283,24 +368,24 @@ export class SubStatusComponent implements OnInit, OnDestroy {
           this.nodeVersion = info.version;
           this.nodeTag = info.tag;
           this.transports = info.transports;
-          if (info.transports && info.transports.length > 0) {
-            this.transportSource = new SubStatusDataSource(info.transports);
-          }
+          this._transportData.push(info.transports);
           this.feedBacks = info.app_feedbacks;
           this.showMessage(info.messages);
         }
+      }, err => {
+        this._transportData.push(null);
       });
     }
   }
-  getClientPort(client: string) {
+  getClientPort(client: string, target: any) {
     const app = this.findService(client);
     if (!app || !this.feedBacks) {
-      return 'No Open Client';
+      return;
     } else {
       const result = this.feedBacks.find(el => {
         return el.key === app.key;
       });
-      return 'Port: ' + result.feedbacks.port;
+      target = result.feedbacks.port ? result.feedbacks.port : 0;
     }
   }
   showMessage(msgs: Array<Array<Message>>) {
@@ -340,19 +425,18 @@ export class SubStatusComponent implements OnInit, OnDestroy {
     return 0;
   }
   fillApps() {
-    if (this.status.apps) {
-      this.appSource = new SubStatusDataSource(this.status.apps);
-      this.setServiceStatus();
-    } else {
-      if (env.isManager) {
-        this.api.getApps(this.status.addr).subscribe((apps: Array<App>) => {
-          this.status.apps = apps;
-          if (apps) {
-            this.appSource = new SubStatusDataSource(this.status.apps);
-            this.setServiceStatus();
-          }
-        });
-      }
+    if (env.isManager) {
+      this.api.getApps(this.status.addr).subscribe((apps: Array<App>) => {
+        this.status.apps = apps;
+        if (apps) {
+          this.setServiceStatus();
+        }
+        this._appData.push(this.status.apps);
+        this.getClientPort('sshc', this.sshClientPort);
+        this.getClientPort('sockc', this.sshClientPort);
+      }, err => {
+        this._appData.push(null);
+      });
     }
   }
   init() {
@@ -364,6 +448,8 @@ export class SubStatusComponent implements OnInit, OnDestroy {
         this.status = nodeServices;
         this.fillTransport();
         this.fillApps();
+        // Set SSH Client Port
+
       }
     });
     // if (!this.startRequest) {
@@ -371,13 +457,33 @@ export class SubStatusComponent implements OnInit, OnDestroy {
     // }
   }
 }
+
+
+export class SubDatabase {
+  /** Stream that emits whenever the data has been modified. */
+  dataChange: BehaviorSubject<any> = new BehaviorSubject<any>([]);
+  isShow = false;
+  get data(): any[] { return this.dataChange.value; }
+
+  constructor() { }
+
+  push(value: Array<any>) {
+    if (!value || value.length <= 0) {
+      this.isShow = false;
+    } else {
+      this.isShow = true;
+    }
+    this.dataChange.next(value);
+  }
+}
+
 export class SubStatusDataSource extends DataSource<any> {
   size = 0;
-  constructor(private apps: any) {
+  constructor(private _data: SubDatabase) {
     super();
   }
   connect(): Observable<any> {
-    return Observable.of(this.apps);
+    return this._data.dataChange;
   }
 
   disconnect() {
