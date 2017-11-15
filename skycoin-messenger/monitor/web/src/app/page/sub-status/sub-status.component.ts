@@ -342,6 +342,8 @@ export class SubStatusComponent implements OnInit, OnDestroy {
     if (this.status.apps) {
       if (this.findService('sshs')) {
         this.sshAllowNodes = this.findService('sshs').allow_nodes;
+      }
+      if (this.findService('socks')) {
         this.sockAllowNodes = this.findService('socks').allow_nodes;
       }
       this._sshServerData.push(this.sshAllowNodes);
@@ -409,7 +411,7 @@ export class SubStatusComponent implements OnInit, OnDestroy {
           width: '45rem',
           panelClass: 'alert',
           data: {
-            msg: msgs[0][0].msg
+            msg: this.alertMsg
           }
         });
       }, 500);
