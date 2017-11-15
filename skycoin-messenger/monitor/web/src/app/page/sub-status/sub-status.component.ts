@@ -108,7 +108,6 @@ export class SubStatusComponent implements OnInit, OnDestroy {
       const data = new FormData();
       data.append('toNode', this.socketClientForm.get('nodeKey').value);
       data.append('toApp', this.socketClientForm.get('appKey').value);
-      console.log('data:', this.status.addr);
       this.api.connectSocketClicent(this.status.addr, data).subscribe(result => {
         console.log('conect socket client');
         this.task.next();
@@ -387,7 +386,11 @@ export class SubStatusComponent implements OnInit, OnDestroy {
       const result = this.feedBacks.find(el => {
         return el.key === app.key;
       });
-      target = result.feedbacks.port ? result.feedbacks.port : 0;
+      const tmpPort = result.feedbacks.port;
+      if (tmpPort === target) {
+        return;
+      }
+      target = tmpPort ? tmpPort : 0;
     }
   }
   showMessage(msgs: Array<Array<Message>>) {

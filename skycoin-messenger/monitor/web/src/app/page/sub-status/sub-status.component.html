@@ -114,29 +114,29 @@
     </mat-grid-list>
     <mat-grid-list cols="6" rowHeight="2:1">
       <mat-grid-tile>
-        <p class="status-box-item-title">
+        <p class="status-box-item-title status-item">
           <small>Shadowsocks Client</small>
         </p>
-        <p class="status-box-item-content">
+        <p class="status-box-item-content status-item">
           <button mat-icon-button (click)="inputKeys($event,socketClientDialog)" [ngClass]="socketClientColor">
             <mat-icon aria-label="Shadowsocks">near_me</mat-icon>
           </button>
         </p>
-        <p>
-          Port: {{socketClientPort}}
+        <p class="status-item">
+          <span *ngIf="socketClientPort !== 0">Port: {{socketClientPort}}</span>
         </p>
       </mat-grid-tile>
       <mat-grid-tile>
-        <p class="status-box-item-title">
+        <p class="status-box-item-title status-item">
           <small>SSH Client</small>
         </p>
-        <p class="status-box-item-content">
+        <p class="status-box-item-content status-item">
           <button mat-icon-button (click)="inputKeys($event,sshClientDialog)" [ngClass]="sshClientColor">
             <mat-icon aria-label="SSH">computer</mat-icon>
           </button>
         </p>
-        <p>
-          Port: {{sshClientPort}}
+        <p class="status-item">
+          <span *ngIf="sshClientPort !== 0">Port: {{sshClientPort}}</span>
         </p>
       </mat-grid-tile>
     </mat-grid-list>
