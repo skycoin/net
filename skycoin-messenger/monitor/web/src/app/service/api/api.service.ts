@@ -35,13 +35,13 @@ export class ApiService {
     return this.handleNodePost(addr, '/node/run/sshc', data);
   }
   connectSocketClicent(addr: string, data?: FormData) {
-    return this.handleNodePost(addr, '/node/run/sockc', data);
+    return this.handleNodePost(addr, '/node/run/socksc', data);
   }
   runSSHServer(addr: string, data?: FormData) {
     return this.handleNodePost(addr, '/node/run/sshs', data);
   }
   runSockServer(addr: string, data?: FormData) {
-    return this.handleNodePost(addr, '/node/run/socks', data);
+    return this.handleNodePost(addr, '/node/run/sockss', data);
   }
   runNodeupdate(addr: string) {
     return this.handleNodePost(addr, '/node/run/update');

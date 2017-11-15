@@ -210,7 +210,7 @@ export class SubStatusComponent implements OnInit, OnDestroy {
       width: '370px',
       disableClose: true,
       data: {
-        vesrion: this.nodeVersion,
+        version: this.nodeVersion,
         tag: this.nodeTag
       }
     });
@@ -293,7 +293,7 @@ export class SubStatusComponent implements OnInit, OnDestroy {
     let nodes = [];
     if (this.status.apps && this.findService('sshs')) {
       console.log('get socks nodes');
-      nodes = this.findService('socks').allow_nodes;
+      nodes = this.findService('sockss').allow_nodes;
       this._socketServerData.push(nodes);
     }
     this.dialogTitle = title;
@@ -354,10 +354,10 @@ export class SubStatusComponent implements OnInit, OnDestroy {
       if (this.isExist('sshc')) {
         this.sshClientColor = this.statrStatusCss;
       }
-      if (this.isExist('socks')) {
+      if (this.isExist('sockss')) {
         this.socketColor = this.statrStatusCss;
       }
-      if (this.isExist('sockc')) {
+      if (this.isExist('socksc')) {
         this.socketClientColor = this.statrStatusCss;
       }
     }
@@ -400,7 +400,7 @@ export class SubStatusComponent implements OnInit, OnDestroy {
         if (m1[0].priority < m2[0].priority) {
           return 1;
         }
-        if (m1[0].priority < m2[0].priority) {
+        if (m1[0].priority > m2[0].priority) {
           return -1;
         }
         return 0;
@@ -430,12 +430,10 @@ export class SubStatusComponent implements OnInit, OnDestroy {
     if (env.isManager) {
       this.api.getApps(this.status.addr).subscribe((apps: Array<App>) => {
         this.status.apps = apps;
-        if (apps) {
-          this.setServiceStatus();
-        }
+        this.setServiceStatus();
         this._appData.push(this.status.apps);
         this.getClientPort('sshc', this.sshClientPort);
-        this.getClientPort('sockc', this.sshClientPort);
+        this.getClientPort('socksc', this.sshClientPort);
       }, err => {
         this._appData.push(null);
       });
