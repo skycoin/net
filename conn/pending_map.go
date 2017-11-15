@@ -230,3 +230,11 @@ func (q *streamQueue) push(k uint32, m []byte) {
 		data: m,
 	})
 }
+
+func (q *streamQueue) getAckedSeq() uint32 {
+	return q.ackedSeq
+}
+
+func (q *streamQueue) getNextAckSeq() uint32 {
+	return q.ackedSeq + 1
+}

@@ -163,13 +163,34 @@ func (c *UDPConn) WriteBytes(bytes []byte) error {
 
 func (c *UDPConn) Ack(seq uint32) error {
 	c.CTXLogger.Debugf("ack %d", seq)
-	p := make([]byte, msg.MSG_SEQ_END+msg.PKG_HEADER_SIZE)
+	p := make([]byte, msg.ACK_HEADER_SIZE+msg.PKG_HEADER_SIZE)
 	m := p[msg.PKG_HEADER_SIZE:]
-	m[msg.MSG_TYPE_BEGIN] = msg.TYPE_ACK
-	binary.BigEndian.PutUint32(m[msg.MSG_SEQ_BEGIN:], seq)
+	m[msg.ACK_TYPE_BEGIN] = msg.TYPE_ACK
+	binary.BigEndian.PutUint32(m[msg.ACK_SEQ_BEGIN:], seq)
+	binary.BigEndian.PutUint32(m[msg.ACK_NEXT_SEQ_BEGIN:], c.getNextAckSeq())
 	checksum := crc32.ChecksumIEEE(m)
 	binary.BigEndian.PutUint32(p[msg.PKG_CRC32_BEGIN:], checksum)
 	return c.WriteBytes(p)
+}
+
+func (c *UDPConn) RecvAck(m []byte) (err error) {
+	if len(m) < msg.ACK_HEADER_SIZE {
+		return fmt.Errorf("invalid ack msg %x", m)
+	}
+	seq := binary.BigEndian.Uint32(m[msg.ACK_SEQ_BEGIN:msg.ACK_SEQ_END])
+	ns := binary.BigEndian.Uint32(m[msg.ACK_NEXT_SEQ_BEGIN:msg.ACK_NEXT_SEQ_END])
+	err = c.delMsg(seq, false)
+	if err != nil {
+		return
+	}
+
+	for n := c.getNextAckSeq(); ns > n; n = c.getNextAckSeq() {
+		err = c.delMsg(n, true)
+		if err != nil {
+			return
+		}
+	}
+	return
 }
 
 func (c *UDPConn) Ping() error {
@@ -244,14 +265,16 @@ func (c *UDPConn) AddMsg(k uint32, v *msg.UDPMessage) {
 	c.UDPPendingMap.AddMsg(k, v)
 }
 
-func (c *UDPConn) DelMsg(seq uint32) error {
+func (c *UDPConn) delMsg(seq uint32, ignore bool) error {
 	c.GetContextLogger().Debugf("recv ack %d", seq)
 	c.AddAckCount()
 	ok, um, msgs := c.DelMsgAndGetLossMsgs(seq)
 	if ok {
-		//c.updateRTT(um.GetRTT())
 		c.addBytesInFlight(-um.TotalSize())
-		//c.updateDeliveryRate(um)
+		if !ignore {
+			c.updateRTT(um.GetRTT())
+			c.updateDeliveryRate(um)
+		}
 		if len(msgs) > 1 {
 			c.CTXLogger.Debugf("resend loss msgs %v", msgs)
 			for _, msg := range msgs {

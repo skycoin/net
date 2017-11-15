@@ -62,8 +62,20 @@ func (c *ServerUDPConn) ReadLoop(fn func(c *net.UDPConn, addr *net.UDPAddr) *con
 		t := m[msg.MSG_TYPE_BEGIN]
 		switch t {
 		case msg.TYPE_ACK:
-			seq := binary.BigEndian.Uint32(m[msg.MSG_SEQ_BEGIN:msg.MSG_SEQ_END])
-			cc.DelMsg(seq)
+			func() {
+				var err error
+				defer func() {
+					if e := recover(); e != nil {
+						cc.CTXLogger.Debug(e)
+						err = fmt.Errorf("readloop panic err:%v", e)
+					}
+					if err != nil {
+						cc.SetStatusToError(err)
+						cc.Close()
+					}
+				}()
+				err = cc.RecvAck(m)
+			}()
 		case msg.TYPE_PONG:
 		case msg.TYPE_PING:
 			func() {
@@ -102,11 +114,12 @@ func (c *ServerUDPConn) ReadLoop(fn func(c *net.UDPConn, addr *net.UDPAddr) *con
 				}()
 				seq := binary.BigEndian.Uint32(m[msg.MSG_SEQ_BEGIN:msg.MSG_SEQ_END])
 
+				ok, ms := cc.Push(seq, m[msg.MSG_HEADER_END:])
 				err = cc.Ack(seq)
 				if err != nil {
 					return
 				}
-				if ok, ms := cc.Push(seq, m[msg.MSG_HEADER_END:]); ok {
+				if ok {
 					for _, m := range ms {
 						cc.CTXLogger.Debugf("msg in")
 						cc.In <- m
