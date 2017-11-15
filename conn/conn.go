@@ -45,7 +45,7 @@ type ConnCommonFields struct {
 
 	lastReadTime int64
 
-	sentBytes uint64
+	sentBytes     uint64
 	receivedBytes uint64
 
 	Status int // STATUS_CONNECTING, STATUS_CONNECTED, STATUS_ERROR
@@ -115,9 +115,7 @@ func (c *ConnCommonFields) Close() {
 	c.closed = true
 
 	close(c.In)
-	c.In = nil
 	close(c.Out)
-	c.Out = nil
 }
 
 func (c *ConnCommonFields) IsClosed() bool {

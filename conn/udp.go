@@ -184,10 +184,13 @@ func (c *UDPConn) RecvAck(m []byte) (err error) {
 		return
 	}
 
-	for n := c.getNextAckSeq(); ns > n; n = c.getNextAckSeq() {
-		err = c.delMsg(n, true)
-		if err != nil {
-			return
+	n, ok := c.getUnAckSeq()
+	if ok {
+		for ; ns > n+1; n++ {
+			err = c.delMsg(n, true)
+			if err != nil {
+				return
+			}
 		}
 	}
 	return

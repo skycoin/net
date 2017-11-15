@@ -128,6 +128,15 @@ func (m *UDPPendingMap) AddMsg(k uint32, v msg.Interface) {
 	v.Transmitted()
 }
 
+func (m *UDPPendingMap) getUnAckSeq() (s uint32, ok bool) {
+	r, ok := m.seqs.Min().(seq)
+	if !ok {
+		return
+	}
+	s = uint32(r)
+	return
+}
+
 func (m *UDPPendingMap) DelMsgAndGetLossMsgs(k uint32) (ok bool, um *msg.UDPMessage, loss []*msg.UDPMessage) {
 	m.Lock()
 	v, ok := m.Pending[k]

@@ -13,6 +13,7 @@ type Connection struct {
 	*factory.Connection
 	factory *MessengerFactory
 
+	closed     bool
 	key        cipher.PubKey
 	keySetCond *sync.Cond
 	keySet     bool
@@ -328,6 +329,10 @@ func (c *Connection) Close() {
 	c.keySetCond.Broadcast()
 	c.fieldsMutex.Lock()
 	defer c.fieldsMutex.Unlock()
+	if c.closed {
+		return
+	}
+	c.closed = true
 	if c.keySet {
 		if !c.skipFactoryReg {
 			c.factory.unregister(c.key, c)
@@ -336,13 +341,10 @@ func (c *Connection) Close() {
 	}
 	if c.in != nil {
 		close(c.in)
-		c.in = nil
 	}
 	if c.disconnected != nil {
 		close(c.disconnected)
-		c.disconnected = nil
 	}
-	c.Connection.Close()
 
 	c.appTransportsMutex.RLock()
 	defer c.appTransportsMutex.RUnlock()
@@ -351,8 +353,9 @@ func (c *Connection) Close() {
 		for _, v := range c.appTransports {
 			v.Close()
 		}
-		c.appTransports = nil
 	}
+
+	c.Connection.Close()
 }
 
 func (c *Connection) writeOPBytes(op byte, body []byte) error {
