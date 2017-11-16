@@ -128,10 +128,11 @@ func (m *UDPPendingMap) AddMsg(k uint32, v msg.Interface) {
 	v.Transmitted()
 }
 
-func (m *UDPPendingMap) getUnAckSeq() (s uint32, ok bool) {
+func (m *UDPPendingMap) getMinUnAckSeq() (s uint32, ok bool) {
 	m.RLock()
 	r, ok := m.seqs.Min().(seq)
 	if !ok {
+		m.RUnlock()
 		return
 	}
 	s = uint32(r)

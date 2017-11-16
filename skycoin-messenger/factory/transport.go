@@ -36,6 +36,9 @@ type Transport struct {
 	timeoutTimer  *time.Timer
 	appConnHolder *Connection
 
+	uploadBW   bandwidth
+	downloadBW bandwidth
+
 	fieldsMutex sync.RWMutex
 }
 
@@ -129,6 +132,7 @@ func (t *Transport) nodeReadLoop(conn *Connection, getAppConn func(id uint32) ne
 				log.Debugf("node conn read err %v", err)
 				return
 			}
+			t.downloadBW.add(len(m))
 			id := binary.BigEndian.Uint32(m[PKG_HEADER_ID_BEGIN:PKG_HEADER_ID_END])
 			appConn := getAppConn(id)
 			if appConn == nil {
@@ -201,6 +205,7 @@ func (t *Transport) appReadLoop(id uint32, appConn net.Conn, conn *Connection, c
 		}
 		pkg := make([]byte, PKG_HEADER_END+n)
 		copy(pkg, buf[:PKG_HEADER_END+n])
+		t.uploadBW.add(len(pkg))
 		conn.GetChanOut() <- pkg
 	}
 }
@@ -392,4 +397,41 @@ func (t *Transport) StopTimeout() {
 	}
 	t.timeoutTimer = nil
 	t.fieldsMutex.Unlock()
+}
+
+type bandwidth struct {
+	bytes     uint
+	lastBytes uint
+	sec       int64
+	sync.RWMutex
+}
+
+func (b *bandwidth) add(s int) {
+	b.Lock()
+	now := time.Now().Unix()
+	if b.sec != now {
+		b.sec = now
+		b.lastBytes = b.bytes
+		b.bytes = uint(s)
+		b.Unlock()
+		return
+	}
+	b.bytes += uint(s)
+	b.Unlock()
+}
+
+// Bandwidth bytes/sec
+func (b *bandwidth) get() (r uint) {
+	b.RLock()
+	r = b.lastBytes
+	b.RUnlock()
+	return
+}
+
+func (t *Transport) GetUploadBandwidth() uint {
+	return t.uploadBW.get()
+}
+
+func (t *Transport) GetDownloadBandwidth() uint {
+	return t.downloadBW.get()
 }

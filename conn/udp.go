@@ -162,12 +162,13 @@ func (c *UDPConn) WriteBytes(bytes []byte) error {
 }
 
 func (c *UDPConn) Ack(seq uint32) error {
-	c.GetContextLogger().Debugf("ack %d", seq)
+	nSeq := c.getNextAckSeq()
+	c.GetContextLogger().Debugf("ack %d, next %d", seq, nSeq)
 	p := make([]byte, msg.ACK_HEADER_SIZE+msg.PKG_HEADER_SIZE)
 	m := p[msg.PKG_HEADER_SIZE:]
 	m[msg.ACK_TYPE_BEGIN] = msg.TYPE_ACK
 	binary.BigEndian.PutUint32(m[msg.ACK_SEQ_BEGIN:], seq)
-	binary.BigEndian.PutUint32(m[msg.ACK_NEXT_SEQ_BEGIN:], c.getNextAckSeq())
+	binary.BigEndian.PutUint32(m[msg.ACK_NEXT_SEQ_BEGIN:], nSeq)
 	checksum := crc32.ChecksumIEEE(m)
 	binary.BigEndian.PutUint32(p[msg.PKG_CRC32_BEGIN:], checksum)
 	return c.WriteBytes(p)
@@ -179,20 +180,19 @@ func (c *UDPConn) RecvAck(m []byte) (err error) {
 	}
 	seq := binary.BigEndian.Uint32(m[msg.ACK_SEQ_BEGIN:msg.ACK_SEQ_END])
 	ns := binary.BigEndian.Uint32(m[msg.ACK_NEXT_SEQ_BEGIN:msg.ACK_NEXT_SEQ_END])
-	err = c.delMsg(seq, false)
-	if err != nil {
-		return
-	}
+	n, ok := c.getMinUnAckSeq()
 
-	n, ok := c.getUnAckSeq()
+	c.GetContextLogger().Debugf("recv ack %d, next %d, min unack %d, %t", seq, ns, n, ok)
 	if ok {
 		for ; ns > n+1; n++ {
+			c.GetContextLogger().Debugf("ignore ack %d", n)
 			err = c.delMsg(n, true)
 			if err != nil {
 				return
 			}
 		}
 	}
+	err = c.delMsg(seq, false)
 	return
 }
 
@@ -250,6 +250,7 @@ func (c *UDPConn) getRTO() (rto time.Duration) {
 }
 
 func (c *UDPConn) setRTO(rto time.Duration) {
+	c.GetContextLogger().Debugf("setRTO %d", rto)
 	c.FieldsMutex.Lock()
 	c.rto = rto
 	c.FieldsMutex.Unlock()
