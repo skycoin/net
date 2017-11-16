@@ -378,19 +378,26 @@ export class SubStatusComponent implements OnInit, OnDestroy {
       });
     }
   }
-  getClientPort(client: string, target: any) {
+  setClientPort(client: string) {
     const app = this.findService(client);
-    if (!app || !this.feedBacks) {
-      return;
-    } else {
+    let port = 0;
+    if (app && this.feedBacks) {
       const result = this.feedBacks.find(el => {
         return el.key === app.key;
       });
-      const tmpPort = result.feedbacks.port;
-      if (tmpPort === target) {
-        return;
-      }
-      target = tmpPort ? tmpPort : 0;
+      port = result.feedbacks ? result.feedbacks.port : 0;
+    }
+    switch (client) {
+      case 'sshc':
+        if (this.sshClientPort !== port) {
+          this.sshClientPort = port;
+        }
+        break;
+      case 'socksc':
+        if (this.socketClientPort !== port) {
+          this.socketClientPort = port;
+        }
+        break;
     }
   }
   showMessage(msgs: Array<Array<Message>>) {
@@ -434,9 +441,9 @@ export class SubStatusComponent implements OnInit, OnDestroy {
       this.api.getApps(this.status.addr).subscribe((apps: Array<App>) => {
         this.status.apps = apps;
         this.setServiceStatus();
+        this.setClientPort('sshc');
+        this.setClientPort('socksc');
         this._appData.push(this.status.apps);
-        this.getClientPort('sshc', this.sshClientPort);
-        this.getClientPort('socksc', this.sshClientPort);
       }, err => {
         this._appData.push(null);
       });
@@ -451,8 +458,6 @@ export class SubStatusComponent implements OnInit, OnDestroy {
         this.status = nodeServices;
         this.fillTransport();
         this.fillApps();
-        // Set SSH Client Port
-
       }
     });
     // if (!this.startRequest) {
