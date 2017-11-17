@@ -26,7 +26,7 @@ export class SubStatusComponent implements OnInit, OnDestroy {
   alertMsg = '';
   sshColumns = ['index', 'key', 'del'];
   displayedColumns = ['index', 'key', 'app'];
-  transportColumns = ['index', 'fromApp', 'fromNode', 'toNode', 'toApp'];
+  transportColumns = ['index', 'upload', 'download', 'fromApp', 'fromNode', 'toNode', 'toApp'];
   appSource: SubStatusDataSource = null;
   sshSource: SubStatusDataSource = null;
   sockSource: SubStatusDataSource = null;
@@ -68,6 +68,7 @@ export class SubStatusComponent implements OnInit, OnDestroy {
   _transportData = new SubDatabase();
   _sshServerData = new SubDatabase();
   _socketServerData = new SubDatabase();
+  isProduction = env.production;
   constructor(
     private router: Router,
     private route: ActivatedRoute,

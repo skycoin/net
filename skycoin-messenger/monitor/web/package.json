@@ -8,6 +8,8 @@
     "start": "ng serve --proxy-config proxy.conf.json",
     "build-d": "ng build --prod --env=discovery -op dist-discovery",
     "build-m": "ng build --prod --env=manager -op dist-manager",
+    "build-d-dev": "ng build --prod --env=discovery-dev -op dist-discovery",
+    "build-m-dev": "ng build --prod --env=manager-dev -op dist-manager",
     "test": "ng test",
     "lint": "ng lint",
     "e2e": "ng e2e"

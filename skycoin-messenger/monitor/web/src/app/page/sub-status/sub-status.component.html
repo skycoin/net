@@ -8,7 +8,7 @@
       <p> Public Key:
         <strong>{{key}}</strong>
       </p>
-      <p>Address:
+      <p *ngIf="!isProduction">Address:
         <span style="color: red">{{status?.addr}}</span>
       </p>
     </div>
@@ -123,7 +123,7 @@
           </button>
         </p>
         <p class="status-item">
-          <span *ngIf="socketClientPort !== 0">Port: {{socketClientPort}}</span>
+          <span *ngIf="socketClientPort !== 0" style="vertical-align: sub">Port: {{socketClientPort}}</span>
         </p>
       </mat-grid-tile>
       <mat-grid-tile>
@@ -136,7 +136,7 @@
           </button>
         </p>
         <p class="status-item">
-          <span *ngIf="sshClientPort !== 0">Port: {{sshClientPort}}</span>
+          <span *ngIf="sshClientPort !== 0" style="vertical-align: sub">Port: {{sshClientPort}}</span>
         </p>
       </mat-grid-tile>
     </mat-grid-list>
@@ -150,8 +150,16 @@
   </h3>
   <mat-table [dataSource]="transportSource" [trackBy]="transportsTrackBy">
     <ng-container matColumnDef="index">
-      <mat-header-cell *matHeaderCellDef class="text-center" [style.flex]="'0 0 3rem'"> # </mat-header-cell>
-      <mat-cell *matCellDef="let i = index" [style.flex]="'0 0 3rem'" class="text-center"> {{i + 1}} </mat-cell>
+      <mat-header-cell *matHeaderCellDef class="text-center" [style.flex]="'0 0 2rem'"> # </mat-header-cell>
+      <mat-cell *matCellDef="let i = index" [style.flex]="'0 0 2rem'" class="text-center"> {{i + 1}} </mat-cell>
+    </ng-container>
+    <ng-container matColumnDef="upload">
+      <mat-header-cell *matHeaderCellDef class="text-center" [style.flex]="'0 0 5rem'"> Send </mat-header-cell>
+      <mat-cell *matCellDef="let data" class="transport-key" [style.flex]="'0 0 5rem'"> {{data.upload_bandwidth | byteTo}} </mat-cell>
+    </ng-container>
+    <ng-container matColumnDef="download">
+      <mat-header-cell *matHeaderCellDef class="text-center" [style.flex]="'0 0 5rem'"> Recv </mat-header-cell>
+      <mat-cell *matCellDef="let data" class="transport-key" [style.flex]="'0 0 5rem'"> {{data.download_bandwidth | byteTo}} </mat-cell>
     </ng-container>
     <ng-container matColumnDef="toNode">
       <mat-header-cell *matHeaderCellDef class="text-center"> To Node </mat-header-cell>
