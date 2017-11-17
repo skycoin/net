@@ -278,19 +278,19 @@ func (req *forwardNodeConnResp) Run(conn *Connection) (err error) {
 		conn.GetContextLogger().Debugf("forwardNodeConnResp recv old msg %#v", req.Msg)
 		return
 	}
-	appConn.writeOP(OP_BUILD_APP_CONN|RESP_PREFIX, &AppConnResp{
-		App:    req.App,
-		Failed: req.Failed,
-		Msg:    req.Msg,
-	})
-	tr, ok := appConn.getTransport(req.App)
-	if !ok {
-		conn.GetContextLogger().Debugf("forwardNodeConnResp tr %x not found", req.App)
-		return
-	}
 	if req.Failed {
-		tr.Close()
+		appConn.writeOP(OP_BUILD_APP_CONN|RESP_PREFIX, &AppConnResp{
+			App:    req.App,
+			Failed: req.Failed,
+			Msg:    req.Msg,
+		})
 		appConn.setTransport(req.App, nil)
+		tr, ok := appConn.getTransport(req.App)
+		if !ok {
+			conn.GetContextLogger().Debugf("forwardNodeConnResp tr %x not found", req.App)
+			return
+		}
+		tr.Close()
 	}
 	return
 }
