@@ -125,7 +125,6 @@ func (m *UDPPendingMap) AddMsg(k uint32, v msg.Interface) {
 	m.Pending[k] = v
 	m.seqs.ReplaceOrInsert(seq(k))
 	m.Unlock()
-	v.Transmitted()
 }
 
 func (m *UDPPendingMap) getMinUnAckSeq() (s uint32, ok bool) {
@@ -136,6 +135,13 @@ func (m *UDPPendingMap) getMinUnAckSeq() (s uint32, ok bool) {
 		return
 	}
 	s = uint32(r)
+	m.RUnlock()
+	return
+}
+
+func (m *UDPPendingMap) exists(k uint32) (ok bool) {
+	m.RLock()
+	_, ok = m.Pending[k]
 	m.RUnlock()
 	return
 }
@@ -156,7 +162,7 @@ func (m *UDPPendingMap) DelMsgAndGetLossMsgs(k uint32) (ok bool, um *msg.UDPMess
 		if ok {
 			v, ok := v.(*msg.UDPMessage)
 			if ok {
-				if v.Miss() >= 2 {
+				if v.Miss() >= 3 {
 					v.ResetMiss()
 					loss = append(loss, v)
 				}

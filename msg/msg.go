@@ -3,6 +3,7 @@ package msg
 import (
 	"encoding/binary"
 	"fmt"
+	"github.com/google/btree"
 	"hash/crc32"
 	"sync"
 	"sync/atomic"
@@ -55,7 +56,14 @@ func New(t uint8, seq uint32, bytes []byte) *Message {
 }
 
 func (msg *Message) String() string {
-	return fmt.Sprintf("Msg Type:%d, Seq:%d, Len:%d, Body:%x", msg.Type, msg.Seq, msg.Len, msg.Body)
+	return fmt.Sprintf("Msg Type:%d, Seq:%d, Len:%d, Status:%x", msg.Type, msg.Seq, msg.Len, msg.Status())
+}
+
+func (msg *Message) Status() (s int) {
+	msg.RLock()
+	s = msg.status
+	msg.RUnlock()
+	return
 }
 
 func (msg *Message) GetHashId() cipher.SHA256 {
@@ -168,10 +176,6 @@ func (msg *UDPMessage) Transmitted() {
 }
 
 func (msg *UDPMessage) SetRTO(rto time.Duration, fn func() error) {
-	msg.setRTO(rto, fn)
-}
-
-func (msg *UDPMessage) setRTO(rto time.Duration, fn func() error) {
 	msg.Lock()
 	msg.resendTimer = time.AfterFunc(rto, func() {
 		msg.Lock()
@@ -183,7 +187,7 @@ func (msg *UDPMessage) setRTO(rto time.Duration, fn func() error) {
 		msg.ResetMiss()
 		err := fn()
 		if err == nil {
-			msg.setRTO(rto, fn)
+			msg.SetRTO(rto, fn)
 		}
 	})
 	msg.Unlock()
@@ -214,4 +218,8 @@ func (msg *UDPMessage) GetDelivered() uint64 {
 
 func (msg *UDPMessage) GetDeliveryTime() time.Time {
 	return msg.deliveryTime
+}
+
+func (msg *UDPMessage) Less(b btree.Item) bool {
+	return msg.Seq < b.(*UDPMessage).Seq
 }
