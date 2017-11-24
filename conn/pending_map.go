@@ -146,7 +146,7 @@ func (m *UDPPendingMap) exists(k uint32) (ok bool) {
 	return
 }
 
-func (m *UDPPendingMap) DelMsgAndGetLossMsgs(k uint32) (ok bool, um *msg.UDPMessage, loss []*msg.UDPMessage) {
+func (m *UDPPendingMap) DelMsgAndGetLossMsgs(k uint32, resend uint32) (ok bool, um *msg.UDPMessage, loss []*msg.UDPMessage) {
 	m.Lock()
 	v, ok := m.Pending[k]
 	if !ok {
@@ -162,7 +162,7 @@ func (m *UDPPendingMap) DelMsgAndGetLossMsgs(k uint32) (ok bool, um *msg.UDPMess
 		if ok {
 			v, ok := v.(*msg.UDPMessage)
 			if ok {
-				if v.Miss() >= 3 {
+				if v.Miss() >= resend {
 					v.ResetMiss()
 					loss = append(loss, v)
 				}

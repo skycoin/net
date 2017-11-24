@@ -148,14 +148,6 @@ func (c *TCPConn) Ping() error {
 	return c.WriteBytes(msg.GenPingMsg())
 }
 
-func (c *TCPConn) GetChanOut() chan<- []byte {
-	return c.Out
-}
-
-func (c *TCPConn) GetChanIn() <-chan []byte {
-	return c.In
-}
-
 func (c *TCPConn) UpdateLastTime() {
 	c.TcpConn.SetReadDeadline(getTCPReadDeadline())
 	c.ConnCommonFields.UpdateLastTime()

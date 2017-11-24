@@ -102,6 +102,14 @@ func (c *ConnCommonFields) SetContextLogger(l *log.Entry) {
 	c.ctxLogger.Store(l)
 }
 
+func (c *ConnCommonFields) GetChanOut() chan<- []byte {
+	return c.Out
+}
+
+func (c *ConnCommonFields) GetChanIn() <-chan []byte {
+	return c.In
+}
+
 func (c *ConnCommonFields) Close() {
 	c.FieldsMutex.Lock()
 	defer c.FieldsMutex.Unlock()

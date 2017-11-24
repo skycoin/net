@@ -134,7 +134,7 @@ func (c *UDPConn) writeLoopWithPing() (err error) {
 
 func (c *UDPConn) Write(bytes []byte) (err error) {
 	s := c.GetNextSeq()
-	m := msg.NewUDP(msg.TYPE_NORMAL, s, bytes, c.getDelivered(), c.getDeliveryTime())
+	m := msg.NewUDP(msg.TYPE_NORMAL, s, bytes)
 	c.AddMsg(s, m)
 	ok := c.addBytesInFlight(m)
 	if !ok {
@@ -149,7 +149,7 @@ func (c *UDPConn) Write(bytes []byte) (err error) {
 func (c *UDPConn) transmitted(m *msg.UDPMessage) {
 	m.Transmitted()
 	m.SetRTO(c.getRTO(), func() (err error) {
-		c.AddLossResendCount()
+		c.AddRTOResendCount()
 		err = c.WriteBytes(m.PkgBytes())
 		if err != nil {
 			c.SetStatusToError(err)
@@ -157,14 +157,16 @@ func (c *UDPConn) transmitted(m *msg.UDPMessage) {
 		}
 		return
 	})
+	m.UpdateState(c.getDelivered(), c.getDeliveredTime(), c.getSentTime(), c.getAppLimited())
 }
 
-func (c *UDPConn) resendMsg(m *msg.UDPMessage) error {
+func (c *UDPConn) resendMsg(m *msg.UDPMessage) (err error) {
 	if !c.UDPPendingMap.exists(m.Seq) {
-		return nil
+		return
 	}
 	c.GetContextLogger().Debugf("resendMsg %s", m)
-	return c.WriteBytes(m.PkgBytes())
+	err = c.WriteBytes(m.PkgBytes())
+	return
 }
 
 func (c *UDPConn) writePendingMsgs() error {
@@ -244,14 +246,6 @@ func (c *UDPConn) Ping() error {
 	return c.WriteBytes(p)
 }
 
-func (c *UDPConn) GetChanOut() chan<- []byte {
-	return c.Out
-}
-
-func (c *UDPConn) GetChanIn() <-chan []byte {
-	return c.In
-}
-
 func (c *UDPConn) GetNextSeq() uint32 {
 	return atomic.AddUint32(&c.seq, 1)
 }
@@ -298,12 +292,12 @@ func (c *UDPConn) AddMsg(k uint32, v *msg.UDPMessage) {
 }
 
 func (c *UDPConn) delMsg(seq uint32, ignore bool) error {
-	c.AddAckCount()
-	ok, um, msgs := c.DelMsgAndGetLossMsgs(seq)
+	ok, um, msgs := c.DelMsgAndGetLossMsgs(seq, c.ca.getCwnd()/MAX_UDP_PACKAGE_SIZE/3)
 	if ok {
+		c.AddAckCount()
 		if !ignore {
-			//c.updateRTT(um.GetRTT())
-			//c.updateDeliveryRate(um)
+			c.updateRTT(um.GetRTT())
+			c.updateDeliveryRate(um)
 		}
 		c.subBytesInFlight(um.TotalSize())
 		if len(msgs) > 1 {
@@ -319,7 +313,7 @@ func (c *UDPConn) delMsg(seq uint32, ignore bool) error {
 			}
 		}
 		c.UpdateLastAck(seq)
-	} else {
+	} else if !ignore {
 		c.GetContextLogger().Debugf("over ack %s", c)
 		c.AddOverAckCount()
 	}
@@ -330,7 +324,7 @@ func (c *UDPConn) AddLossResendCount() {
 	atomic.AddUint32(&c.lossResendCount, 1)
 }
 
-func (c *UDPConn) AddResendCount() {
+func (c *UDPConn) AddRTOResendCount() {
 	atomic.AddUint32(&c.rtoResendCount, 1)
 }
 
@@ -399,7 +393,11 @@ func (t *rttSampler) push(r rtt) rtt {
 }
 
 func (t *rttSampler) getMin() rtt {
-	return t.tree.Min().(rtt)
+	item := t.tree.Min()
+	if item == nil {
+		return 0
+	}
+	return item.(rtt)
 }
 
 func (c *UDPConn) updateRTT(t time.Duration) {
@@ -407,19 +405,20 @@ func (c *UDPConn) updateRTT(t time.Duration) {
 		panic("updateRTT t <= 0")
 	}
 	r := c.rttSamples.push(rtt(t))
+	if r <= 0 {
+		return
+	}
 	for {
 		ot := c.getRTT()
-		c.GetContextLogger().Debugf("updateRTT ot %d new %d", ot, r)
-		if ot == 0 || time.Duration(r) < ot {
+		if time.Duration(r) != ot {
 			ok := atomic.CompareAndSwapInt64((*int64)(&c.rtt), int64(ot), int64(r))
 			if !ok {
 				continue
 			}
-			c.setRTO(t * 4)
+			c.setRTO(t * 2)
 		}
 		break
 	}
-	c.GetContextLogger().Debug("updateRTT end")
 }
 
 type rateSampler struct {
@@ -466,53 +465,82 @@ func (t *rateSampler) push(r rate) rate {
 	return t.tree.Max().(rate)
 }
 
+func (t *rateSampler) getMax() rate {
+	item := t.tree.Max()
+	if item == nil {
+		return 0
+	}
+	return item.(rate)
+}
+
 func (c *UDPConn) updateDeliveryRate(m *msg.UDPMessage) {
 	c.ca.Lock()
 	defer c.ca.Unlock()
 	c.delivered += uint64(m.TotalSize())
-	if c.deliveryTime.IsZero() {
-		c.deliveryTime = time.Now()
+	c.deliveredTime = time.Now()
+	c.sentTime = m.GetTransmittedTime()
+
+	if m.GetSentTime().IsZero() || m.GetDeliveredTime().IsZero() {
 		return
 	}
-	d := c.delivered
-	if d <= 0 {
+
+	sd := c.sentTime.Sub(m.GetSentTime()) / time.Millisecond
+	ad := c.deliveredTime.Sub(m.GetDeliveredTime()) / time.Millisecond
+	interval := ad
+	if sd > ad {
+		interval = sd
+	}
+	d := c.delivered - m.GetDelivered()
+	drate := rate(d / uint64(interval))
+	c.GetContextLogger().Debugf("drate(%d) d %d interval %d sd %d ad %d", drate, d, interval, sd, ad)
+	mr := c.rttSamples.getMin()
+	if mr <= 0 {
 		return
 	}
-	dt := time.Now().Sub(c.deliveryTime) / time.Millisecond
-	c.GetContextLogger().Debugf("drate d %d dt %d", d, dt)
-	drate := d / uint64(dt)
+	rtt := uint64(time.Duration(mr) / time.Millisecond)
+	if uint64(interval) < rtt {
+		return
+	}
 	if drate <= 0 {
 		return
 	}
-	max := uint64(c.rateSamples.push(rate(drate)))
-	if max != drate && c.ca.mode == startup {
-		c.fullCnt++
-		if c.fullCnt > 3 {
-			c.ca.mode = drain
-			c.ca.pacingGain = drainGain
+
+	max := uint64(c.rateSamples.push(drate))
+	hm := c.rateSamples.getMax()
+	if hm <= 0 {
+		return
+	}
+	cwnd := uint32(float64(max*rtt) * c.pacingGain)
+	if c.ca.mode == startup {
+		if hm > drate {
+			c.fullCnt++
+			if c.fullCnt > 3 {
+				c.ca.mode = drain
+				c.ca.pacingGain = drainGain
+			}
 		}
 	}
-	rtt := uint64(c.rttSamples.getMin()) / uint64(time.Millisecond)
-	cwnd := int(float64(max*rtt) * c.pacingGain)
-	c.GetContextLogger().Debugf("mode %d, max bytes %d rtt %d: cwnd %d", c.mode, max, rtt, cwnd)
-	//if c.ca.mode == startup && cwnd > c.cwnd {
-	//	c.cwnd = cwnd
-	//} else if c.ca.mode == drain {
-	//	pcwnd := int(max * rtt)
-	//	if c.ca.bytesInFlight < int(pcwnd) {
-	//		c.ca.mode = probeBW
-	//		cwnd = pcwnd
-	//	}
-	//	c.cwnd = cwnd
-	//}
+	c.GetContextLogger().Debugf("mode %d, max bw %d rtt %d: cwnd %d", c.mode, max, rtt, cwnd)
+	if c.ca.mode == startup && cwnd > c.cwnd {
+		//c.cwnd = cwnd
+	} else if c.ca.mode == drain {
+		pcwnd := uint32(max * rtt)
+		if c.ca.bytesInFlight < int(pcwnd) {
+			c.ca.mode = probeBW
+			c.ca.pacingGain = 1
+			cwnd = pcwnd
+		}
+		//c.cwnd = cwnd
+	}
 }
 
 type ca struct {
-	delivered    uint64
-	deliveryTime time.Time
-	rttSamples   *rttSampler
-	rateSamples  *rateSampler
-	cwnd         int
+	delivered     uint64
+	deliveredTime time.Time
+	sentTime      time.Time
+	rttSamples    *rttSampler
+	rateSamples   *rateSampler
+	cwnd          uint32
 	mode
 	pacingGain    float64
 	fullCnt       uint
@@ -540,9 +568,16 @@ func (ca *ca) getDelivered() (d uint64) {
 	return
 }
 
-func (ca *ca) getDeliveryTime() (d time.Time) {
+func (ca *ca) getDeliveredTime() (d time.Time) {
 	ca.RLock()
-	d = ca.deliveryTime
+	d = ca.deliveredTime
+	ca.RUnlock()
+	return
+}
+
+func (ca *ca) getSentTime() (d time.Time) {
+	ca.RLock()
+	d = ca.sentTime
 	ca.RUnlock()
 	return
 }
@@ -553,7 +588,7 @@ func (ca *ca) addBytesInFlight(m *msg.UDPMessage) (ok bool) {
 	defer ca.Unlock()
 
 	min := ca.buff.Min()
-	if (min != nil && min.Less(m)) || ca.cwnd < ca.bytesInFlight+len(bytes) {
+	if (min != nil && min.Less(m)) || int(ca.cwnd) < ca.bytesInFlight+len(bytes) {
 		ca.buff.ReplaceOrInsert(m)
 		return
 	}
@@ -590,6 +625,27 @@ func (ca *ca) popMessage() (m *msg.UDPMessage) {
 func (ca *ca) getBytesInFlight() (r int) {
 	ca.RLock()
 	r = ca.bytesInFlight
+	ca.RUnlock()
+	return
+}
+
+func (ca *ca) getCwnd() (r uint32) {
+	ca.RLock()
+	r = ca.cwnd
+	ca.RUnlock()
+	return
+}
+
+func (ca *ca) setCwnd(cwnd uint32) {
+	if cwnd < MAX_UDP_PACKAGE_SIZE {
+		return
+	}
+	ca.cwnd = cwnd
+}
+
+func (ca *ca) getAppLimited() (r int) {
+	ca.RLock()
+	r = 1
 	ca.RUnlock()
 	return
 }

@@ -1,14 +1,12 @@
 package conn
 
 import (
-	"testing"
-	"time"
-
 	"github.com/skycoin/net/msg"
+	"testing"
 )
 
 func newUdp(seq uint32) *msg.UDPMessage {
-	return msg.NewUDP(1, seq, []byte{byte(seq)}, 0, time.Time{})
+	return msg.NewUDP(1, seq, []byte{byte(seq)})
 }
 
 func TestNewUDPPendingMap(t *testing.T) {
@@ -19,18 +17,18 @@ func TestNewUDPPendingMap(t *testing.T) {
 	m.AddMsg(4, newUdp(4))
 	m.AddMsg(5, newUdp(5))
 
-	t.Log(m.DelMsgAndGetLossMsgs(1))
+	t.Log(m.DelMsgAndGetLossMsgs(1, 3))
 	//t.Log(m.DelMsgAndGetLossMsgs(3))
-	t.Log(m.DelMsgAndGetLossMsgs(4))
-	t.Log(m.DelMsgAndGetLossMsgs(5))
+	t.Log(m.DelMsgAndGetLossMsgs(4, 3))
+	t.Log(m.DelMsgAndGetLossMsgs(5, 3))
 	m.AddMsg(6, newUdp(6))
-	t.Log(m.DelMsgAndGetLossMsgs(3))
+	t.Log(m.DelMsgAndGetLossMsgs(3, 3))
 	m.AddMsg(7, newUdp(7))
-	t.Log(m.DelMsgAndGetLossMsgs(6))
+	t.Log(m.DelMsgAndGetLossMsgs(6, 3))
 	m.AddMsg(8, newUdp(8))
 	m.AddMsg(9, newUdp(9))
-	t.Log(m.DelMsgAndGetLossMsgs(8))
-	t.Log(m.DelMsgAndGetLossMsgs(9))
+	t.Log(m.DelMsgAndGetLossMsgs(8, 3))
+	t.Log(m.DelMsgAndGetLossMsgs(9, 3))
 }
 
 func TestStreamQueue_Push(t *testing.T) {

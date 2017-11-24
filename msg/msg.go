@@ -156,15 +156,15 @@ type UDPMessage struct {
 	miss        uint32
 	resendTimer *time.Timer
 
-	delivered    uint64
-	deliveryTime time.Time
+	delivered     uint64
+	deliveredTime time.Time
+	sentTime      time.Time
+	isAppLimited  int
 }
 
-func NewUDP(t uint8, seq uint32, bytes []byte, delivered uint64, deliveredTime time.Time) *UDPMessage {
+func NewUDP(t uint8, seq uint32, bytes []byte) *UDPMessage {
 	return &UDPMessage{
-		Message:      New(t, seq, bytes),
-		delivered:    delivered,
-		deliveryTime: deliveredTime,
+		Message: New(t, seq, bytes),
 	}
 }
 
@@ -172,6 +172,15 @@ func (msg *UDPMessage) Transmitted() {
 	msg.Lock()
 	msg.status |= MSG_STATUS_TRANSMITTED
 	msg.transmittedAt = time.Now()
+	msg.Unlock()
+}
+
+func (msg *UDPMessage) UpdateState(delivered uint64, deliveredTime, sentTime time.Time, isAppLimited int) {
+	msg.Lock()
+	msg.delivered = delivered
+	msg.deliveredTime = deliveredTime
+	msg.sentTime = sentTime
+	msg.isAppLimited = isAppLimited
 	msg.Unlock()
 }
 
@@ -205,6 +214,10 @@ func (msg *UDPMessage) Acked() {
 }
 
 func (msg *UDPMessage) Miss() uint32 {
+	return atomic.LoadUint32(&msg.miss)
+}
+
+func (msg *UDPMessage) AddMiss() uint32 {
 	return atomic.AddUint32(&msg.miss, 1)
 }
 
@@ -216,8 +229,16 @@ func (msg *UDPMessage) GetDelivered() uint64 {
 	return msg.delivered
 }
 
-func (msg *UDPMessage) GetDeliveryTime() time.Time {
-	return msg.deliveryTime
+func (msg *UDPMessage) GetDeliveredTime() time.Time {
+	return msg.deliveredTime
+}
+
+func (msg *UDPMessage) GetSentTime() time.Time {
+	return msg.sentTime
+}
+
+func (msg *UDPMessage) GetTransmittedTime() time.Time {
+	return msg.transmittedAt
 }
 
 func (msg *UDPMessage) Less(b btree.Item) bool {
