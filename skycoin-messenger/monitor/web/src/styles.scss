@@ -119,3 +119,12 @@ snack-bar-container {
     border-radius: .25rem;
   }
 }
+
+.loading {
+  .mat-dialog-container {
+    box-shadow: none;
+    border: none;
+    background-color: transparent;
+    color: #fff;
+  }
+}

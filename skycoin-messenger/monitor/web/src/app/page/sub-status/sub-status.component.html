@@ -111,6 +111,16 @@
           </button>
         </p>
       </mat-grid-tile>
+      <mat-grid-tile>
+        <p class="status-box-item-title">
+          <small>settings</small>
+        </p>
+        <p class="status-box-item-content">
+          <button mat-icon-button color="primary" (click)="openConfigSettings($event,config)">
+            <mat-icon aria-label="settings">settings</mat-icon>
+          </button>
+        </p>
+      </mat-grid-tile>
     </mat-grid-list>
     <mat-grid-list cols="6" rowHeight="2:1">
       <mat-grid-tile>
@@ -155,11 +165,11 @@
     </ng-container>
     <ng-container matColumnDef="upload">
       <mat-header-cell *matHeaderCellDef class="text-center" [style.flex]="'0 0 5rem'"> Send </mat-header-cell>
-      <mat-cell *matCellDef="let data" class="transport-key" [style.flex]="'0 0 5rem'"> {{data.upload_bandwidth | byteTo}} </mat-cell>
+      <mat-cell *matCellDef="let data" class="transport-key" [style.flex]="'0 0 5rem'"> {{data.upload_bandwidth | byteTo}}/s </mat-cell>
     </ng-container>
     <ng-container matColumnDef="download">
       <mat-header-cell *matHeaderCellDef class="text-center" [style.flex]="'0 0 5rem'"> Recv </mat-header-cell>
-      <mat-cell *matCellDef="let data" class="transport-key" [style.flex]="'0 0 5rem'"> {{data.download_bandwidth | byteTo}} </mat-cell>
+      <mat-cell *matCellDef="let data" class="transport-key" [style.flex]="'0 0 5rem'"> {{data.download_bandwidth | byteTo}}/s </mat-cell>
     </ng-container>
     <ng-container matColumnDef="toNode">
       <mat-header-cell *matHeaderCellDef class="text-center"> To Node </mat-header-cell>
@@ -334,4 +344,16 @@
     </p> -->
   </div>
 
+</ng-template>
+
+<ng-template #config>
+  <form [formGroup]="configForm">
+    <mat-form-field style="width: 100%">
+      <textarea matInput placeholder="Input discovery addresses" rows="5" formControlName="DiscoveryAddresses"></textarea>
+      <mat-hint align="start" class="hint-text">Multiple public keys are separated by commas</mat-hint>
+    </mat-form-field>
+    <p class="text-right">
+        <button mat-raised-button color="primary" [disabled]="!configForm.valid" (click)="updateSettings($event)">Update</button>
+    </p>
+  </form>
 </ng-template>

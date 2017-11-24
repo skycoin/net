@@ -13,8 +13,8 @@ else
     exit 1
 fi
 
-install
 [[ -d dist-dicovery ]] && rm -rf dist-dicovery
+install
 if [[ ${version:=release} == "release" ]];then
   build
 elif [[ ${version:=release} == "dev" ]]

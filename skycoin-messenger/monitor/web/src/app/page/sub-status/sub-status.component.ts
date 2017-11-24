@@ -8,8 +8,7 @@ import { Observable } from 'rxjs/Observable';
 import { Subscription } from 'rxjs/Subscription';
 import { Subject } from 'rxjs/Subject';
 import { FormControl, FormGroup, Validators } from '@angular/forms';
-import { UpdateCardComponent } from '../../components/update-card/update-card.component';
-import { AlertComponent } from '../../components/alert/alert.component';
+import { UpdateCardComponent, AlertComponent, LoadingComponent } from '../../components';
 import 'rxjs/add/observable/of';
 import 'rxjs/add/observable/timer';
 import 'rxjs/add/operator/debounceTime';
@@ -59,6 +58,9 @@ export class SubStatusComponent implements OnInit, OnDestroy {
   socketClientForm = new FormGroup({
     nodeKey: new FormControl('', Validators.required),
     appKey: new FormControl('', Validators.required),
+  });
+  configForm = new FormGroup({
+    DiscoveryAddresses: new FormControl('', Validators.required),
   });
   sshClientPort = 0;
   socketClientPort = 0;
@@ -449,6 +451,47 @@ export class SubStatusComponent implements OnInit, OnDestroy {
         this._appData.push(null);
       });
     }
+  }
+  openConfigSettings(ev: Event, content: any) {
+    this.configForm.reset();
+    this.dialog.open(content, {
+      width: '400px'
+    });
+  }
+  updateSettings(ev: Event) {
+    this.dialog.closeAll();
+    const jsonStr = {
+      DiscoveryAddresses: this.configForm.get('DiscoveryAddresses').value.split(',')
+    };
+    const data = new FormData();
+    data.append('key', this.key);
+    data.append('data', JSON.stringify(jsonStr));
+    this.api.setNodeConfig(data).subscribe(result => {
+      if (result) {
+        this.dialog.open(AlertComponent, {
+          width: '45rem',
+          panelClass: 'alert',
+          data: {
+            msg: 'Do you restart node immediately?',
+            confirm: true
+          }
+        }).afterClosed().subscribe(isRestart => {
+          if (isRestart) {
+            this.api.updateNodeConfig(this.status.addr).subscribe(isSuccess => {
+              if (isSuccess) {
+                this.dialog.open(LoadingComponent, {
+                  panelClass: 'loading',
+                  disableClose: true,
+                  data: {
+                    taskTime: 30,
+                  }
+                });
+              }
+            });
+          }
+        });
+      }
+    });
   }
   init() {
     this.startRequest = true;

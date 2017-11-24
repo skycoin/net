@@ -10,13 +10,22 @@ export class ApiService {
   private connUrl = '/conn/';
   private nodeUrl = '/node';
   private callbackParm = 'callback';
+  private jsonHeader = { 'Content-Type': 'application/json' };
   constructor(private httpClient: HttpClient) { }
+
+
   getAllNode() {
     return this.handleGet(this.connUrl + 'getAll');
   }
 
   getNodeStatus(data: FormData) {
     return this.handlePost(this.connUrl + 'getNode', data);
+  }
+  setNodeConfig(data: FormData) {
+    return this.handlePost(this.connUrl + 'setNodeConfig', data);
+  }
+  updateNodeConfig(addr: string) {
+    return this.handleNodePost(addr, '/node/run/updateNode');
   }
   getMsgs(addr) {
     return this.handleNodePost(addr, '/node/getMsgs');
