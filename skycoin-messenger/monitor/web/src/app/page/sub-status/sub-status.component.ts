@@ -406,6 +406,8 @@ export class SubStatusComponent implements OnInit, OnDestroy {
   showMessage(msgs: Array<Array<Message>>) {
     if (!msgs || msgs[0] == null) {
       return;
+    } else if (msgs.length === 1) {
+      msgs[0].sort(this.compareMsg);
     } else {
       msgs.sort((m1, m2) => {
         m1.sort(this.compareMsg);
@@ -418,23 +420,23 @@ export class SubStatusComponent implements OnInit, OnDestroy {
         }
         return 0;
       });
-      this.alertMsg = msgs[0][0].msg;
-      setTimeout(() => {
-        this.dialog.open(AlertComponent, {
-          width: '45rem',
-          panelClass: 'alert',
-          data: {
-            msg: this.alertMsg
-          }
-        });
-      }, 500);
     }
+    this.alertMsg = msgs[0][0].msg;
+    setTimeout(() => {
+      this.dialog.open(AlertComponent, {
+        width: '45rem',
+        panelClass: 'alert',
+        data: {
+          msg: this.alertMsg
+        }
+      });
+    }, 500);
   }
-  compareMsg(msg1, msg2) {
-    if (msg1.Priority < msg2.Priority) {
+  compareMsg(msg1: Message, msg2: Message) {
+    if (msg1.priority < msg2.priority) {
       return 1;
     }
-    if (msg1.Priority > msg2.Priority) {
+    if (msg1.priority > msg2.priority) {
       return -1;
     }
     return 0;
