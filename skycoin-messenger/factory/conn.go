@@ -39,7 +39,7 @@ type Connection struct {
 
 	appMessages      []PriorityMsg
 	appMessagesPty   Priority
-	appMessagesMutex sync.Mutex
+	appMessagesMutex sync.RWMutex
 	appFeedback      atomic.Value
 	// callbacks
 
@@ -440,9 +440,9 @@ func (c *Connection) PutMessage(v PriorityMsg) bool {
 }
 
 func (c *Connection) GetMessages() (result []PriorityMsg) {
-	c.appMessagesMutex.Lock()
+	c.appMessagesMutex.RLock()
 	result = c.appMessages
-	c.appMessagesMutex.Unlock()
+	c.appMessagesMutex.RUnlock()
 	return result
 }
 

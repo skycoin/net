@@ -9,8 +9,8 @@ import (
 	"io/ioutil"
 	"net"
 	"net/http"
-	"time"
 	"sync"
+	"time"
 )
 
 type Conn struct {
