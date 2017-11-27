@@ -79,6 +79,20 @@ func (t *Transport) ListenAndConnect(address string) (conn *Connection, err erro
 	return
 }
 
+// Connect to node B
+func (t *Transport) connect(address string) (err error) {
+	_, err = t.factory.connectUDPWithConfig(address, &ConnConfig{
+		OnConnected: func(connection *Connection) {
+			connection.writeOP(OP_APP_CONN_ACK|RESP_PREFIX, &connAck{
+				FromApp: t.FromApp,
+				App:     t.ToApp,
+			})
+		},
+		Creator: t.creator,
+	})
+	return
+}
+
 // Connect to node A and server app
 func (t *Transport) Connect(address, appAddress string) (err error) {
 	conn, err := t.factory.connectUDPWithConfig(address, &ConnConfig{

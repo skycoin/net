@@ -99,7 +99,7 @@ const (
 )
 
 const (
-	_ Priority = iota
+	_               Priority = iota
 	Building
 	Connected
 	NotFound
@@ -175,10 +175,6 @@ func (req *buildConnResp) Execute(f *MessengerFactory, conn *Connection) (r resp
 	}
 	conn.GetContextLogger().Debugf("recv %#v tr %s", req, tr)
 	tr.setUDPConn(conn)
-	conn.writeOP(OP_APP_CONN_ACK|RESP_PREFIX, &connAck{
-		FromApp: req.FromApp,
-		App:     req.App,
-	})
 	fnOK := func(port int) {
 		msg := fmt.Sprintf("connected app %x", req.App)
 		priorityMsg := PriorityMsg{Priority: Connected, Msg: msg}
@@ -252,6 +248,7 @@ type forwardNodeConnResp struct {
 	FromNode cipher.PubKey
 	Failed   bool
 	Msg      PriorityMsg
+	Address  string
 }
 
 // run on manager, conn is tcp/udp from node B
@@ -262,6 +259,7 @@ func (req *forwardNodeConnResp) Execute(f *MessengerFactory, conn *Connection) (
 		return
 	}
 
+	req.Address = conn.GetRemoteAddr().String()
 	err = c.writeOP(OP_FORWARD_NODE_CONN_RESP|RESP_PREFIX, req)
 	return
 }
@@ -278,6 +276,11 @@ func (req *forwardNodeConnResp) Run(conn *Connection) (err error) {
 		conn.GetContextLogger().Debugf("forwardNodeConnResp recv old msg %#v", req.Msg)
 		return
 	}
+	tr, ok := appConn.getTransport(req.App)
+	if !ok {
+		conn.GetContextLogger().Debugf("forwardNodeConnResp tr %s not found", req.App.Hex())
+		return
+	}
 	if req.Failed {
 		appConn.writeOP(OP_BUILD_APP_CONN|RESP_PREFIX, &AppConnResp{
 			App:    req.App,
@@ -291,6 +294,10 @@ func (req *forwardNodeConnResp) Run(conn *Connection) (err error) {
 			return
 		}
 		tr.Close()
+		return
+	}
+	if len(req.Address) > 0 {
+		tr.connect(req.Address)
 	}
 	return
 }

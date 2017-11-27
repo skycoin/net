@@ -439,14 +439,9 @@ func (c *Connection) PutMessage(v PriorityMsg) bool {
 	return true
 }
 
-func (c *Connection) GetMessages() []PriorityMsg {
+func (c *Connection) GetMessages() (result []PriorityMsg) {
 	c.appMessagesMutex.Lock()
-	if len(c.appMessages) < 1 {
-		c.appMessagesMutex.Unlock()
-		return nil
-	}
-	result := c.appMessages
-	c.appMessages = nil
+	result = c.appMessages
 	c.appMessagesMutex.Unlock()
 	return result
 }
