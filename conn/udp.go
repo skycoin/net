@@ -110,9 +110,12 @@ func (c *UDPConn) writeLoopWithPing() (err error) {
 		select {
 		case <-ticker.C:
 			nowUnix := time.Now().Unix()
-			if nowUnix-c.GetLastTime() >= UDP_GC_PERIOD {
+			lastTime := c.GetLastTime()
+			if nowUnix-lastTime >= UDP_GC_PERIOD {
 				c.Close()
 				return errors.New("timeout")
+			} else if nowUnix-lastTime < UDP_PING_TICK_PERIOD {
+				continue
 			}
 			err := c.Ping()
 			if err != nil {
@@ -169,14 +172,10 @@ func (c *UDPConn) resendMsg(m *msg.UDPMessage) (err error) {
 	return
 }
 
-func (c *UDPConn) writePendingMsgs() error {
+func (c *UDPConn) writePendingMsgs(s int) error {
 	for {
-		m := c.ca.popMessage()
+		m := c.ca.popMessage(s)
 		if m == nil {
-			return nil
-		}
-		ok := c.addBytesInFlight(m)
-		if !ok {
 			return nil
 		}
 		c.GetContextLogger().Debugf("new msg seq %d", m.Seq)
@@ -296,13 +295,14 @@ func (c *UDPConn) AddMsg(k uint32, v *msg.UDPMessage) {
 
 func (c *UDPConn) delMsg(seq uint32, ignore bool) error {
 	ok, um, msgs := c.DelMsgAndGetLossMsgs(seq, c.ca.getCwnd()/MAX_UDP_PACKAGE_SIZE/3)
+	var s int
 	if ok {
+		s = um.TotalSize()
 		c.AddAckCount()
 		if !ignore {
 			c.updateRTT(um.GetRTT())
 			c.updateDeliveryRate(um)
 		}
-		c.subBytesInFlight(um.TotalSize())
 		if len(msgs) > 1 {
 			c.GetContextLogger().Debugf("resend loss msgs %v", msgs)
 			for _, msg := range msgs {
@@ -320,7 +320,7 @@ func (c *UDPConn) delMsg(seq uint32, ignore bool) error {
 		c.GetContextLogger().Debugf("over ack %s", c)
 		c.AddOverAckCount()
 	}
-	return c.writePendingMsgs()
+	return c.writePendingMsgs(s)
 }
 
 func (c *UDPConn) AddLossResendCount() {
@@ -528,7 +528,7 @@ func (c *UDPConn) updateDeliveryRate(m *msg.UDPMessage) {
 		//c.cwnd = cwnd
 	} else if c.ca.mode == drain {
 		pcwnd := uint32(max * rtt)
-		if c.ca.bytesInFlight < int(pcwnd) {
+		if c.ca.bif < int(pcwnd) {
 			c.ca.mode = probeBW
 			c.ca.pacingGain = 1
 			cwnd = pcwnd
@@ -545,11 +545,15 @@ type ca struct {
 	rateSamples   *rateSampler
 	cwnd          uint32
 	mode
-	pacingGain    float64
-	fullCnt       uint
-	bytesInFlight int
+	pacingGain float64
+	fullCnt    uint
 
-	buff *btree.BTree
+	bif      int
+	bifMtx   sync.RWMutex
+	bifCond  *sync.Cond
+	bifPd    *btree.BTree
+	maxPdCnt int
+
 	sync.RWMutex
 }
 
@@ -559,8 +563,10 @@ func newCA() *ca {
 		rateSamples: newRateSampler(16),
 		pacingGain:  highGain,
 		cwnd:        20480,
+		maxPdCnt:    10,
 	}
-	c.buff = btree.New(2)
+	c.bifCond = sync.NewCond(&c.bifMtx)
+	c.bifPd = btree.New(2)
 	return c
 }
 
@@ -587,48 +593,53 @@ func (ca *ca) getSentTime() (d time.Time) {
 
 func (ca *ca) addBytesInFlight(m *msg.UDPMessage) (ok bool) {
 	bytes := m.PkgBytes()
-	ca.Lock()
-	defer ca.Unlock()
+	ca.bifMtx.Lock()
+	defer ca.bifMtx.Unlock()
 
-	min := ca.buff.Min()
-	if (min != nil && min.Less(m)) || int(ca.cwnd) < ca.bytesInFlight+len(bytes) {
-		ca.buff.ReplaceOrInsert(m)
+	for ca.bifPd.Len()+1 > ca.maxPdCnt {
+		ca.bifCond.Wait()
+	}
+	min := ca.bifPd.Min()
+	if (min != nil && min.Less(m)) || int(ca.cwnd) < ca.bif+len(bytes) {
+		ca.bifPd.ReplaceOrInsert(m)
 		return
 	}
-	ca.bytesInFlight += len(bytes)
+	ca.bif += len(bytes)
 	ok = true
 	return
 }
 
-func (ca *ca) subBytesInFlight(s int) {
-	ca.Lock()
-	if ca.bytesInFlight < s {
-		panic("subBytesInFlight ca.bytesInFlight < s")
+func (ca *ca) popMessage(s int) (m *msg.UDPMessage) {
+	ca.bifMtx.Lock()
+	defer ca.bifMtx.Unlock()
+	if ca.bif < s {
+		panic("popMessage ca.bytesInFlight < s")
 	}
-	ca.bytesInFlight -= s
-	ca.Unlock()
-}
+	ca.bif -= s
 
-func (ca *ca) popMessage() (m *msg.UDPMessage) {
-	ca.Lock()
-	defer ca.Unlock()
-
-	if ca.buff.Len() < 1 {
+	if ca.bifPd.Len() < 1 {
 		return
 	}
-	element := ca.buff.Min()
+	element := ca.bifPd.Min()
 	if element == nil {
 		return
 	}
-	ca.buff.DeleteMin()
 	m = element.(*msg.UDPMessage)
+
+	bytes := m.PkgBytes()
+	if int(ca.cwnd) < ca.bif+len(bytes) {
+		return nil
+	}
+	ca.bif += len(bytes)
+	ca.bifPd.DeleteMin()
+	ca.bifCond.Broadcast()
 	return
 }
 
 func (ca *ca) getBytesInFlight() (r int) {
-	ca.RLock()
-	r = ca.bytesInFlight
-	ca.RUnlock()
+	ca.bifMtx.RLock()
+	r = ca.bif
+	ca.bifMtx.RUnlock()
 	return
 }
 
