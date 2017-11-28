@@ -150,7 +150,7 @@ func (c *UDPConn) transmitted(m *msg.UDPMessage) {
 	m.Transmitted()
 	m.SetRTO(c.getRTO(), func() (err error) {
 		c.AddRTOResendCount()
-		err = c.WriteBytes(m.PkgBytes())
+		err = c.resendMsg(m)
 		if err != nil {
 			c.SetStatusToError(err)
 			c.Close()
@@ -282,6 +282,9 @@ func (c *UDPConn) getRTO() (rto time.Duration) {
 
 func (c *UDPConn) setRTO(rto time.Duration) {
 	c.GetContextLogger().Debugf("setRTO %d", rto)
+	if rto < 200*time.Millisecond {
+		rto = 200 * time.Millisecond
+	}
 	c.FieldsMutex.Lock()
 	c.rto = rto
 	c.FieldsMutex.Unlock()
