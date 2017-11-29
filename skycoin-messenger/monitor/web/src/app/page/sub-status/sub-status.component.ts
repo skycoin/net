@@ -102,7 +102,20 @@ export class SubStatusComponent implements OnInit, OnDestroy {
   ngOnDestroy() {
     this.close();
   }
-  discoveriesStatus($event, conent: any) {
+  editTaskTime(time: number) {
+    this.close();
+    const newTime = time * 1000;
+    if (newTime !== this.taskTime) {
+      this.taskTime = time * 1000;
+      this.startTask();
+    }
+  }
+  openLog(content: any) {
+    this.dialog.open(content, {
+      panelClass: 'log-dialog'
+    });
+  }
+  discoveriesStatus(ev: Event, conent: any) {
     this.dialog.open(conent);
   }
   transportsTrackBy(index, transport) {
@@ -311,6 +324,8 @@ export class SubStatusComponent implements OnInit, OnDestroy {
     ev.preventDefault();
     this.sshClientConnectionInfo = this.user.get(this.user.SSHCLIENTINFO);
     this.socketClientConnectionInfo = this.user.get(this.user.SOCKETCLIENTINFO);
+    this.sshClientForm.reset();
+    this.socketClientForm.reset();
     this.dialog.open(content, {
       width: '450px'
     });

@@ -1,3 +1,7 @@
+<div class="toolBar text-right">
+  <div>Refresh:
+    <input class="shortcut_input" shortcut-input [text]="taskTime/1000" (onEdit)="editTaskTime($event)">s</div>
+</div>
 <mat-card>
   <mat-card-title>
     <span>Node Status</span>
@@ -221,6 +225,23 @@
   </mat-table>
 </div>
 
+<!-- Log Dialog -->
+<ng-template #logDialog>
+  <div class="log-box">
+    <h4 class="log-title">SSH Log</h4>
+    <div class="log-content">
+      <ul class="list">
+        <li>
+          <span class="time">[2017.11.29 16:29:33]</span>
+          <span class="msg">This is 1 log.This is 1 logThis is 1 log.This is 1 log.This is 1 logThis is 1 log.This is 1 log.This is 1 logThis
+            is 1 log.</span>
+        </li>
+      </ul>
+    </div>
+  </div>
+</ng-template>
+
+<!-- Discovery Status Dialog -->
 <ng-template #discoveryStatus>
   <h3>Discoveries Status</h3>
   <ul class="discovery-status-list">
