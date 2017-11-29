@@ -436,7 +436,13 @@ func (b *bandwidth) add(s int) {
 
 // Bandwidth bytes/sec
 func (b *bandwidth) get() (r uint) {
+	now := time.Now().Unix()
 	b.RLock()
+	if now != b.sec {
+		r = 0
+		b.RUnlock()
+		return
+	}
 	r = b.lastBytes
 	b.RUnlock()
 	return
