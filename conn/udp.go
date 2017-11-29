@@ -136,16 +136,7 @@ func (c *UDPConn) writeLoopWithPing() (err error) {
 }
 
 func (c *UDPConn) Write(bytes []byte) (err error) {
-	m := msg.NewUDPWithoutSeq(msg.TYPE_NORMAL, bytes)
-	ok := c.addToPending(m)
-	if !ok {
-		return nil
-	}
-	c.GetContextLogger().Debugf("new msg seq %d", m.GetSeq())
-	s := c.GetNextSeq()
-	m.SetSeq(s)
-	err = c.WriteBytes(m.PkgBytes())
-	c.transmitted(m)
+	err = c.WriteToChannel(0, bytes)
 	return
 }
 
@@ -617,10 +608,6 @@ func (ca *ca) getSentTime() (d time.Time) {
 	return
 }
 
-func (ca *ca) addToPending(m *msg.UDPMessage) bool {
-	return ca.addToPendingChannel(0, m)
-}
-
 func (ca *ca) newPendingChannel() (channel int) {
 	ca.bifMtx.Lock()
 	defer ca.bifMtx.Unlock()
@@ -654,7 +641,7 @@ func (ca *ca) addToPendingChannel(channel int, m *msg.UDPMessage) (ok bool) {
 
 	ch, ok := ca.bifPdChans[channel]
 	if !ok {
-		panic(fmt.Errorf("addToPendingChannel channel %d not found", channel))
+		return
 	}
 
 	ch.seq++
