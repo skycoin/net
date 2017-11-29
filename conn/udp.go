@@ -136,20 +136,35 @@ func (c *UDPConn) writeLoopWithPing() (err error) {
 }
 
 func (c *UDPConn) Write(bytes []byte) (err error) {
-	s := c.GetNextSeq()
-	m := msg.NewUDP(msg.TYPE_NORMAL, s, bytes)
-	c.AddMsg(s, m)
-	ok := c.addBytesInFlight(m)
+	m := msg.NewUDPWithoutSeq(msg.TYPE_NORMAL, bytes)
+	ok := c.addToPending(m)
 	if !ok {
 		return nil
 	}
-	c.GetContextLogger().Debugf("new msg seq %d", m.Seq)
+	c.GetContextLogger().Debugf("new msg seq %d", m.GetSeq())
+	s := c.GetNextSeq()
+	m.SetSeq(s)
+	err = c.WriteBytes(m.PkgBytes())
+	c.transmitted(m)
+	return
+}
+
+func (c *UDPConn) WriteToChannel(channel int, bytes []byte) (err error) {
+	m := msg.NewUDPWithoutSeq(msg.TYPE_NORMAL, bytes)
+	ok := c.addToPendingChannel(channel, m)
+	if !ok {
+		return nil
+	}
+	c.GetContextLogger().Debugf("new msg seq %d", m.GetSeq())
+	s := c.GetNextSeq()
+	m.SetSeq(s)
 	err = c.WriteBytes(m.PkgBytes())
 	c.transmitted(m)
 	return
 }
 
 func (c *UDPConn) transmitted(m *msg.UDPMessage) {
+	c.AddMsg(m.GetSeq(), m)
 	m.Transmitted()
 	m.SetRTO(c.getRTO(), func() (err error) {
 		c.AddRTOResendCount()
@@ -164,7 +179,7 @@ func (c *UDPConn) transmitted(m *msg.UDPMessage) {
 }
 
 func (c *UDPConn) resendMsg(m *msg.UDPMessage) (err error) {
-	if !c.UDPPendingMap.exists(m.Seq) {
+	if !c.UDPPendingMap.exists(m.GetSeq()) {
 		return
 	}
 	c.GetContextLogger().Debugf("resendMsg %s", m)
@@ -178,12 +193,15 @@ func (c *UDPConn) writePendingMsgs(s int) error {
 		if m == nil {
 			return nil
 		}
-		c.GetContextLogger().Debugf("new msg seq %d", m.Seq)
+		c.GetContextLogger().Debugf("new msg seq %d", m.GetSeq())
+		s := c.GetNextSeq()
+		m.SetSeq(s)
 		err := c.WriteBytes(m.PkgBytes())
 		if err != nil {
 			return err
 		}
 		c.transmitted(m)
+		s = 0
 	}
 }
 
@@ -548,13 +566,19 @@ type ca struct {
 	pacingGain float64
 	fullCnt    uint
 
-	bif      int
-	bifMtx   sync.RWMutex
-	bifCond  *sync.Cond
-	bifPd    *btree.BTree
-	maxPdCnt int
+	bif        int
+	bifMtx     sync.RWMutex
+	bifCond    *sync.Cond
+	bifPdId    int
+	bifPdChans map[int]*pdChan
+	maxPdCnt   int
 
 	sync.RWMutex
+}
+
+type pdChan struct {
+	pd  *btree.BTree
+	seq uint32
 }
 
 func newCA() *ca {
@@ -564,9 +588,13 @@ func newCA() *ca {
 		pacingGain:  highGain,
 		cwnd:        20480,
 		maxPdCnt:    10,
+		bifPdChans:  make(map[int]*pdChan),
+	}
+
+	c.bifPdChans[c.bifPdId] = &pdChan{
+		pd: btree.New(2),
 	}
 	c.bifCond = sync.NewCond(&c.bifMtx)
-	c.bifPd = btree.New(2)
 	return c
 }
 
@@ -591,17 +619,52 @@ func (ca *ca) getSentTime() (d time.Time) {
 	return
 }
 
-func (ca *ca) addBytesInFlight(m *msg.UDPMessage) (ok bool) {
-	bytes := m.PkgBytes()
+func (ca *ca) addToPending(m *msg.UDPMessage) bool {
+	return ca.addToPendingChannel(0, m)
+}
+
+func (ca *ca) newPendingChannel() (channel int) {
 	ca.bifMtx.Lock()
 	defer ca.bifMtx.Unlock()
 
-	for ca.bifPd.Len()+1 > ca.maxPdCnt {
-		ca.bifCond.Wait()
+	ca.bifPdId++
+	channel = ca.bifPdId
+	ca.bifPdChans[channel] = &pdChan{
+		pd: btree.New(2),
 	}
-	min := ca.bifPd.Min()
+	return
+}
+
+func (ca *ca) deletePendingChannel(channel int) {
+	ca.bifMtx.Lock()
+	defer ca.bifMtx.Unlock()
+
+	delete(ca.bifPdChans, channel)
+}
+
+func (c *UDPConn) DeletePendingChannel(channel int) {
+	c.ca.deletePendingChannel(channel)
+}
+
+func (c *UDPConn) NewPendingChannel() (channel int) {
+	return c.ca.newPendingChannel()
+}
+
+func (ca *ca) addToPendingChannel(channel int, m *msg.UDPMessage) (ok bool) {
+	ca.bifMtx.Lock()
+	defer ca.bifMtx.Unlock()
+
+	ch, ok := ca.bifPdChans[channel]
+	if !ok {
+		panic(fmt.Errorf("addToPendingChannel channel %d not found", channel))
+	}
+
+	ch.seq++
+	m.SetSeq(ch.seq)
+	bytes := m.PkgBytes()
+	min := ch.pd.Min()
 	if (min != nil && min.Less(m)) || int(ca.cwnd) < ca.bif+len(bytes) {
-		ca.bifPd.ReplaceOrInsert(m)
+		ch.pd.ReplaceOrInsert(m)
 		return
 	}
 	ca.bif += len(bytes)
@@ -617,22 +680,26 @@ func (ca *ca) popMessage(s int) (m *msg.UDPMessage) {
 	}
 	ca.bif -= s
 
-	if ca.bifPd.Len() < 1 {
-		return
-	}
-	element := ca.bifPd.Min()
-	if element == nil {
-		return
-	}
-	m = element.(*msg.UDPMessage)
+	for _, v := range ca.bifPdChans {
+		pd := v.pd
+		if pd.Len() < 1 {
+			continue
+		}
+		element := pd.Min()
+		if element == nil {
+			continue
+		}
+		m = element.(*msg.UDPMessage)
 
-	bytes := m.PkgBytes()
-	if int(ca.cwnd) < ca.bif+len(bytes) {
-		return nil
+		bytes := m.PkgBytes()
+		if int(ca.cwnd) < ca.bif+len(bytes) {
+			continue
+		}
+		ca.bif += len(bytes)
+		pd.DeleteMin()
+		return
 	}
-	ca.bif += len(bytes)
-	ca.bifPd.DeleteMin()
-	ca.bifCond.Broadcast()
+	//ca.bifCond.Broadcast()
 	return
 }
 

@@ -35,6 +35,10 @@ type Connection interface {
 	GetSentBytes() uint64
 	// Get received bytes count
 	GetReceivedBytes() uint64
+
+	NewPendingChannel() (channel int)
+	DeletePendingChannel(channel int)
+	WriteToChannel(channel int, bytes []byte) (err error)
 }
 
 type ConnCommonFields struct {
@@ -151,4 +155,16 @@ func (c *ConnCommonFields) GetReceivedBytes() uint64 {
 
 func (c *ConnCommonFields) AddReceivedBytes(n int) {
 	atomic.AddUint64(&c.receivedBytes, uint64(n))
+}
+
+func (c *ConnCommonFields) NewPendingChannel() (channel int) {
+	panic("not implemented")
+}
+
+func (c *ConnCommonFields) DeletePendingChannel(channel int) {
+	panic("not implemented")
+}
+
+func (c *ConnCommonFields) WriteToChannel(channel int, bytes []byte) (err error) {
+	panic("not implemented")
 }

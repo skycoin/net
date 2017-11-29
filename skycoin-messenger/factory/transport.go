@@ -177,7 +177,9 @@ func (t *Transport) nodeReadLoop(conn *Connection, getAppConn func(id uint32) ne
 func (t *Transport) appReadLoop(id uint32, appConn net.Conn, conn *Connection, create bool) {
 	buf := make([]byte, cn.MAX_UDP_PACKAGE_SIZE-100)
 	binary.BigEndian.PutUint32(buf[PKG_HEADER_ID_BEGIN:PKG_HEADER_ID_END], id)
+	channel := conn.NewPendingChannel()
 	defer func() {
+		conn.DeletePendingChannel(channel)
 		if e := recover(); e != nil {
 			conn.GetContextLogger().Debugf("close app conn %d, err %v", id, e)
 		}
@@ -194,7 +196,7 @@ func (t *Transport) appReadLoop(id uint32, appConn net.Conn, conn *Connection, c
 							conn.GetContextLogger().Debugf("close app conn %d, err %v", id, e)
 						}
 					}()
-					conn.GetChanOut() <- buf[:PKG_HEADER_END]
+					conn.WriteToChannel(channel, buf[:PKG_HEADER_END])
 				}()
 			}
 			if create {
@@ -209,7 +211,7 @@ func (t *Transport) appReadLoop(id uint32, appConn net.Conn, conn *Connection, c
 		}
 	}()
 	if create {
-		conn.GetChanOut() <- buf[:PKG_HEADER_END]
+		conn.WriteToChannel(channel, buf[:PKG_HEADER_END])
 	}
 	for {
 		n, err := appConn.Read(buf[PKG_HEADER_END:])
@@ -220,7 +222,7 @@ func (t *Transport) appReadLoop(id uint32, appConn net.Conn, conn *Connection, c
 		pkg := make([]byte, PKG_HEADER_END+n)
 		copy(pkg, buf[:PKG_HEADER_END+n])
 		t.uploadBW.add(len(pkg))
-		conn.GetChanOut() <- pkg
+		conn.WriteToChannel(channel, pkg)
 	}
 }
 
