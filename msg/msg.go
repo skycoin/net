@@ -123,6 +123,10 @@ func (msg *Message) PkgBytes() (result []byte) {
 	return
 }
 
+func (msg *Message) PkgBytesLen() int {
+	return int(PKG_HEADER_SIZE + MSG_HEADER_SIZE + msg.Len)
+}
+
 func (msg *Message) HeaderBytes() []byte {
 	result := make([]byte, MSG_HEADER_SIZE)
 	result[0] = byte(msg.Type)

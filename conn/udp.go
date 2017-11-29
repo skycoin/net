@@ -568,7 +568,6 @@ type ca struct {
 
 	bif        int
 	bifMtx     sync.RWMutex
-	bifCond    *sync.Cond
 	bifPdId    int
 	bifPdChans map[int]*pdChan
 	maxPdCnt   int
@@ -594,7 +593,6 @@ func newCA() *ca {
 	c.bifPdChans[c.bifPdId] = &pdChan{
 		pd: btree.New(2),
 	}
-	c.bifCond = sync.NewCond(&c.bifMtx)
 	return c
 }
 
@@ -661,13 +659,12 @@ func (ca *ca) addToPendingChannel(channel int, m *msg.UDPMessage) (ok bool) {
 
 	ch.seq++
 	m.SetSeq(ch.seq)
-	bytes := m.PkgBytes()
 	min := ch.pd.Min()
-	if (min != nil && min.Less(m)) || int(ca.cwnd) < ca.bif+len(bytes) {
+	if (min != nil && min.Less(m)) || int(ca.cwnd) < ca.bif+m.PkgBytesLen() {
 		ch.pd.ReplaceOrInsert(m)
 		return
 	}
-	ca.bif += len(bytes)
+	ca.bif += m.PkgBytesLen()
 	ok = true
 	return
 }
@@ -691,15 +688,13 @@ func (ca *ca) popMessage(s int) (m *msg.UDPMessage) {
 		}
 		m = element.(*msg.UDPMessage)
 
-		bytes := m.PkgBytes()
-		if int(ca.cwnd) < ca.bif+len(bytes) {
+		if int(ca.cwnd) < ca.bif+m.PkgBytesLen() {
 			continue
 		}
-		ca.bif += len(bytes)
+		ca.bif += m.PkgBytesLen()
 		pd.DeleteMin()
 		return
 	}
-	//ca.bifCond.Broadcast()
 	return
 }
 

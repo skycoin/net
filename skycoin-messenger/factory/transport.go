@@ -179,7 +179,7 @@ func (t *Transport) appReadLoop(id uint32, appConn net.Conn, conn *Connection, c
 	binary.BigEndian.PutUint32(buf[PKG_HEADER_ID_BEGIN:PKG_HEADER_ID_END], id)
 	channel := conn.NewPendingChannel()
 	defer func() {
-		conn.DeletePendingChannel(channel)
+		defer conn.DeletePendingChannel(channel)
 		if e := recover(); e != nil {
 			conn.GetContextLogger().Debugf("close app conn %d, err %v", id, e)
 		}
