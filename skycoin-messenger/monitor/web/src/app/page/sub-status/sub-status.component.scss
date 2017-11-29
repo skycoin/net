@@ -84,6 +84,29 @@ app-sub-status {
   }
 }
 
+.discovery-status-list {
+  list-style: none;
+  margin: 1rem 0;
+  padding: .5rem 0;
+  border-top: 1px solid #ccc;
+  li {
+    .content {
+      .url {
+        margin-right: 1rem;
+      }
+      .icon {
+        vertical-align: sub;
+      }
+      .success {
+        color: green;
+      }
+      .error {
+        color: rgb(156, 3, 3);
+      }
+    }
+  }
+}
+
 .quick-box {
   margin: .5rem 0;
   .quick-table {

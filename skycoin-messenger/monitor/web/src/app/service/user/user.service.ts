@@ -1,6 +1,4 @@
 import { Injectable } from '@angular/core';
-import * as Collections from 'typescript-collections';
-
 
 @Injectable()
 export class UserService {

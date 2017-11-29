@@ -3,6 +3,7 @@
 @import './app.scss';
 
 /* fallback */
+
 @font-face {
   font-family: 'Material Icons';
   font-style: normal;
@@ -25,9 +26,11 @@
   -webkit-font-feature-settings: 'liga';
   -webkit-font-smoothing: antialiased;
 }
+
 .mat-icon {
   vertical-align: middle;
 }
+
 *,
 *::before,
 *::after {
@@ -96,12 +99,17 @@
   @extend .bg-success;
   @extend .monitor-chip-text;
 }
+
 .chip-primary {
   @extend .bg-primary;
   @extend .monitor-chip-text;
 }
+
 .icon-pointer {
   cursor: pointer;
+  &:hover {
+    color: #9e0000;
+  }
 }
 
 snack-bar-container {

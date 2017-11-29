@@ -73,6 +73,7 @@ export class SubStatusComponent implements OnInit, OnDestroy {
   isProduction = env.production;
   sshClientConnectionInfo: ConnectServiceInfo | null;
   socketClientConnectionInfo: ConnectServiceInfo | null;
+  discoveries: Map<string, boolean>;
   constructor(
     private router: Router,
     private route: ActivatedRoute,
@@ -100,6 +101,9 @@ export class SubStatusComponent implements OnInit, OnDestroy {
   }
   ngOnDestroy() {
     this.close();
+  }
+  discoveriesStatus($event, conent: any) {
+    this.dialog.open(conent);
   }
   transportsTrackBy(index, transport) {
     return transport ? transport.from_node : undefined;
@@ -417,6 +421,7 @@ export class SubStatusComponent implements OnInit, OnDestroy {
           }
           this._transportData.push(this.transports);
           this.feedBacks = info.app_feedbacks;
+          this.discoveries = info.discoveries;
           // this.showMessage(info.messages);
         }
       }, err => {

@@ -114,6 +114,7 @@
       <mat-grid-tile>
         <p class="status-box-item-title">
           <small>settings</small>
+          <mat-icon class="icon-pointer" (click)="discoveriesStatus($event,discoveryStatus)">info</mat-icon>
         </p>
         <p class="status-box-item-content">
           <button mat-icon-button color="primary" (click)="openConfigSettings($event,config)">
@@ -219,6 +220,21 @@
     <mat-row *matRowDef="let row; columns: displayedColumns;"></mat-row>
   </mat-table>
 </div>
+
+<ng-template #discoveryStatus>
+  <h3>Discoveries Status</h3>
+  <ul class="discovery-status-list">
+    <li *ngFor="let kv of discoveries | iterable">
+      <div class="content">
+        <span class="url">{{kv?.key}}</span>
+        <span>
+          <mat-icon class="icon success" *ngIf="kv?.value">check</mat-icon>
+          <mat-icon class="icon error" *ngIf="!kv?.value">error</mat-icon>
+        </span>
+      </div>
+    </li>
+  </ul>
+</ng-template>
 
 <ng-template #sshSettings>
   <h1 mat-dialog-title>

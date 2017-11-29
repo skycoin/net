@@ -22,7 +22,7 @@ import {
 import { AppComponent } from './app.component';
 import { HttpClientModule } from '@angular/common/http';
 import { ApiService, UserService } from './service';
-import { TimeAgoPipe, ByteToPipe, EllipsisPipe } from './pipe';
+import { TimeAgoPipe, ByteToPipe, EllipsisPipe, IterablePipe } from './pipe';
 import { LabelDirective } from './directives';
 import { DashboardComponent, SubStatusComponent } from './page';
 import { UpdateCardComponent, AlertComponent, LoadingComponent } from './components';
@@ -35,6 +35,7 @@ import { AppRoutingModule } from './route/app-routing.module';
     TimeAgoPipe,
     ByteToPipe,
     EllipsisPipe,
+    IterablePipe,
 
     LabelDirective,
 

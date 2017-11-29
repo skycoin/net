@@ -141,6 +141,7 @@ export interface FeedBackItem {
 export interface NodeInfo {
   version?: string;
   tag?: string;
+  discoveries?: Map<string, boolean>;
   transports?: Array<Transports>;
   messages?: Array<Array<Message>>;
   app_feedbacks?: Array<FeedBackItem>;
