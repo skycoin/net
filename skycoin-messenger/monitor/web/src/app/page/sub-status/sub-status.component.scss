@@ -83,3 +83,43 @@ app-sub-status {
     }
   }
 }
+
+.quick-box {
+  margin: .5rem 0;
+  .quick-table {
+    .label {
+      color: #712a2a;
+      font-size: 16px;
+      width: 80px;
+      padding: 5px;
+      border: none;
+      border-bottom: 1px solid #ccc;
+      &:focus {
+        outline: none;
+      }
+    }
+    .key {
+      color: #712a2a;
+      width: 110px;
+      font-size: 16px;
+      background-color: rgba(187, 186, 186, 0.2);
+      border-radius: .5rem;
+      padding: 5px 2.5px;
+      margin-left: 10px;
+      text-align: center;
+      overflow: hidden;
+    }
+    .actions {
+      padding-left: 15px;
+      a {
+        text-decoration: none;
+        .mat-icon {
+          transform: scale(.8);
+        }
+        &:hover {
+          color: red;
+        }
+      }
+    }
+  }
+}

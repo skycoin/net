@@ -21,8 +21,9 @@ import {
 } from '@angular/material';
 import { AppComponent } from './app.component';
 import { HttpClientModule } from '@angular/common/http';
-import { ApiService } from './service';
-import { TimeAgoPipe, ByteToPipe } from './pipe';
+import { ApiService, UserService } from './service';
+import { TimeAgoPipe, ByteToPipe, EllipsisPipe } from './pipe';
+import { LabelDirective } from './directives';
 import { DashboardComponent, SubStatusComponent } from './page';
 import { UpdateCardComponent, AlertComponent, LoadingComponent } from './components';
 import { AppRoutingModule } from './route/app-routing.module';
@@ -33,6 +34,10 @@ import { AppRoutingModule } from './route/app-routing.module';
     DashboardComponent,
     TimeAgoPipe,
     ByteToPipe,
+    EllipsisPipe,
+
+    LabelDirective,
+
     SubStatusComponent,
     UpdateCardComponent,
     AlertComponent,
@@ -66,7 +71,7 @@ import { AppRoutingModule } from './route/app-routing.module';
     MatInputModule,
     MatProgressSpinnerModule
   ],
-  providers: [ApiService],
+  providers: [ApiService, UserService],
   bootstrap: [AppComponent]
 })
 export class AppModule { }

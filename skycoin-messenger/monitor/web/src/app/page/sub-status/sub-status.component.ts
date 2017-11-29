@@ -1,7 +1,7 @@
 import { Component, OnInit, ViewEncapsulation, OnDestroy } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { environment as env } from '../../../environments/environment';
-import { ApiService, NodeServices, App, Transports, NodeInfo, Message, FeedBackItem } from '../../service';
+import { ApiService, NodeServices, App, Transports, NodeInfo, Message, FeedBackItem, UserService, ConnectServiceInfo } from '../../service';
 import { MatSnackBar, MatDialog, MatDialogRef } from '@angular/material';
 import { DataSource } from '@angular/cdk/collections';
 import { Observable } from 'rxjs/Observable';
@@ -71,10 +71,13 @@ export class SubStatusComponent implements OnInit, OnDestroy {
   _sshServerData = new SubDatabase();
   _socketServerData = new SubDatabase();
   isProduction = env.production;
+  sshClientConnectionInfo: ConnectServiceInfo | null;
+  socketClientConnectionInfo: ConnectServiceInfo | null;
   constructor(
     private router: Router,
     private route: ActivatedRoute,
     private api: ApiService,
+    public user: UserService,
     private snackBar: MatSnackBar,
     private dialog: MatDialog) {
   }
@@ -93,6 +96,7 @@ export class SubStatusComponent implements OnInit, OnDestroy {
       this.power = 'warn';
       this.isManager = env.isManager;
     });
+    // console.log('test local:', this.user.get(this.user.SSHCLIENTINFO));
   }
   ngOnDestroy() {
     this.close();
@@ -103,34 +107,66 @@ export class SubStatusComponent implements OnInit, OnDestroy {
   appTrackBy(index, app) {
     return app ? app.key : undefined;
   }
-  connectSocket(ev: Event) {
+  connectSocket(ev: Event, info?: ConnectServiceInfo, index?: number) {
     ev.stopImmediatePropagation();
     ev.stopPropagation();
     ev.preventDefault();
-    if (this.socketClientForm.valid) {
-      const data = new FormData();
+    const data = new FormData();
+    if (info) {
+      data.append('toNode', info.nodeKey);
+      data.append('toApp', info.appKey);
+    } else if (this.sshClientForm.valid) {
       data.append('toNode', this.socketClientForm.get('nodeKey').value);
       data.append('toApp', this.socketClientForm.get('appKey').value);
-      this.api.connectSocketClicent(this.status.addr, data).subscribe(result => {
-        console.log('conect socket client');
-        this.task.next();
-      });
     }
+    this.api.connectSocketClicent(this.status.addr, data).subscribe(result => {
+      console.log('conect socket client');
+      if (result) {
+        if (info) {
+          this.user.saveClientConnectInfo(info, this.user.SOCKETCLIENTINFO);
+        } else {
+          this.user.saveClientConnectInfo(
+            {
+              label: '',
+              nodeKey: this.socketClientForm.get('nodeKey').value,
+              appKey: this.socketClientForm.get('appKey').value,
+              count: 1
+            }, this.user.SOCKETCLIENTINFO);
+        }
+      }
+      this.task.next();
+    });
     this.dialog.closeAll();
   }
-  connectSSH(ev: Event) {
+  connectSSH(ev: Event, info?: ConnectServiceInfo, index?: number) {
     ev.stopImmediatePropagation();
     ev.stopPropagation();
     ev.preventDefault();
-    if (this.sshClientForm.valid) {
-      const data = new FormData();
+    const data = new FormData();
+    if (info) {
+      data.append('toNode', info.nodeKey);
+      data.append('toApp', info.appKey);
+    } else if (this.sshClientForm.valid) {
       data.append('toNode', this.sshClientForm.get('nodeKey').value);
       data.append('toApp', this.sshClientForm.get('appKey').value);
-      this.api.connectSSHClient(this.status.addr, data).subscribe(result => {
-        console.log('conect ssh client');
-        this.task.next();
-      });
     }
+    this.api.connectSSHClient(this.status.addr, data).subscribe(result => {
+      console.log('conect ssh client');
+      if (result) {
+        if (info) {
+          this.user.saveClientConnectInfo(info, this.user.SSHCLIENTINFO);
+        } else {
+          this.user.saveClientConnectInfo(
+            {
+              label: '',
+              nodeKey: this.sshClientForm.get('nodeKey').value,
+              appKey: this.sshClientForm.get('appKey').value,
+              count: 1
+            }, this.user.SSHCLIENTINFO);
+        }
+      }
+      this.task.next();
+    });
     this.dialog.closeAll();
   }
   delAllowNode(ev: Event, index: number) {
@@ -269,6 +305,8 @@ export class SubStatusComponent implements OnInit, OnDestroy {
     ev.stopImmediatePropagation();
     ev.stopPropagation();
     ev.preventDefault();
+    this.sshClientConnectionInfo = this.user.get(this.user.SSHCLIENTINFO);
+    this.socketClientConnectionInfo = this.user.get(this.user.SOCKETCLIENTINFO);
     this.dialog.open(content, {
       width: '450px'
     });
@@ -372,9 +410,14 @@ export class SubStatusComponent implements OnInit, OnDestroy {
           this.nodeVersion = info.version;
           this.nodeTag = info.tag;
           this.transports = info.transports;
-          this._transportData.push(info.transports);
+          if (this.transports) {
+            this.transports.sort((a1: Transports, a2: Transports) => {
+              return a1.from_app.localeCompare(a2.from_app);
+            });
+          }
+          this._transportData.push(this.transports);
           this.feedBacks = info.app_feedbacks;
-          this.showMessage(info.messages);
+          // this.showMessage(info.messages);
         }
       }, err => {
         this._transportData.push(null);
@@ -448,6 +491,11 @@ export class SubStatusComponent implements OnInit, OnDestroy {
         this.setServiceStatus();
         this.setClientPort('sshc');
         this.setClientPort('socksc');
+        if (this.status.apps) {
+          this.status.apps.sort((a1: App, a2: App) => {
+            return a1.key.localeCompare(a2.key);
+          });
+        }
         this._appData.push(this.status.apps);
       }, err => {
         this._appData.push(null);
@@ -494,6 +542,14 @@ export class SubStatusComponent implements OnInit, OnDestroy {
         });
       }
     });
+  }
+  removeClientConnection(key: string, index: number) {
+    this.user.removeClientConnectInfo(key, index);
+    switch (key) {
+      case this.user.SSHCLIENTINFO:
+        this.sshClientConnectionInfo = this.user.get(key);
+        break;
+    }
   }
   init() {
     this.startRequest = true;

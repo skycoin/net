@@ -301,15 +301,40 @@
   <div mat-dialog-content class="setting-dialog">
     <form [formGroup]="sshClientForm">
       <mat-form-field>
-        <input matInput placeholder="Input Node Key" formControlName="nodeKey">
+        <input matInput placeholder="Input Node Key" formControlName="nodeKey" autocomplete="off">
       </mat-form-field>
       <mat-form-field>
-        <input matInput placeholder="Input App Key" formControlName="appKey">
+        <input matInput placeholder="Input App Key" formControlName="appKey" autocomplete="off">
       </mat-form-field>
     </form>
     <p class="text-right">
       <button mat-raised-button color="primary" [disabled]="!sshClientForm.valid" (click)="connectSSH($event)">Connect</button>
     </p>
+  </div>
+  <div class="quick-box" *ngIf="sshClientConnectionInfo?.length > 0">
+    <h5>Records:</h5>
+    <table class="quick-table">
+      <tr *ngFor="let info of sshClientConnectionInfo;let i=index;">
+        <td>
+          <input class="label" type="text" appLabel [text]="info?.label" [info]="info" [index]="i" [key]="user?.SSHCLIENTINFO">
+        </td>
+        <td>
+          <p class="key">{{info?.nodeKey | ellipsis:'center':8}}</p>
+        </td>
+        <td>
+          <p class="key">{{info?.appKey | ellipsis:'center':8}}</p>
+        </td>
+        <td class="actions">
+          <a href="javascript:void(0)" (click)="removeClientConnection(user?.SSHCLIENTINFO,i)">
+            <mat-icon>close</mat-icon>
+          </a>
+          <a href="javascript:void(0)" (click)="connectSSH($event,info,i)">
+            <mat-icon>check</mat-icon>
+          </a>
+
+        </td>
+      </tr>
+    </table>
   </div>
 </ng-template>
 
@@ -321,15 +346,40 @@
   <div mat-dialog-content class="setting-dialog">
     <form [formGroup]="socketClientForm">
       <mat-form-field>
-        <input matInput placeholder="Input Node Key" formControlName="nodeKey">
+        <input matInput placeholder="Input Node Key" formControlName="nodeKey" autocomplete="off">
       </mat-form-field>
       <mat-form-field>
-        <input matInput placeholder="Input App Key" formControlName="appKey">
+        <input matInput placeholder="Input App Key" formControlName="appKey" autocomplete="off">
       </mat-form-field>
     </form>
     <p class="text-right">
       <button mat-raised-button color="primary" [disabled]="!socketClientForm.valid" (click)="connectSocket($event)">Connect</button>
     </p>
+  </div>
+  <div class="quick-box" *ngIf="socketClientConnectionInfo?.length > 0">
+    <h5>Records:</h5>
+    <table class="quick-table">
+      <tr *ngFor="let info of socketClientConnectionInfo;let i=index;">
+        <td>
+          <input class="label" type="text" appLabel [text]="info?.label" [info]="info" [index]="i" [key]="user?.SOCKETCLIENTINFO">
+        </td>
+        <td>
+          <p class="key">{{info?.nodeKey | ellipsis:'center':8}}</p>
+        </td>
+        <td>
+          <p class="key">{{info?.appKey | ellipsis:'center':8}}</p>
+        </td>
+        <td class="actions">
+          <a href="javascript:void(0)" (click)="removeClientConnection(user?.SOCKETCLIENTINFO,i)">
+            <mat-icon>close</mat-icon>
+          </a>
+          <a href="javascript:void(0)" (click)="connectSocket($event,info,i)">
+            <mat-icon>check</mat-icon>
+          </a>
+
+        </td>
+      </tr>
+    </table>
   </div>
 </ng-template>
 <ng-template #alert>
@@ -353,7 +403,7 @@
       <mat-hint align="start" class="hint-text">Multiple public keys are separated by commas</mat-hint>
     </mat-form-field>
     <p class="text-right">
-        <button mat-raised-button color="primary" [disabled]="!configForm.valid" (click)="updateSettings($event)">Update</button>
+      <button mat-raised-button color="primary" [disabled]="!configForm.valid" (click)="updateSettings($event)">Update</button>
     </p>
   </form>
 </ng-template>
