@@ -146,9 +146,9 @@ func (c *UDPConn) WriteToChannel(channel int, bytes []byte) (err error) {
 	if !ok {
 		return nil
 	}
-	c.GetContextLogger().Debugf("new msg seq %d", m.GetSeq())
 	s := c.GetNextSeq()
 	m.SetSeq(s)
+	c.GetContextLogger().Debugf("new msg seq %d", m.GetSeq())
 	err = c.WriteBytes(m.PkgBytes())
 	c.transmitted(m)
 	return
@@ -184,9 +184,9 @@ func (c *UDPConn) writePendingMsgs(s int) error {
 		if m == nil {
 			return nil
 		}
-		c.GetContextLogger().Debugf("new msg seq %d", m.GetSeq())
 		s := c.GetNextSeq()
 		m.SetSeq(s)
+		c.GetContextLogger().Debugf("new msg seq %d", m.GetSeq())
 		err := c.WriteBytes(m.PkgBytes())
 		if err != nil {
 			return err
@@ -202,6 +202,7 @@ func (c *UDPConn) WriteBytes(bytes []byte) error {
 	c.WriteMutex.Lock()
 	defer c.WriteMutex.Unlock()
 	n, err := c.UdpConn.WriteToUDP(bytes, c.addr)
+	c.GetContextLogger().Debugf("write out %x", bytes)
 	if err == nil && n != l {
 		return errors.New("nothing was written")
 	}
@@ -641,7 +642,7 @@ func (ca *ca) addToPendingChannel(channel int, m *msg.UDPMessage) (ok bool) {
 
 	ch, ok := ca.bifPdChans[channel]
 	if !ok {
-		return
+		panic(fmt.Errorf("no channel %d", channel))
 	}
 
 	ch.seq++
@@ -676,6 +677,7 @@ func (ca *ca) popMessage(s int) (m *msg.UDPMessage) {
 		m = element.(*msg.UDPMessage)
 
 		if int(ca.cwnd) < ca.bif+m.PkgBytesLen() {
+			m = nil
 			continue
 		}
 		ca.bif += m.PkgBytesLen()

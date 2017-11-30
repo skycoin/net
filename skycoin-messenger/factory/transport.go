@@ -39,6 +39,8 @@ type Transport struct {
 	uploadBW   bandwidth
 	downloadBW bandwidth
 
+	connAcked bool
+
 	fieldsMutex sync.RWMutex
 }
 
@@ -81,16 +83,30 @@ func (t *Transport) ListenAndConnect(address string) (conn *Connection, err erro
 
 // Connect to node B
 func (t *Transport) connect(address string) (err error) {
-	_, err = t.factory.connectUDPWithConfig(address, &ConnConfig{
+	t.fieldsMutex.Lock()
+	if t.connAcked {
+		t.fieldsMutex.Unlock()
+		return
+	}
+	t.connAcked = true
+	t.fieldsMutex.Unlock()
+	_, err = t.factory.acceptUDPWithConfig(address, &ConnConfig{
 		OnConnected: func(connection *Connection) {
-			connection.writeOP(OP_APP_CONN_ACK|RESP_PREFIX, &connAck{
-				FromApp: t.FromApp,
-				App:     t.ToApp,
-			})
+			//connection.writeOP(OP_APP_CONN_ACK|RESP_PREFIX, &connAck{
+			//	FromApp: t.FromApp,
+			//	App:     t.ToApp,
+			//})
+			connection.writeOP(OP_BUILD_APP_CONN_OK|RESP_PREFIX, &nop{})
 		},
 		Creator: t.creator,
 	})
 	return
+}
+
+func (t *Transport) connAck() {
+	t.fieldsMutex.Lock()
+	t.connAcked = true
+	t.fieldsMutex.Unlock()
 }
 
 // Connect to node A and server app
@@ -143,9 +159,10 @@ func (t *Transport) nodeReadLoop(conn *Connection, getAppConn func(id uint32) ne
 		select {
 		case m, ok := <-conn.GetChanIn():
 			if !ok {
-				log.Debugf("node conn read err %v", err)
+				conn.GetContextLogger().Debugf("node conn read err %v", err)
 				return
 			}
+			conn.GetContextLogger().Debugf("get chan in %x", m)
 			t.downloadBW.add(len(m))
 			id := binary.BigEndian.Uint32(m[PKG_HEADER_ID_BEGIN:PKG_HEADER_ID_END])
 			appConn := getAppConn(id)
@@ -166,7 +183,7 @@ func (t *Transport) nodeReadLoop(conn *Connection, getAppConn func(id uint32) ne
 			}
 			err = writeAll(appConn, body)
 			if err != nil {
-				log.Debugf("app conn write err %v", err)
+				conn.GetContextLogger().Debugf("app conn write err %v", err)
 				continue
 			}
 		}
@@ -221,6 +238,7 @@ func (t *Transport) appReadLoop(id uint32, appConn net.Conn, conn *Connection, c
 		}
 		pkg := make([]byte, PKG_HEADER_END+n)
 		copy(pkg, buf[:PKG_HEADER_END+n])
+		conn.GetContextLogger().Debugf("app conn in %x", pkg)
 		t.uploadBW.add(len(pkg))
 		conn.WriteToChannel(channel, pkg)
 	}

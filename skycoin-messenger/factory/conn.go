@@ -99,6 +99,18 @@ func newUDPClientConnection(c *factory.Connection, factory *MessengerFactory) *C
 	return connection
 }
 
+// Used by factory to spawn connections for udp server side
+func newUDPServerConnection(c *factory.Connection, factory *MessengerFactory) *Connection {
+	connection := &Connection{
+		Connection:   c,
+		factory:      factory,
+		disconnected: make(chan struct{}),
+	}
+	c.RealObject = connection
+	connection.keySetCond = sync.NewCond(connection.fieldsMutex.RLocker())
+	return connection
+}
+
 func (c *Connection) setProxyConnection(seq uint32, conn *Connection) {
 	c.fieldsMutex.Lock()
 	c.proxyConnections[seq] = conn
@@ -275,7 +287,7 @@ OUTER:
 			if !ok {
 				return
 			}
-			//c.GetContextLogger().Debugf("read %x", m)
+			c.GetContextLogger().Debugf("preprocessor read %x", m)
 			if len(m) < MSG_HEADER_END {
 				return
 			}
@@ -292,6 +304,7 @@ OUTER:
 						}
 					}
 					err = r.Run(c)
+					c.GetContextLogger().Debugf("execute op %#v err %v", r, err)
 					if err != nil {
 						if err == ErrDetach {
 							err = nil
@@ -370,6 +383,7 @@ func (c *Connection) writeOP(op byte, object interface{}) error {
 	if err != nil {
 		return err
 	}
+	c.GetContextLogger().Debugf("writeOP %#v", object)
 	return c.writeOPBytes(op, js)
 }
 

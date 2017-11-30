@@ -83,6 +83,10 @@ func (c *ConnCommonFields) SetStatusToConnected() {
 
 func (c *ConnCommonFields) SetStatusToError(err error) {
 	c.FieldsMutex.Lock()
+	if c.Status == STATUS_ERROR {
+		c.FieldsMutex.Unlock()
+		return
+	}
 	c.Status = STATUS_ERROR
 	c.Err = err
 	c.FieldsMutex.Unlock()
