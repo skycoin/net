@@ -91,22 +91,47 @@ export class SubStatusComponent implements OnInit, OnDestroy {
     if (env.taskTime) {
       this.taskTime = env.taskTime;
     }
+    const tmpTaskTime = Number(localStorage.getItem('_SKYWIRE_TASKTIME'));
+    if (tmpTaskTime && tmpTaskTime > 0) {
+      this.taskTime = tmpTaskTime;
+    }
     this.route.queryParams.subscribe(params => {
       this.key = params.key;
       this.startTask();
       this.power = 'warn';
       this.isManager = env.isManager;
     });
+    // this.user.saveClientConnectInfo({
+    //   label: 'label1',
+    //   nodeKey: 'TestNodeKye',
+    //   appKey: 'TestAppKey',
+    //   count: 1
+    // }, this.user.SSHCLIENTINFO);
     // console.log('test local:', this.user.get(this.user.SSHCLIENTINFO));
   }
   ngOnDestroy() {
     this.close();
+  }
+  setFormValue(ev: Event, info: ConnectServiceInfo, form: string) {
+    ev.stopImmediatePropagation();
+    ev.stopPropagation();
+    ev.preventDefault();
+    const value = { nodeKey: info.nodeKey, appKey: info.appKey };
+    switch (form) {
+      case 'sshClient':
+        this.sshClientForm.patchValue(value);
+        break;
+      case 'socketClient':
+        this.socketClientForm.patchValue(value);
+        break;
+    }
   }
   editTaskTime(time: number) {
     this.close();
     const newTime = time * 1000;
     if (newTime !== this.taskTime) {
       this.taskTime = time * 1000;
+      localStorage.setItem('_SKYWIRE_TASKTIME', this.taskTime.toString());
       this.startTask();
     }
   }

@@ -351,7 +351,7 @@
   <div class="quick-box" *ngIf="sshClientConnectionInfo?.length > 0">
     <h5>Records:</h5>
     <table class="quick-table">
-      <tr *ngFor="let info of sshClientConnectionInfo;let i=index;">
+      <tr class="item" *ngFor="let info of sshClientConnectionInfo;let i=index;">
         <td>
           <input class="label" type="text" appLabel [text]="info?.label" [info]="info" [index]="i" [key]="user?.SSHCLIENTINFO">
         </td>
@@ -363,12 +363,14 @@
         </td>
         <td class="actions">
           <a href="javascript:void(0)" (click)="removeClientConnection(user?.SSHCLIENTINFO,i)">
-            <mat-icon>close</mat-icon>
+            <mat-icon>delete</mat-icon>
+          </a>
+          <a href="javascript:void(0)" (click)="setFormValue($event,info,'sshClient')">
+            <mat-icon>edit</mat-icon>
           </a>
           <a href="javascript:void(0)" (click)="connectSSH($event,info,i)">
-            <mat-icon>check</mat-icon>
+            <mat-icon>power_settings_new</mat-icon>
           </a>
-
         </td>
       </tr>
     </table>
@@ -396,7 +398,7 @@
   <div class="quick-box" *ngIf="socketClientConnectionInfo?.length > 0">
     <h5>Records:</h5>
     <table class="quick-table">
-      <tr *ngFor="let info of socketClientConnectionInfo;let i=index;">
+      <tr class="item" *ngFor="let info of socketClientConnectionInfo;let i=index;">
         <td>
           <input class="label" type="text" appLabel [text]="info?.label" [info]="info" [index]="i" [key]="user?.SOCKETCLIENTINFO">
         </td>
@@ -408,10 +410,13 @@
         </td>
         <td class="actions">
           <a href="javascript:void(0)" (click)="removeClientConnection(user?.SOCKETCLIENTINFO,i)">
-            <mat-icon>close</mat-icon>
+            <mat-icon>delete</mat-icon>
+          </a>
+          <a href="javascript:void(0)" (click)="setFormValue($event,info,'socketClient')">
+            <mat-icon>edit</mat-icon>
           </a>
           <a href="javascript:void(0)" (click)="connectSocket($event,info,i)">
-            <mat-icon>check</mat-icon>
+            <mat-icon>power_settings_new</mat-icon>
           </a>
 
         </td>

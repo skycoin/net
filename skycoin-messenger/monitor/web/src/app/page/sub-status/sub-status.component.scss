@@ -151,12 +151,17 @@ app-sub-status {
 .quick-box {
   margin: .5rem 0;
   .quick-table {
+    .item {
+      &:hover {
+      }
+    }
     .label {
       color: #712a2a;
       font-size: 16px;
       width: 80px;
       padding: 5px;
       border: none;
+      background-color: transparent;
       border-bottom: 1px solid #ccc;
       &:focus {
         outline: none;
@@ -169,12 +174,12 @@ app-sub-status {
       background-color: rgba(187, 186, 186, 0.2);
       border-radius: .5rem;
       padding: 5px 2.5px;
-      margin-left: 10px;
+      // margin-left: 10px;
       text-align: center;
       overflow: hidden;
     }
     .actions {
-      padding-left: 15px;
+      padding-left: 9px;
       a {
         text-decoration: none;
         .mat-icon {
