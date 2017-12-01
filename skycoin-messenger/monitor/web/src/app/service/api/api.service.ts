@@ -55,7 +55,9 @@ export class ApiService {
   runNodeupdate(addr: string) {
     return this.handleNodePost(addr, '/node/run/update');
   }
-
+  getDebugPage(addr: string) {
+    return this.handleNodePost(addr, '/debug/pprof');
+  }
   checkUpdate(channel, vesrion: string) {
     const data = new FormData();
     data.append('addr', `http://messenger.skycoin.net:8100/api/version?c=${channel}&v=${vesrion}`);

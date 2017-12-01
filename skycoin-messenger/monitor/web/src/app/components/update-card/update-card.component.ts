@@ -41,7 +41,6 @@ export class UpdateCardComponent implements OnInit {
       }
     }, 100);
     this.api.runNodeupdate(this.nodeUrl).subscribe(result => {
-      console.log('update result:', result);
       this.dialogRef.close();
     });
   }

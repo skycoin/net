@@ -1,13 +1,16 @@
-<div class="toolBar text-right">
-  <div>Refresh:
-    <input class="shortcut_input" shortcut-input [text]="taskTime/1000" (onEdit)="editTaskTime($event)">s</div>
-</div>
 <mat-card>
   <mat-card-title>
-    <span>Node Status</span>
-    <mat-icon (click)="refresh($event)">refresh</mat-icon>
+    <div class="left-box">
+      <span>Node Status</span>
+      <mat-icon (click)="refresh($event)">refresh</mat-icon>
+    </div>
+    <div class="toolBar text-right right-box">
+      <small>Refresh:</small>
+      <span>
+        <input class="shortcut_input" shortcut-input [text]="taskTime/1000" (onEdit)="editTaskTime($event)">s</span>
+    </div>
   </mat-card-title>
-  <mat-card-content>
+  <mat-card-content class="top-card-content">
     <div class="node-key">
       <p> Public Key:
         <strong>{{key}}</strong>
@@ -118,7 +121,7 @@
       <mat-grid-tile>
         <p class="status-box-item-title">
           <small>settings</small>
-          <mat-icon class="icon-pointer" (click)="discoveriesStatus($event,discoveryStatus)">info</mat-icon>
+          <!-- <mat-icon class="icon-pointer" (click)="discoveriesStatus($event,discoveryStatus)">info</mat-icon> -->
         </p>
         <p class="status-box-item-content">
           <button mat-icon-button color="primary" (click)="openConfigSettings($event,config)">
@@ -126,6 +129,16 @@
           </button>
         </p>
       </mat-grid-tile>
+      <!-- <mat-grid-tile>
+        <p class="status-box-item-title">
+          <small>debug</small>
+        </p>
+        <p class="status-box-item-content">
+          <button mat-icon-button color="primary" (click)="openDebug($event,debugPage)">
+            <mat-icon aria-label="debug">warning</mat-icon>
+          </button>
+        </p>
+      </mat-grid-tile> -->
     </mat-grid-list>
     <mat-grid-list cols="6" rowHeight="2:1">
       <mat-grid-tile>
@@ -242,7 +255,7 @@
 </ng-template>
 
 <!-- Discovery Status Dialog -->
-<ng-template #discoveryStatus>
+<!-- <ng-template #discoveryStatus>
   <h3>Discoveries Status</h3>
   <ul class="discovery-status-list">
     <li *ngFor="let kv of discoveries | iterable">
@@ -255,7 +268,7 @@
       </div>
     </li>
   </ul>
-</ng-template>
+</ng-template> -->
 
 <ng-template #sshSettings>
   <h1 mat-dialog-title>
@@ -369,7 +382,7 @@
             <mat-icon>edit</mat-icon>
           </a>
           <a href="javascript:void(0)" (click)="connectSSH($event,info,i)">
-            <mat-icon>power_settings_new</mat-icon>
+            <mat-icon>swap_horiz</mat-icon>
           </a>
         </td>
       </tr>
@@ -416,7 +429,7 @@
             <mat-icon>edit</mat-icon>
           </a>
           <a href="javascript:void(0)" (click)="connectSocket($event,info,i)">
-            <mat-icon>power_settings_new</mat-icon>
+            <mat-icon>swap_horiz</mat-icon>
           </a>
 
         </td>
@@ -448,4 +461,21 @@
       <button mat-raised-button color="primary" [disabled]="!configForm.valid" (click)="updateSettings($event)">Update</button>
     </p>
   </form>
+  <ul class="discovery-status-list">
+    <li *ngFor="let kv of discoveries | iterable">
+      <div class="content">
+        <div class="url">{{kv?.key}}</div>
+        <div class="status">
+          <mat-icon class="icon success" *ngIf="kv?.value">check</mat-icon>
+          <mat-icon class="icon error" *ngIf="!kv?.value">error</mat-icon>
+        </div>
+      </div>
+    </li>
+  </ul>
+</ng-template>
+
+<ng-template #debugPage>
+  <div appDebug [innerHTML]="debugData | safeHtml">
+
+  </div>
 </ng-template>

@@ -35,10 +35,24 @@ app-sub-status {
   }
   .mat-card {
     .mat-card-title {
+      .left-box,
+      .right-box {
+        float: left;
+      }
+      .left-box {
+        width: 30%;
+      }
+      .right-box {
+        width: 70%;
+        font-size: 1rem;
+      }
       .mat-icon {
         cursor: pointer;
         color: $primary-color;
       }
+    }
+    .top-card-content {
+      clear: both;
     }
     box-shadow: none !important;
     margin-bottom: .5rem;
@@ -90,12 +104,19 @@ app-sub-status {
 .discovery-status-list {
   list-style: none;
   margin: 1rem 0;
-  padding: .5rem 0;
-  border-top: 1px solid #ccc;
+  padding: .5rem 0; // border-top: 1px solid #ccc;
   li {
     .content {
+      .url,
+      .status {
+        float: left;
+      }
       .url {
-        margin-right: 1rem;
+        width: 70%;
+      }
+      .status {
+        width: 30%;
+        text-align: right;
       }
       .icon {
         vertical-align: sub;
@@ -152,8 +173,7 @@ app-sub-status {
   margin: .5rem 0;
   .quick-table {
     .item {
-      &:hover {
-      }
+      &:hover {}
     }
     .label {
       color: #712a2a;
@@ -173,8 +193,7 @@ app-sub-status {
       font-size: 16px;
       background-color: rgba(187, 186, 186, 0.2);
       border-radius: .5rem;
-      padding: 5px 2.5px;
-      // margin-left: 10px;
+      padding: 5px 2.5px; // margin-left: 10px;
       text-align: center;
       overflow: hidden;
     }

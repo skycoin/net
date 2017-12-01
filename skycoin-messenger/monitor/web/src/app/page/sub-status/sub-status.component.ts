@@ -74,6 +74,7 @@ export class SubStatusComponent implements OnInit, OnDestroy {
   sshClientConnectionInfo: ConnectServiceInfo | null;
   socketClientConnectionInfo: ConnectServiceInfo | null;
   discoveries: Map<string, boolean>;
+  debugData = '';
   constructor(
     private router: Router,
     private route: ActivatedRoute,
@@ -101,16 +102,20 @@ export class SubStatusComponent implements OnInit, OnDestroy {
       this.power = 'warn';
       this.isManager = env.isManager;
     });
-    // this.user.saveClientConnectInfo({
-    //   label: 'label1',
-    //   nodeKey: 'TestNodeKye',
-    //   appKey: 'TestAppKey',
-    //   count: 1
-    // }, this.user.SSHCLIENTINFO);
-    // console.log('test local:', this.user.get(this.user.SSHCLIENTINFO));
+
+
   }
   ngOnDestroy() {
     this.close();
+  }
+  openDebug(ev: Event, content: any) {
+    this.api.getDebugPage('192.168.0.2:6001').subscribe((res) => {
+      this.debugData = res;
+      console.log('test res:', this.debugData);
+    }, err => {
+      this.debugData = err.error.text;
+    });
+    this.dialog.open(content);
   }
   setFormValue(ev: Event, info: ConnectServiceInfo, form: string) {
     ev.stopImmediatePropagation();
@@ -140,9 +145,9 @@ export class SubStatusComponent implements OnInit, OnDestroy {
       panelClass: 'log-dialog'
     });
   }
-  discoveriesStatus(ev: Event, conent: any) {
-    this.dialog.open(conent);
-  }
+  // discoveriesStatus(ev: Event, conent: any) {
+  //   this.dialog.open(conent);
+  // }
   transportsTrackBy(index, transport) {
     return transport ? transport.from_node : undefined;
   }
