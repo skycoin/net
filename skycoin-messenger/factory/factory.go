@@ -327,6 +327,9 @@ func (f *MessengerFactory) connectUDPWithConfig(address string, config *ConnConf
 	if err != nil {
 		return nil, err
 	}
+	if c == nil {
+		panic("c == nil")
+	}
 	conn = newUDPClientConnection(c, f)
 	if config != nil && config.Creator != nil {
 		conn.factory = config.Creator
@@ -358,6 +361,9 @@ func (f *MessengerFactory) acceptUDPWithConfig(address string, config *ConnConfi
 	c, err := f.udp.ConnectAfterListen(address)
 	if err != nil {
 		return nil, err
+	}
+	if c == nil {
+		return nil, nil
 	}
 	conn = newUDPServerConnection(c, f)
 	go f.udp.AcceptedCallback(c)
