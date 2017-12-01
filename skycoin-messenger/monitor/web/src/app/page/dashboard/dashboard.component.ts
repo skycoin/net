@@ -1,5 +1,5 @@
 import { Component, OnInit, ViewEncapsulation, OnDestroy } from '@angular/core';
-import { ApiService, Conn, ConnData, ConnsResponse } from '../../service';
+import { ApiService, Conn, ConnData, ConnsResponse, UserService } from '../../service';
 import { DataSource } from '@angular/cdk/collections';
 import { Observable } from 'rxjs/Observable';
 import { BehaviorSubject } from 'rxjs/BehaviorSubject';
@@ -17,16 +17,27 @@ import { Subject } from 'rxjs/Subject';
   encapsulation: ViewEncapsulation.None
 })
 export class DashboardComponent implements OnInit, OnDestroy {
-  displayedColumns = ['index', 'status', 'key', 'send', 'recv', 'seen'];
+  displayedColumns = ['index', 'label', 'status', 'key', 'send', 'recv', 'seen'];
   dataSource: ConnDataSource | null;
   _database = new ConnDatabase(this.api);
-
-  constructor(private api: ApiService, private snackBar: MatSnackBar, private router: Router) { }
+  labelObj = null;
+  constructor(private api: ApiService, private snackBar: MatSnackBar, private router: Router, private user: UserService) { }
   ngOnInit() {
     this.dataSource = new ConnDataSource(this._database);
+    this.labelObj = this.user.get(this.user.HOMENODELABLE);
   }
   ngOnDestroy() {
     this.close();
+  }
+  editLabel(label: string, nodeKey: string) {
+    if (!label) {
+      return;
+    }
+    this.user.saveHomeLabel(nodeKey, label);
+    this.labelObj = this.user.get(this.user.HOMENODELABLE);
+  }
+  transportsNodeBy(index, node) {
+    return node ? node.key : undefined;
   }
   status(ago: number) {
     const now = new Date().getTime() / 1000;

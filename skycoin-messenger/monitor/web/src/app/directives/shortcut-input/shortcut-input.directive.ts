@@ -9,10 +9,25 @@ export class ShortcutInputDirective implements OnInit {
   isEdit = false;
   constructor(private el: ElementRef) { }
   ngOnInit() {
-    this.el.nativeElement.value = this.text;
+    if (this.text) {
+      this.el.nativeElement.value = this.text;
+    } else {
+      this.el.nativeElement.value = '';
+    }
   }
+
+  @HostListener('click', ['$event'])
+  _click(ev: Event) {
+    ev.stopImmediatePropagation();
+    ev.stopPropagation();
+    ev.preventDefault();
+  }
+
   @HostListener('focus', ['$event'])
   _foucs(ev: Event) {
+    ev.stopImmediatePropagation();
+    ev.stopPropagation();
+    ev.preventDefault();
     this.isEdit = true;
   }
   @HostListener('blur', ['$event'])

@@ -300,6 +300,17 @@ export class SubStatusComponent implements OnInit, OnDestroy {
       }
     });
     ref.componentInstance.nodeUrl = this.status.addr;
+    ref.afterClosed().subscribe((result) => {
+      if (result) {
+        this.dialog.open(LoadingComponent, {
+          panelClass: 'loading',
+          disableClose: true,
+          data: {
+            taskTime: 120,
+          }
+        });
+      }
+    });
   }
   refresh(ev: Event) {
     ev.stopImmediatePropagation();

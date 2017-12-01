@@ -7,10 +7,18 @@
     <!-- <mat-icon matTooltip="refresh" fontSet="fa" fontIcon="fa-refresh" (click)="refresh($event)"></mat-icon> -->
   </p>
 </div>
-<mat-table #table [dataSource]="dataSource">
+<mat-table #table [dataSource]="dataSource" [trackBy]="transportsNodeBy">
   <ng-container matColumnDef="index">
     <mat-header-cell *matHeaderCellDef [style.flex]="'0 0 3rem'"> # </mat-header-cell>
     <mat-cell *matCellDef="let i = index;" [style.flex]="'0 0 3rem'"> {{i+1}} </mat-cell>
+  </ng-container>
+  <ng-container matColumnDef="label">
+    <mat-header-cell *matHeaderCellDef [style.flex]="'0 0 5rem'"> Label </mat-header-cell>
+    <mat-cell *matCellDef="let data" [style.flex]="'0 0 5rem'">
+      <span>
+        <input type="text" shortcut-input [text]="labelObj[data.key]" maxlength="5" (onEdit)="editLabel($event,data.key)">
+      </span>
+    </mat-cell>
   </ng-container>
   <ng-container matColumnDef="status">
     <mat-header-cell *matHeaderCellDef [style.flex]="'0 0 5rem'"> Status </mat-header-cell>

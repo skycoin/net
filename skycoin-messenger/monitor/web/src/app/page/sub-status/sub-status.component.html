@@ -7,7 +7,7 @@
     <div class="toolBar text-right right-box">
       <small>Refresh:</small>
       <span>
-        <input class="shortcut_input" shortcut-input [text]="taskTime/1000" (onEdit)="editTaskTime($event)">s</span>
+        <input class="shortcut_input" shortcut-input [text]="taskTime/1000" (onEdit)="editTaskTime($event)" maxlength="5">s</span>
     </div>
   </mat-card-title>
   <mat-card-content class="top-card-content">
@@ -413,7 +413,7 @@
     <table class="quick-table">
       <tr class="item" *ngFor="let info of socketClientConnectionInfo;let i=index;">
         <td>
-          <input class="label" type="text" appLabel [text]="info?.label" [info]="info" [index]="i" [key]="user?.SOCKETCLIENTINFO">
+          <input class="label" type="text" appLabel [text]="info?.label" [info]="info" [index]="i" [key]="user?.SOCKETCLIENTINFO" >
         </td>
         <td>
           <p class="key">{{info?.nodeKey | ellipsis:'center':8}}</p>
