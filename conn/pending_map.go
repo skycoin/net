@@ -162,7 +162,7 @@ func (m *UDPPendingMap) DelMsgAndGetLossMsgs(k uint32, resend uint32) (ok bool, 
 		if ok {
 			v, ok := v.(*msg.UDPMessage)
 			if ok {
-				if v.Miss() >= resend {
+				if v.AddMiss() >= resend {
 					v.ResetMiss()
 					loss = append(loss, v)
 				}

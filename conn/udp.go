@@ -143,11 +143,11 @@ func (c *UDPConn) Write(bytes []byte) (err error) {
 func (c *UDPConn) WriteToChannel(channel int, bytes []byte) (err error) {
 	m := msg.NewUDPWithoutSeq(msg.TYPE_NORMAL, bytes)
 	ok := c.addToPendingChannel(channel, m)
+	c.GetContextLogger().Debugf("bif %d, ok %t", c.ca.getBytesInFlight(), ok)
 	if !ok {
 		return nil
 	}
-	s := c.GetNextSeq()
-	m.SetSeq(s)
+	m.SetSeq(c.GetNextSeq())
 	c.GetContextLogger().Debugf("new msg seq %d", m.GetSeq())
 	err = c.WriteBytes(m.PkgBytes())
 	c.transmitted(m)
@@ -180,19 +180,20 @@ func (c *UDPConn) resendMsg(m *msg.UDPMessage) (err error) {
 
 func (c *UDPConn) writePendingMsgs(s int) error {
 	for {
+		c.GetContextLogger().Debugf("popMessage bif %d, s %d", c.ca.getBytesInFlight(), s)
 		m := c.ca.popMessage(s)
+		s = 0
+		c.GetContextLogger().Debugf("popMessage bif %d, m %v", c.ca.getBytesInFlight(), m)
 		if m == nil {
 			return nil
 		}
-		s := c.GetNextSeq()
-		m.SetSeq(s)
+		m.SetSeq(c.GetNextSeq())
 		c.GetContextLogger().Debugf("new msg seq %d", m.GetSeq())
 		err := c.WriteBytes(m.PkgBytes())
 		if err != nil {
 			return err
 		}
 		c.transmitted(m)
-		s = 0
 	}
 }
 
@@ -231,14 +232,13 @@ func (c *UDPConn) RecvAck(m []byte) (err error) {
 	n, ok := c.getMinUnAckSeq()
 
 	c.GetContextLogger().Debugf("recv ack %d, next %d, min unack %t %d", seq, ns, ok, n)
-	if ok {
-		for ; ns > n+1; n++ {
-			c.GetContextLogger().Debugf("ignore ack %d", n)
-			err = c.delMsg(n, true)
-			if err != nil {
-				return
-			}
+	for ok && ns > n+1 {
+		c.GetContextLogger().Debugf("ignore ack %d", n)
+		err = c.delMsg(n, true)
+		if err != nil {
+			return
 		}
+		n, ok = c.getMinUnAckSeq()
 	}
 	err = c.delMsg(seq, false)
 	return
@@ -307,7 +307,7 @@ func (c *UDPConn) delMsg(seq uint32, ignore bool) error {
 	ok, um, msgs := c.DelMsgAndGetLossMsgs(seq, c.ca.getCwnd()/MAX_UDP_PACKAGE_SIZE/3)
 	var s int
 	if ok {
-		s = um.TotalSize()
+		s = um.PkgBytesLen()
 		c.AddAckCount()
 		if !ignore {
 			c.updateRTT(um.GetRTT())
@@ -636,7 +636,7 @@ func (c *UDPConn) NewPendingChannel() (channel int) {
 	return c.ca.newPendingChannel()
 }
 
-func (ca *ca) addToPendingChannel(channel int, m *msg.UDPMessage) (ok bool) {
+func (ca *ca) addToPendingChannel(channel int, m *msg.UDPMessage) bool {
 	ca.bifMtx.Lock()
 	defer ca.bifMtx.Unlock()
 
@@ -650,18 +650,17 @@ func (ca *ca) addToPendingChannel(channel int, m *msg.UDPMessage) (ok bool) {
 	min := ch.pd.Min()
 	if (min != nil && min.Less(m)) || int(ca.cwnd) < ca.bif+m.PkgBytesLen() {
 		ch.pd.ReplaceOrInsert(m)
-		return
+		return false
 	}
 	ca.bif += m.PkgBytesLen()
-	ok = true
-	return
+	return true
 }
 
 func (ca *ca) popMessage(s int) (m *msg.UDPMessage) {
 	ca.bifMtx.Lock()
 	defer ca.bifMtx.Unlock()
 	if ca.bif < s {
-		panic("popMessage ca.bytesInFlight < s")
+		panic(fmt.Errorf("popMessage ca.bif(%d) < s(%d)", ca.bif, s))
 	}
 	ca.bif -= s
 
