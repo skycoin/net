@@ -170,6 +170,7 @@ type UDPMessage struct {
 	*Message
 
 	miss        uint32
+	resendCnt   uint32
 	resendTimer *time.Timer
 
 	delivered     uint64
@@ -208,12 +209,13 @@ func (msg *UDPMessage) UpdateState(delivered uint64, deliveredTime, sentTime tim
 
 func (msg *UDPMessage) SetRTO(rto time.Duration, fn func() error) {
 	msg.Lock()
-	msg.resendTimer = time.AfterFunc(rto, func() {
+	msg.resendTimer = time.AfterFunc(rto*time.Duration((msg.resendCnt)*3/2+1), func() {
 		msg.Lock()
 		if msg.status&MSG_STATUS_ACKED > 0 {
 			msg.Unlock()
 			return
 		}
+		msg.resendCnt++
 		msg.Unlock()
 		msg.ResetMiss()
 		err := fn()
