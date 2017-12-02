@@ -68,7 +68,7 @@ func NewConnCommonFileds() ConnCommonFields {
 	entry := log.WithField("ctxId", atomic.AddUint32(&ctxId, 1))
 	fields := ConnCommonFields{
 		lastReadTime: time.Now().Unix(),
-		In:           make(chan []byte, 1),
+		In:           make(chan []byte, 128),
 		Out:          make(chan []byte, 1),
 	}
 	fields.ctxLogger.Store(entry)

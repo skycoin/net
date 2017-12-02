@@ -244,7 +244,7 @@ func (c *UDPConn) RecvAck(m []byte) (err error) {
 	n, ok := c.getMinUnAckSeq()
 
 	c.GetContextLogger().Debugf("recv ack %d, next %d, min unack %t %d", seq, ns, ok, n)
-	for ok && ns > n+1 {
+	for ok && ns > n+1 && n != seq {
 		c.GetContextLogger().Debugf("ignore ack %d", n)
 		err = c.delMsg(n, true)
 		if err != nil {
@@ -256,16 +256,16 @@ func (c *UDPConn) RecvAck(m []byte) (err error) {
 	if seq > ns+1 {
 		i := msg.ACK_NEXT_SEQ_END
 		mm := make(map[uint32]struct{})
-		for len(m)-i > 4 {
+		for len(m)-i >= 4 {
 			v := binary.BigEndian.Uint32(m[i:])
 			mm[v] = struct{}{}
 			i = i + 4
 		}
+		c.GetContextLogger().Debugf("recover ack [%d-%d) missing %v", ns+1, seq, mm)
 
 		for j := ns + 1; j < seq; j++ {
 			if _, ok := mm[j]; !ok {
-				c.GetContextLogger().Debugf("recover ack %d", n)
-				err = c.delMsg(n, true)
+				err = c.delMsg(j, true)
 				if err != nil {
 					return
 				}
@@ -341,10 +341,10 @@ func (c *UDPConn) delMsg(seq uint32, ignore bool) error {
 	if ok {
 		s := um.PkgBytesLen()
 		c.AddAckCount()
-		if !ignore {
-			c.updateRTT(um.GetRTT())
-			c.updateDeliveryRate(um)
-		}
+		//if !ignore {
+		//	c.updateRTT(um.GetRTT())
+		//	c.updateDeliveryRate(um)
+		//}
 		if len(msgs) > 1 {
 			c.GetContextLogger().Debugf("resend loss msgs %v", msgs)
 			for _, msg := range msgs {
@@ -595,14 +595,25 @@ type ca struct {
 	bifMtx     sync.RWMutex
 	bifPdId    int
 	bifPdChans map[int]*pdChan
-	maxPdCnt   int
 
 	sync.RWMutex
 }
 
 type pdChan struct {
-	pd  *btree.BTree
-	seq uint32
+	pd    *btree.BTree
+	seq   uint32
+	mtx   sync.Mutex
+	cond  *sync.Cond
+	maxPd int
+}
+
+func newPdChan(max int) *pdChan {
+	pd := &pdChan{
+		pd:    btree.New(2),
+		maxPd: max,
+	}
+	pd.cond = sync.NewCond(&pd.mtx)
+	return pd
 }
 
 func newCA() *ca {
@@ -611,13 +622,10 @@ func newCA() *ca {
 		rateSamples: newRateSampler(16),
 		pacingGain:  highGain,
 		cwnd:        20480,
-		maxPdCnt:    10,
 		bifPdChans:  make(map[int]*pdChan),
 	}
 
-	c.bifPdChans[c.bifPdId] = &pdChan{
-		pd: btree.New(2),
-	}
+	c.bifPdChans[c.bifPdId] = newPdChan(1000)
 	return c
 }
 
@@ -648,9 +656,7 @@ func (ca *ca) newPendingChannel() (channel int) {
 
 	ca.bifPdId++
 	channel = ca.bifPdId
-	ca.bifPdChans[channel] = &pdChan{
-		pd: btree.New(2),
-	}
+	ca.bifPdChans[channel] = newPdChan(100)
 	return
 }
 
@@ -670,50 +676,67 @@ func (c *UDPConn) NewPendingChannel() (channel int) {
 }
 
 func (ca *ca) addToPendingChannel(channel int, m *msg.UDPMessage) bool {
-	ca.bifMtx.Lock()
-	defer ca.bifMtx.Unlock()
-
+	ca.bifMtx.RLock()
 	ch, ok := ca.bifPdChans[channel]
+	ca.bifMtx.RUnlock()
 	if !ok {
 		panic(fmt.Errorf("no channel %d", channel))
 	}
 
+	ch.mtx.Lock()
+	if ch.pd.Len()+1 > ch.maxPd && channel != 0 {
+		ch.cond.Wait()
+	}
 	ch.seq++
 	m.SetSeq(ch.seq)
 	min := ch.pd.Min()
 	if (min != nil && min.Less(m)) || int(ca.cwnd) < ca.bif+m.PkgBytesLen() {
 		ch.pd.ReplaceOrInsert(m)
+		ch.mtx.Unlock()
 		return false
 	}
+	ch.mtx.Unlock()
+
+	ca.bifMtx.Lock()
 	ca.bif += m.PkgBytesLen()
+	ca.bifMtx.Unlock()
 	return true
 }
 
 func (ca *ca) popMessage(s int) (m *msg.UDPMessage) {
 	ca.bifMtx.Lock()
-	defer ca.bifMtx.Unlock()
 	if ca.bif < s {
 		panic(fmt.Errorf("popMessage ca.bif(%d) < s(%d)", ca.bif, s))
 	}
 	ca.bif -= s
+	ca.bifMtx.Unlock()
 
 	for _, v := range ca.bifPdChans {
+		v.mtx.Lock()
 		pd := v.pd
 		if pd.Len() < 1 {
+			v.mtx.Unlock()
 			continue
 		}
 		element := pd.Min()
 		if element == nil {
+			v.mtx.Unlock()
 			continue
 		}
 		m = element.(*msg.UDPMessage)
 
 		if int(ca.cwnd) < ca.bif+m.PkgBytesLen() {
 			m = nil
+			v.mtx.Unlock()
 			continue
 		}
-		ca.bif += m.PkgBytesLen()
 		pd.DeleteMin()
+		v.mtx.Unlock()
+		v.cond.Broadcast()
+
+		ca.bifMtx.Lock()
+		ca.bif += m.PkgBytesLen()
+		ca.bifMtx.Unlock()
 		return
 	}
 	return
