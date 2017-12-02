@@ -39,6 +39,12 @@ export class DashboardComponent implements OnInit, OnDestroy {
   transportsNodeBy(index, node) {
     return node ? node.key : undefined;
   }
+  getLabel(key: string) {
+    if (this.labelObj) {
+      return this.labelObj[key] ? this.labelObj[key] : '';
+    }
+    return '';
+  }
   status(ago: number) {
     const now = new Date().getTime() / 1000;
     return (now - ago) < 180;

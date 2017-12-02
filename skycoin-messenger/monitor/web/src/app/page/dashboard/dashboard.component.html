@@ -16,7 +16,7 @@
     <mat-header-cell *matHeaderCellDef [style.flex]="'0 0 5rem'"> Label </mat-header-cell>
     <mat-cell *matCellDef="let data" [style.flex]="'0 0 5rem'">
       <span>
-        <input type="text" shortcut-input [text]="labelObj[data.key]" maxlength="5" (onEdit)="editLabel($event,data.key)">
+        <input type="text" shortcut-input [text]="getLabel(data?.key)" maxlength="5" (onEdit)="editLabel($event,data.key)">
       </span>
     </mat-cell>
   </ng-container>
@@ -27,8 +27,8 @@
     </mat-cell>
   </ng-container>
   <ng-container matColumnDef="key">
-    <mat-header-cell *matHeaderCellDef [style.flex]="'0 0 35rem'"> Key </mat-header-cell>
-    <mat-cell *matCellDef="let data" [style.flex]="'0 0 35rem'"> {{data.key}} </mat-cell>
+    <mat-header-cell *matHeaderCellDef [style.flex]="'0 0 33rem'"> Key </mat-header-cell>
+    <mat-cell *matCellDef="let data" [style.flex]="'0 0 33rem'"> {{data.key}} </mat-cell>
   </ng-container>
   <ng-container matColumnDef="send">
     <mat-header-cell *matHeaderCellDef [style.flex]="'0 0 7rem'"> Send </mat-header-cell>
