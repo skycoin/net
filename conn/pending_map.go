@@ -256,3 +256,22 @@ func (q *streamQueue) getAckedSeq() uint32 {
 func (q *streamQueue) getNextAckSeq() uint32 {
 	return q.ackedSeq + 1
 }
+
+func (q *streamQueue) getMissingSeqs(start, end uint32) (seqs []uint32) {
+	e := make(map[uint32]struct{})
+	q.msgs.AscendRange(packet{seq: start}, packet{seq: end}, func(i btree.Item) bool {
+		p, ok := i.(packet)
+		if !ok {
+			return true
+		}
+		e[p.seq] = struct{}{}
+		return true
+	})
+
+	for i := start; i < end; i++ {
+		if _, ok := e[i]; !ok {
+			seqs = append(seqs, i)
+		}
+	}
+	return
+}

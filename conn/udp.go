@@ -213,11 +213,23 @@ func (c *UDPConn) WriteBytes(bytes []byte) error {
 func (c *UDPConn) Ack(seq uint32) error {
 	nSeq := c.getNextAckSeq()
 	c.GetContextLogger().Debugf("ack %d, next %d", seq, nSeq)
-	p := make([]byte, msg.ACK_HEADER_SIZE+msg.PKG_HEADER_SIZE)
+	var missing []uint32
+	var ml int
+	if seq > nSeq+1 {
+		missing = c.getMissingSeqs(nSeq+1, seq)
+		c.GetContextLogger().Debugf("missing %v", missing)
+		ml = len(missing)
+	}
+	p := make([]byte, msg.ACK_HEADER_SIZE+msg.PKG_HEADER_SIZE+4*ml)
 	m := p[msg.PKG_HEADER_SIZE:]
 	m[msg.ACK_TYPE_BEGIN] = msg.TYPE_ACK
 	binary.BigEndian.PutUint32(m[msg.ACK_SEQ_BEGIN:], seq)
 	binary.BigEndian.PutUint32(m[msg.ACK_NEXT_SEQ_BEGIN:], nSeq)
+
+	for i, v := range missing {
+		binary.BigEndian.PutUint32(m[msg.ACK_NEXT_SEQ_END+i*4:], v)
+	}
+
 	checksum := crc32.ChecksumIEEE(m)
 	binary.BigEndian.PutUint32(p[msg.PKG_CRC32_BEGIN:], checksum)
 	return c.WriteBytes(p)
@@ -240,6 +252,27 @@ func (c *UDPConn) RecvAck(m []byte) (err error) {
 		}
 		n, ok = c.getMinUnAckSeq()
 	}
+
+	if seq > ns+1 {
+		i := msg.ACK_NEXT_SEQ_END
+		mm := make(map[uint32]struct{})
+		for len(m)-i > 4 {
+			v := binary.BigEndian.Uint32(m[i:])
+			mm[v] = struct{}{}
+			i = i + 4
+		}
+
+		for j := ns + 1; j < seq; j++ {
+			if _, ok := mm[j]; !ok {
+				c.GetContextLogger().Debugf("recover ack %d", n)
+				err = c.delMsg(n, true)
+				if err != nil {
+					return
+				}
+			}
+		}
+	}
+
 	err = c.delMsg(seq, false)
 	return
 }
@@ -305,9 +338,8 @@ func (c *UDPConn) AddMsg(k uint32, v *msg.UDPMessage) {
 
 func (c *UDPConn) delMsg(seq uint32, ignore bool) error {
 	ok, um, msgs := c.DelMsgAndGetLossMsgs(seq, c.ca.getCwnd()/MAX_UDP_PACKAGE_SIZE/3)
-	var s int
 	if ok {
-		s = um.PkgBytesLen()
+		s := um.PkgBytesLen()
 		c.AddAckCount()
 		if !ignore {
 			c.updateRTT(um.GetRTT())
@@ -326,11 +358,12 @@ func (c *UDPConn) delMsg(seq uint32, ignore bool) error {
 			}
 		}
 		c.UpdateLastAck(seq)
+		return c.writePendingMsgs(s)
 	} else if !ignore {
 		c.GetContextLogger().Debugf("over ack %s", c)
 		c.AddOverAckCount()
 	}
-	return c.writePendingMsgs(s)
+	return nil
 }
 
 func (c *UDPConn) AddLossResendCount() {
