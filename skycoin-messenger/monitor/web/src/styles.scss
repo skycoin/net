@@ -107,6 +107,7 @@
 
 .icon-pointer {
   cursor: pointer;
+  transform: scale(.75);
   &:hover {
     color: #9e0000;
   }
