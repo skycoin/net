@@ -180,7 +180,7 @@
           </mat-menu>
         </p>
         <p class="status-box-item-content status-item">
-          <button mat-icon-button (click)="inputKeys($event,socketClientDialog)" [ngClass]="socketClientColor">
+          <button mat-icon-button (click)="inputKeys($event,'socket',socketClientDialog)" [ngClass]="socketClientColor">
             <mat-icon aria-label="Shadowsocks">near_me</mat-icon>
           </button>
         </p>
@@ -202,7 +202,7 @@
           </mat-menu>
         </p>
         <p class="status-box-item-content status-item">
-          <button mat-icon-button (click)="inputKeys($event,sshClientDialog)" [ngClass]="sshClientColor">
+          <button mat-icon-button (click)="inputKeys($event,'ssh',sshClientDialog)" [ngClass]="sshClientColor">
             <mat-icon aria-label="SSH">computer</mat-icon>
           </button>
         </p>
@@ -401,15 +401,15 @@
       </mat-form-field>
     </form>
     <p class="text-right">
-      <button mat-raised-button color="primary" [disabled]="!sshClientForm.valid" (click)="connectSSH($event)">Connect</button>
+      <button mat-raised-button color="primary" [disabled]="!sshClientForm.valid" (click)="connectSSH($event,'ssh')">Connect</button>
     </p>
   </div>
-  <div class="quick-box" *ngIf="sshClientConnectionInfo?.length > 0">
+  <div class="quick-box" *ngIf="clientConnectionInfo?.length > 0">
     <h5>Records:</h5>
     <table class="quick-table">
-      <tr class="item" *ngFor="let info of sshClientConnectionInfo;let i=index;">
+      <tr class="item" *ngFor="let info of clientConnectionInfo;let i=index;">
         <td>
-          <input class="label" type="text" appLabel [text]="info?.label" [info]="info" [index]="i" [key]="user?.SSHCLIENTINFO">
+          <input class="label" type="text" appLabel [text]="info?.label" [info]="info" [index]="i" [client]="'ssh'">
         </td>
         <td>
           <p class="key">{{info?.nodeKey | ellipsis:'center':8}}</p>
@@ -418,13 +418,13 @@
           <p class="key">{{info?.appKey | ellipsis:'center':8}}</p>
         </td>
         <td class="actions">
-          <a href="javascript:void(0)" (click)="removeClientConnection(user?.SSHCLIENTINFO,i)">
+          <a href="javascript:void(0)" (click)="removeClientConnection('ssh',i)">
             <mat-icon>delete</mat-icon>
           </a>
           <a href="javascript:void(0)" (click)="setFormValue($event,info,'sshClient')">
             <mat-icon>edit</mat-icon>
           </a>
-          <a href="javascript:void(0)" (click)="connectSSH($event,info,i)">
+          <a href="javascript:void(0)" (click)="connectSSH($event,'ssh',info)">
             <mat-icon>swap_horiz</mat-icon>
           </a>
         </td>
@@ -448,15 +448,15 @@
       </mat-form-field>
     </form>
     <p class="text-right">
-      <button mat-raised-button color="primary" [disabled]="!socketClientForm.valid" (click)="connectSocket($event)">Connect</button>
+      <button mat-raised-button color="primary" [disabled]="!socketClientForm.valid" (click)="connectSocket($event,'socket')">Connect</button>
     </p>
   </div>
-  <div class="quick-box" *ngIf="socketClientConnectionInfo?.length > 0">
+  <div class="quick-box" *ngIf="clientConnectionInfo?.length > 0">
     <h5>Records:</h5>
     <table class="quick-table">
-      <tr class="item" *ngFor="let info of socketClientConnectionInfo;let i=index;">
+      <tr class="item" *ngFor="let info of clientConnectionInfo;let i=index;">
         <td>
-          <input class="label" type="text" appLabel [text]="info?.label" [info]="info" [index]="i" [key]="user?.SOCKETCLIENTINFO">
+          <input class="label" type="text" appLabel [text]="info?.label" [info]="info" [index]="i" [client]="'socket'">
         </td>
         <td>
           <p class="key">{{info?.nodeKey | ellipsis:'center':8}}</p>
@@ -465,13 +465,13 @@
           <p class="key">{{info?.appKey | ellipsis:'center':8}}</p>
         </td>
         <td class="actions">
-          <a href="javascript:void(0)" (click)="removeClientConnection(user?.SOCKETCLIENTINFO,i)">
+          <a href="javascript:void(0)" (click)="removeClientConnection('socket',i)">
             <mat-icon>delete</mat-icon>
           </a>
           <a href="javascript:void(0)" (click)="setFormValue($event,info,'socketClient')">
             <mat-icon>edit</mat-icon>
           </a>
-          <a href="javascript:void(0)" (click)="connectSocket($event,info,i)">
+          <a href="javascript:void(0)" (click)="connectSocket($event,'socket',info)">
             <mat-icon>swap_horiz</mat-icon>
           </a>
 

@@ -68,7 +68,18 @@ export class ApiService {
     data.append('addr', `http://messenger.skycoin.net:8100/api/version?c=${channel}&v=${vesrion}`);
     return this.handlePost(this.nodeUrl, data);
   }
-
+  saveClientConnection(data: FormData) {
+    return this.handlePost(this.connUrl + 'saveClientConnection', data);
+  }
+  removeClientConnection(data: FormData) {
+    return this.handlePost(this.connUrl + 'removeClientConnection', data);
+  }
+  editClientConnection(data: FormData) {
+    return this.handlePost(this.connUrl + 'editClientConnection', data);
+  }
+  getClientConnection(data: FormData) {
+    return this.handlePost(this.connUrl + 'getClientConnection', data);
+  }
   jsonp(url: string) {
     if (url === '') {
       return Observable.throw('Url is empty.');
@@ -98,6 +109,12 @@ export class ApiService {
     }
     return this.httpClient.post(url, data).catch(err => Observable.throw(err));
   }
+}
+export interface ConnectServiceInfo {
+  label?: string;
+  nodeKey?: string;
+  appKey?: string;
+  count?: number;
 }
 export interface Conn {
   key?: string;

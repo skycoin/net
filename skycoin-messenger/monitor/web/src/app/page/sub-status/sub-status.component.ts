@@ -82,8 +82,8 @@ export class SubStatusComponent implements OnInit, OnDestroy {
   _sshServerData = new SubDatabase();
   _socketServerData = new SubDatabase();
   isProduction = env.production;
-  sshClientConnectionInfo: ConnectServiceInfo | null;
-  socketClientConnectionInfo: ConnectServiceInfo | null;
+  clientConnectionInfo: ConnectServiceInfo | null;
+  // socketClientConnectionInfo: ConnectServiceInfo | null;
   discoveries: Map<string, boolean>;
   debugData = '';
   messages: Array<Message> = [];
@@ -188,63 +188,57 @@ export class SubStatusComponent implements OnInit, OnDestroy {
   appTrackBy(index, app) {
     return app ? app.key : undefined;
   }
-  connectSocket(ev: Event, info?: ConnectServiceInfo, index?: number) {
+  connectSocket(ev: Event, action: string, info?: ConnectServiceInfo, ) {
     ev.stopImmediatePropagation();
     ev.stopPropagation();
     ev.preventDefault();
     const data = new FormData();
-    if (info) {
-      data.append('toNode', info.nodeKey);
-      data.append('toApp', info.appKey);
-    } else if (this.sshClientForm.valid) {
-      data.append('toNode', this.socketClientForm.get('nodeKey').value);
-      data.append('toApp', this.socketClientForm.get('appKey').value);
-    }
+    data.append('client', action);
     this.api.connectSocketClicent(this.status.addr, data).subscribe(result => {
       console.log('conect socket client');
       if (result) {
         if (info) {
-          this.user.saveClientConnectInfo(info, this.user.SOCKETCLIENTINFO);
+          data.append('data', JSON.stringify(info));
         } else {
-          this.user.saveClientConnectInfo(
-            {
-              label: '',
-              nodeKey: this.socketClientForm.get('nodeKey').value,
-              appKey: this.socketClientForm.get('appKey').value,
-              count: 1
-            }, this.user.SOCKETCLIENTINFO);
+          const jsonStr = {
+            label: '',
+            nodeKey: this.socketClientForm.get('nodeKey').value,
+            appKey: this.socketClientForm.get('appKey').value,
+            count: 1
+          };
+          data.append('data', JSON.stringify(jsonStr));
         }
+        this.api.saveClientConnection(data).subscribe(res => {
+          console.log('save:', res);
+        });
       }
       this.task.next();
     });
     this.dialog.closeAll();
   }
-  connectSSH(ev: Event, info?: ConnectServiceInfo, index?: number) {
+  connectSSH(ev: Event, action: string, info?: ConnectServiceInfo, ) {
     ev.stopImmediatePropagation();
     ev.stopPropagation();
     ev.preventDefault();
     const data = new FormData();
-    if (info) {
-      data.append('toNode', info.nodeKey);
-      data.append('toApp', info.appKey);
-    } else if (this.sshClientForm.valid) {
-      data.append('toNode', this.sshClientForm.get('nodeKey').value);
-      data.append('toApp', this.sshClientForm.get('appKey').value);
-    }
+    data.append('client', action);
     this.api.connectSSHClient(this.status.addr, data).subscribe(result => {
       console.log('conect ssh client');
       if (result) {
         if (info) {
-          this.user.saveClientConnectInfo(info, this.user.SSHCLIENTINFO);
+          data.append('data', JSON.stringify(info));
         } else {
-          this.user.saveClientConnectInfo(
-            {
-              label: '',
-              nodeKey: this.sshClientForm.get('nodeKey').value,
-              appKey: this.sshClientForm.get('appKey').value,
-              count: 1
-            }, this.user.SSHCLIENTINFO);
+          const jsonStr = {
+            label: '',
+            nodeKey: this.sshClientForm.get('nodeKey').value,
+            appKey: this.sshClientForm.get('appKey').value,
+            count: 1
+          };
+          data.append('data', JSON.stringify(jsonStr));
         }
+        this.api.saveClientConnection(data).subscribe(res => {
+          console.log('save:', res);
+        });
       }
       this.task.next();
     });
@@ -393,12 +387,23 @@ export class SubStatusComponent implements OnInit, OnDestroy {
       }
     });
   }
-  inputKeys(ev: Event, content: any) {
+  inputKeys(ev: Event, action: string, content: any) {
     ev.stopImmediatePropagation();
     ev.stopPropagation();
     ev.preventDefault();
-    this.sshClientConnectionInfo = this.user.get(this.user.SSHCLIENTINFO);
-    this.socketClientConnectionInfo = this.user.get(this.user.SOCKETCLIENTINFO);
+    if (!action) {
+      this.snackBar.open('Unable to obtain historical connection information', 'Dismiss', {
+        duration: 3000,
+        verticalPosition: 'top',
+        extraClasses: ['bg-warn']
+      });
+    } else {
+      const data = new FormData();
+      data.append('client', action);
+      this.api.getClientConnection(data).subscribe((info: ConnectServiceInfo) => {
+        this.clientConnectionInfo = info;
+      });
+    }
     this.sshClientForm.reset();
     this.socketClientForm.reset();
     this.dialog.open(content, {
@@ -641,13 +646,17 @@ export class SubStatusComponent implements OnInit, OnDestroy {
       }
     });
   }
-  removeClientConnection(key: string, index: number) {
-    this.user.removeClientConnectInfo(key, index);
-    switch (key) {
-      case this.user.SSHCLIENTINFO:
-        this.sshClientConnectionInfo = this.user.get(key);
-        break;
-    }
+  removeClientConnection(action: string, index: number) {
+    const data = new FormData();
+    data.append('client', action);
+    data.append('index', String(index));
+    this.api.removeClientConnection(data).subscribe((result) => {
+      if (result) {
+        this.api.getClientConnection(data).subscribe((info: ConnectServiceInfo) => {
+          this.clientConnectionInfo = info;
+        });
+      }
+    });
   }
   init() {
     this.startRequest = true;
