@@ -437,6 +437,7 @@ func (c *Connection) PutMessage(v PriorityMsg) bool {
 		c.appMessagesMutex.Unlock()
 		return false
 	}
+	v.Time = time.Now().Unix()
 	c.appMessages = append(c.appMessages, v)
 	c.appMessagesPty = v.Priority
 	c.appMessagesMutex.Unlock()

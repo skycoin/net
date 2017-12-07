@@ -1,7 +1,18 @@
 import { Component, OnInit, ViewEncapsulation, OnDestroy } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { environment as env } from '../../../environments/environment';
-import { ApiService, NodeServices, App, Transports, NodeInfo, Message, FeedBackItem, UserService, ConnectServiceInfo } from '../../service';
+import {
+  ApiService,
+  NodeServices,
+  App,
+  Transports,
+  NodeInfo,
+  Message,
+  FeedBackItem,
+  UserService,
+  ConnectServiceInfo,
+  MessageItem
+} from '../../service';
 import { MatSnackBar, MatDialog, MatDialogRef } from '@angular/material';
 import { DataSource } from '@angular/cdk/collections';
 import { Observable } from 'rxjs/Observable';
@@ -64,8 +75,8 @@ export class SubStatusComponent implements OnInit, OnDestroy {
   });
   sshClientPort = 0;
   socketClientPort = 0;
-  nodeVersion = '';
-  nodeTag = '';
+  nodeVersion = '0.0.1';
+  nodeTag = 'dev';
   _appData = new SubDatabase();
   _transportData = new SubDatabase();
   _sshServerData = new SubDatabase();
@@ -75,6 +86,8 @@ export class SubStatusComponent implements OnInit, OnDestroy {
   socketClientConnectionInfo: ConnectServiceInfo | null;
   discoveries: Map<string, boolean>;
   debugData = '';
+  messages: Array<Message> = [];
+  showMsgs: Array<MessageItem> = [];
   constructor(
     private router: Router,
     private route: ActivatedRoute,
@@ -140,10 +153,31 @@ export class SubStatusComponent implements OnInit, OnDestroy {
       this.startTask();
     }
   }
-  openLog(content: any) {
+  openLog(service: string, content: any) {
+    this.showMsgs = [];
+    const app = this.findService(service);
+    const data = new FormData();
+    data.append('key', app.key);
+    this.api.checkAppMsg(this.status.addr, data).subscribe((res) => {
+      console.log('check msg:', res);
+      this.showMsgs = res;
+      this.task.next();
+    });
     this.dialog.open(content, {
       panelClass: 'log-dialog'
     });
+  }
+
+  isUnread(service: string) {
+    const app = this.findService(service);
+    if (app && this.feedBacks) {
+      const result = this.feedBacks.find(el => {
+        return el.key === app.key;
+      });
+      return result.unread;
+    }
+    return 0;
+    // return result.read ? result.read : false;
   }
   // discoveriesStatus(ev: Event, conent: any) {
   //   this.dialog.open(conent);
@@ -478,6 +512,9 @@ export class SubStatusComponent implements OnInit, OnDestroy {
           this._transportData.push(this.transports);
           this.feedBacks = info.app_feedbacks;
           this.discoveries = info.discoveries;
+          // if (info.messages.length !== this.messages.length) {
+          //   this.messages = info.messages;
+          // }
           // this.showMessage(info.messages);
         }
       }, err => {
@@ -492,7 +529,7 @@ export class SubStatusComponent implements OnInit, OnDestroy {
       const result = this.feedBacks.find(el => {
         return el.key === app.key;
       });
-      port = result.feedbacks ? result.feedbacks.port : 0;
+      port = result.port ? result.port : 0;
     }
     switch (client) {
       case 'sshc':
@@ -507,44 +544,44 @@ export class SubStatusComponent implements OnInit, OnDestroy {
         break;
     }
   }
-  showMessage(msgs: Array<Array<Message>>) {
-    if (!msgs || msgs[0] == null) {
-      return;
-    } else if (msgs.length === 1) {
-      msgs[0].sort(this.compareMsg);
-    } else {
-      msgs.sort((m1, m2) => {
-        m1.sort(this.compareMsg);
-        m2.sort(this.compareMsg);
-        if (m1[0].priority < m2[0].priority) {
-          return 1;
-        }
-        if (m1[0].priority > m2[0].priority) {
-          return -1;
-        }
-        return 0;
-      });
-    }
-    this.alertMsg = msgs[0][0].msg;
-    setTimeout(() => {
-      this.dialog.open(AlertComponent, {
-        width: '45rem',
-        panelClass: 'alert',
-        data: {
-          msg: this.alertMsg
-        }
-      });
-    }, 500);
-  }
-  compareMsg(msg1: Message, msg2: Message) {
-    if (msg1.priority < msg2.priority) {
-      return 1;
-    }
-    if (msg1.priority > msg2.priority) {
-      return -1;
-    }
-    return 0;
-  }
+  // showMessage(msgs: Array<Array<Message>>) {
+  //   if (!msgs || msgs[0] == null) {
+  //     return;
+  //   } else if (msgs.length === 1) {
+  //     msgs[0].sort(this.compareMsg);
+  //   } else {
+  //     msgs.sort((m1, m2) => {
+  //       m1.sort(this.compareMsg);
+  //       m2.sort(this.compareMsg);
+  //       if (m1[0].priority < m2[0].priority) {
+  //         return 1;
+  //       }
+  //       if (m1[0].priority > m2[0].priority) {
+  //         return -1;
+  //       }
+  //       return 0;
+  //     });
+  //   }
+  //   this.alertMsg = msgs[0][0].msg;
+  //   setTimeout(() => {
+  //     this.dialog.open(AlertComponent, {
+  //       width: '45rem',
+  //       panelClass: 'alert',
+  //       data: {
+  //         msg: this.alertMsg
+  //       }
+  //     });
+  //   }, 500);
+  // }
+  // compareMsg(msg1: Message, msg2: Message) {
+  //   if (msg1.priority < msg2.priority) {
+  //     return 1;
+  //   }
+  //   if (msg1.priority > msg2.priority) {
+  //     return -1;
+  //   }
+  //   return 0;
+  // }
   fillApps() {
     if (env.isManager) {
       this.api.getApps(this.status.addr).subscribe((apps: Array<App>) => {

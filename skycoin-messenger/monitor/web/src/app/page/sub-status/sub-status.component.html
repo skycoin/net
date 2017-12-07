@@ -53,20 +53,20 @@
         </p>
         <p class="status-box-item-content">{{status?.start_time | timeAgo}}</p>
       </mat-grid-tile>
-      <mat-grid-tile>
+      <!-- <mat-grid-tile>
         <p class="status-box-item-title">
           <small>Send</small>
           <mat-icon>arrow_upward</mat-icon>
         </p>
         <p class="status-box-item-content">{{status?.send_bytes | byteTo}} </p>
-      </mat-grid-tile>
-      <mat-grid-tile>
+      </mat-grid-tile> -->
+      <!-- <mat-grid-tile>
         <p class="status-box-item-title">
           <small>Recv</small>
           <mat-icon>arrow_downward</mat-icon>
         </p>
         <p class="status-box-item-content">{{status?.recv_bytes | byteTo}}</p>
-      </mat-grid-tile>
+      </mat-grid-tile> -->
     </mat-grid-list>
   </mat-card-content>
 </mat-card>
@@ -79,7 +79,19 @@
       <mat-grid-tile>
         <p class="status-box-item-title">
           <small>Shadowsocks</small>
-          <mat-icon (click)="openSettings($event,sockSettings,'SSH')" class="icon-pointer">more_vert</mat-icon>
+          <button class="icon-pointer" mat-icon-button [matMenuTriggerFor]="socketServermenu">
+            <mat-icon aria-label="more">more_vert</mat-icon>
+          </button>
+          <mat-menu #socketServermenu="matMenu">
+            <button mat-menu-item (click)="openSettings($event,sockSettings,'SSH')">
+              <mat-icon>settings</mat-icon>
+              <span>Setting</span>
+            </button>
+            <button mat-menu-item (click)="openLog('socks',logDialog)">
+              <mat-icon>description</mat-icon>
+              <span>Messages</span>
+            </button>
+          </mat-menu>
         </p>
         <p class="status-box-item-content">
           <button mat-icon-button (click)="runSocketServer($event)" [ngClass]="socketColor">
@@ -90,7 +102,19 @@
       <mat-grid-tile>
         <p class="status-box-item-title">
           <small style="margin-left: 1.5rem;">SSH</small>
-          <mat-icon (click)="openSettings($event,sshSettings,'SSH')" class="icon-pointer">more_vert</mat-icon>
+          <button class="icon-pointer" mat-icon-button [matMenuTriggerFor]="sshServermenu">
+            <mat-icon aria-label="more">more_vert</mat-icon>
+          </button>
+          <mat-menu #sshServermenu="matMenu">
+            <button mat-menu-item (click)="openSettings($event,sshSettings,'SSH')">
+              <mat-icon>settings</mat-icon>
+              <span>Setting</span>
+            </button>
+            <button mat-menu-item (click)="openLog('sshs',logDialog)">
+              <mat-icon>description</mat-icon>
+              <span>Messages</span>
+            </button>
+          </mat-menu>
         </p>
         <p class="status-box-item-content">
           <button mat-icon-button (click)="runSSHServer($event)" [ngClass]="sshColor">
@@ -144,6 +168,16 @@
       <mat-grid-tile>
         <p class="status-box-item-title status-item">
           <small>Shadowsocks Client</small>
+          <button class="icon-pointer" mat-icon-button [matMenuTriggerFor]="socketClientmenu">
+            <!--  [class.unread]="isUnread('sockc') > 0" -->
+            <mat-icon aria-label="more">more_vert</mat-icon>
+          </button>
+          <mat-menu #socketClientmenu="matMenu">
+            <button mat-menu-item (click)="openLog('sockc',logDialog)">
+              <mat-icon>description</mat-icon>
+              <span>Messages</span>
+            </button>
+          </mat-menu>
         </p>
         <p class="status-box-item-content status-item">
           <button mat-icon-button (click)="inputKeys($event,socketClientDialog)" [ngClass]="socketClientColor">
@@ -157,6 +191,15 @@
       <mat-grid-tile>
         <p class="status-box-item-title status-item">
           <small>SSH Client</small>
+          <button class="icon-pointer" mat-icon-button [matMenuTriggerFor]="sshtClientmenu" [class.unread]="isUnread('sshc') > 0">
+            <mat-icon aria-label="more">more_vert</mat-icon>
+          </button>
+          <mat-menu #sshtClientmenu="matMenu">
+            <button mat-menu-item (click)="openLog('sshc',logDialog)">
+              <mat-icon>description</mat-icon>
+              <span>Messages</span>
+            </button>
+          </mat-menu>
         </p>
         <p class="status-box-item-content status-item">
           <button mat-icon-button (click)="inputKeys($event,sshClientDialog)" [ngClass]="sshClientColor">
@@ -241,13 +284,13 @@
 <!-- Log Dialog -->
 <ng-template #logDialog>
   <div class="log-box">
-    <h4 class="log-title">SSH Log</h4>
+    <h4 class="log-title">Log</h4>
     <div class="log-content">
       <ul class="list">
-        <li>
-          <span class="time">[2017.11.29 16:29:33]</span>
-          <span class="msg">This is 1 log.This is 1 logThis is 1 log.This is 1 log.This is 1 logThis is 1 log.This is 1 log.This is 1 logThis
-            is 1 log.</span>
+        <li *ngFor="let item of showMsgs">
+          <!--  -->
+          <span class="time">[{{item?.time * 1000 | date: 'yyyy-LL-dd HH:mm:ss'}}]</span>
+          <span class="msg">{{item?.msg}}</span>
         </li>
       </ul>
     </div>
@@ -413,7 +456,7 @@
     <table class="quick-table">
       <tr class="item" *ngFor="let info of socketClientConnectionInfo;let i=index;">
         <td>
-          <input class="label" type="text" appLabel [text]="info?.label" [info]="info" [index]="i" [key]="user?.SOCKETCLIENTINFO" >
+          <input class="label" type="text" appLabel [text]="info?.label" [info]="info" [index]="i" [key]="user?.SOCKETCLIENTINFO">
         </td>
         <td>
           <p class="key">{{info?.nodeKey | ellipsis:'center':8}}</p>
