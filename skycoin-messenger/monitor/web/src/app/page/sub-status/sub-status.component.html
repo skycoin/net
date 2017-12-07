@@ -79,7 +79,7 @@
       <mat-grid-tile>
         <p class="status-box-item-title">
           <small>Shadowsocks</small>
-          <button class="icon-pointer" mat-icon-button [matMenuTriggerFor]="socketServermenu"  [class.unread]="isUnread('socks') > 0">
+          <button class="icon-pointer" mat-icon-button [matMenuTriggerFor]="socketServermenu" [class.unread]="isUnread('socks') > 0">
             <mat-icon aria-label="more">more_vert</mat-icon>
           </button>
           <mat-menu #socketServermenu="matMenu">
@@ -102,7 +102,7 @@
       <mat-grid-tile>
         <p class="status-box-item-title">
           <small style="margin-left: 1.5rem;">SSH</small>
-          <button class="icon-pointer" mat-icon-button [matMenuTriggerFor]="sshServermenu"  [class.unread]="isUnread('sshs') > 0">
+          <button class="icon-pointer" mat-icon-button [matMenuTriggerFor]="sshServermenu" [class.unread]="isUnread('sshs') > 0">
             <mat-icon aria-label="more">more_vert</mat-icon>
           </button>
           <mat-menu #sshServermenu="matMenu">
@@ -395,9 +395,21 @@
     <form [formGroup]="sshClientForm">
       <mat-form-field>
         <input matInput placeholder="Input Node Key" formControlName="nodeKey" autocomplete="off">
+        <mat-error *ngIf="sshClientForm.get('nodeKey').hasError('required')">
+          Please enter a valid Node Key
+        </mat-error>
+        <mat-error *ngIf="sshClientForm.get('nodeKey').hasError('minlength') || sshClientForm.get('nodeKey').hasError('minlength')">
+          The Node Key must be  66 characters long.
+        </mat-error>
       </mat-form-field>
       <mat-form-field>
         <input matInput placeholder="Input App Key" formControlName="appKey" autocomplete="off">
+        <mat-error *ngIf="sshClientForm.get('appKey').hasError('required')">
+          Please enter a valid App Key
+        </mat-error>
+        <mat-error *ngIf="sshClientForm.get('appKey').hasError('minlength') || sshClientForm.get('appKey').hasError('minlength')">
+          The Node Key must be  66 characters long.
+        </mat-error>
       </mat-form-field>
     </form>
     <p class="text-right">
@@ -442,9 +454,21 @@
     <form [formGroup]="socketClientForm">
       <mat-form-field>
         <input matInput placeholder="Input Node Key" formControlName="nodeKey" autocomplete="off">
+        <mat-error *ngIf="socketClientForm.get('nodeKey').hasError('required')">
+          Please enter a valid Node Key
+        </mat-error>
+        <mat-error *ngIf="socketClientForm.get('nodeKey').hasError('minlength') || socketClientForm.get('nodeKey').hasError('minlength')">
+          The Node Key must be  66 characters long.
+        </mat-error>
       </mat-form-field>
       <mat-form-field>
         <input matInput placeholder="Input App Key" formControlName="appKey" autocomplete="off">
+        <mat-error *ngIf="socketClientForm.get('appKey').hasError('required')">
+          Please enter a valid App Key
+        </mat-error>
+        <mat-error *ngIf="socketClientForm.get('appKey').hasError('minlength') || socketClientForm.get('appKey').hasError('minlength')">
+          The Node Key must be  66 characters long.
+        </mat-error>
       </mat-form-field>
     </form>
     <p class="text-right">
