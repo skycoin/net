@@ -151,3 +151,16 @@ snack-bar-container {
     outline: none;
   }
 }
+
+.unread {
+  &::before {
+    position: absolute;
+    top: 0;
+    right: 1px;
+    border-radius: 50%;
+    width: 13px;
+    height: 13px;
+    content: '';
+    background-color: red;
+  }
+}

@@ -62,16 +62,17 @@ export class SubStatusComponent implements OnInit, OnDestroy {
   timer: Subscription = null;
   startRequest = false;
   feedBacks: Array<FeedBackItem> = [];
+  formValidatorsSlice = [Validators.required, Validators.minLength(66), Validators.maxLength(33)];
   sshClientForm = new FormGroup({
-    nodeKey: new FormControl('', Validators.required),
-    appKey: new FormControl('', Validators.required),
+    nodeKey: new FormControl('', this.formValidatorsSlice),
+    appKey: new FormControl('', this.formValidatorsSlice),
   });
   socketClientForm = new FormGroup({
-    nodeKey: new FormControl('', Validators.required),
-    appKey: new FormControl('', Validators.required),
+    nodeKey: new FormControl('', this.formValidatorsSlice),
+    appKey: new FormControl('', this.formValidatorsSlice),
   });
   configForm = new FormGroup({
-    DiscoveryAddresses: new FormControl('', Validators.required),
+    DiscoveryAddresses: new FormControl('', this.formValidatorsSlice),
   });
   sshClientPort = 0;
   socketClientPort = 0;
