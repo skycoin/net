@@ -62,7 +62,7 @@ export class SubStatusComponent implements OnInit, OnDestroy {
   timer: Subscription = null;
   startRequest = false;
   feedBacks: Array<FeedBackItem> = [];
-  formValidatorsSlice = [Validators.required, Validators.minLength(66), Validators.maxLength(33)];
+  formValidatorsSlice = [Validators.required, Validators.minLength(66), Validators.maxLength(66)];
   sshClientForm = new FormGroup({
     nodeKey: new FormControl('', this.formValidatorsSlice),
     appKey: new FormControl('', this.formValidatorsSlice),
@@ -194,9 +194,16 @@ export class SubStatusComponent implements OnInit, OnDestroy {
     ev.stopPropagation();
     ev.preventDefault();
     const data = new FormData();
-    data.append('client', action);
+    if (info) {
+      data.append('toNode', info.nodeKey);
+      data.append('toApp', info.appKey);
+    } else if (this.sshClientForm.valid) {
+      data.append('toNode', this.socketClientForm.get('nodeKey').value);
+      data.append('toApp', this.socketClientForm.get('appKey').value);
+    }
     this.api.connectSocketClicent(this.status.addr, data).subscribe(result => {
       console.log('conect socket client');
+      data.append('client', action);
       if (result) {
         if (info) {
           data.append('data', JSON.stringify(info));
@@ -222,9 +229,16 @@ export class SubStatusComponent implements OnInit, OnDestroy {
     ev.stopPropagation();
     ev.preventDefault();
     const data = new FormData();
-    data.append('client', action);
+    if (info) {
+      data.append('toNode', info.nodeKey);
+      data.append('toApp', info.appKey);
+    } else if (this.sshClientForm.valid) {
+      data.append('toNode', this.sshClientForm.get('nodeKey').value);
+      data.append('toApp', this.sshClientForm.get('appKey').value);
+    }
     this.api.connectSSHClient(this.status.addr, data).subscribe(result => {
       console.log('conect ssh client');
+      data.append('client', action);
       if (result) {
         if (info) {
           data.append('data', JSON.stringify(info));
