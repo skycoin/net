@@ -44,14 +44,6 @@ type UDPConn struct {
 	*ca
 }
 
-type mode int
-
-const (
-	startup mode = iota
-	drain
-	probeBW
-)
-
 // used for server spawn udp conn
 func NewUDPConn(c *net.UDPConn, addr *net.UDPAddr) *UDPConn {
 	conn := &UDPConn{
@@ -221,11 +213,10 @@ func (c *UDPConn) resendMsg(m *msg.UDPMessage) (err error) {
 	return
 }
 
-func (c *UDPConn) writePendingMsgs(s int) error {
+func (c *UDPConn) writePendingMsgs() error {
 	for {
 		c.GetContextLogger().Debugf("popMessage bif %d, s %d", c.ca.getBytesInFlight(), s)
-		m := c.ca.popMessage(s)
-		s = 0
+		m := c.ca.popMessage()
 		c.GetContextLogger().Debugf("popMessage bif %d, m %v", c.ca.getBytesInFlight(), m)
 		if m == nil {
 			return nil
@@ -408,7 +399,13 @@ func (c *UDPConn) delMsg(seq uint32, ignore bool) error {
 			}
 		}
 		c.UpdateLastAck(seq)
-		return c.writePendingMsgs(um.PkgBytesLen())
+		c.ca.cwndMtx.Lock()
+		c.ca.usedCwnd--
+		c.ca.cwndMtx.Unlock()
+		c.ca.bifMtx.Lock()
+		c.ca.bif -= um.PkgBytesLen()
+		c.ca.bifMtx.Unlock()
+		return c.writePendingMsgs()
 	} else if !ignore {
 		c.GetContextLogger().Debugf("over ack %s", c)
 		c.AddOverAckCount()
@@ -569,10 +566,12 @@ func (t *rateSampler) getMax() rate {
 	return item.(rate)
 }
 
+const rttUnit = time.Microsecond
+
 func (c *UDPConn) updateDeliveryRate(m *msg.UDPMessage) {
 	c.ca.Lock()
 	defer c.ca.Unlock()
-	c.delivered += uint64(m.TotalSize())
+	c.delivered++
 	c.deliveredTime = time.Now()
 	c.sentTime = m.GetTransmittedTime()
 
@@ -582,20 +581,20 @@ func (c *UDPConn) updateDeliveryRate(m *msg.UDPMessage) {
 
 	c.tryToCancelAppLimited(m.GetSeq())
 
-	sd := c.sentTime.Sub(m.GetSentTime()) / time.Millisecond
-	ad := c.deliveredTime.Sub(m.GetDeliveredTime()) / time.Millisecond
+	sd := c.sentTime.Sub(m.GetSentTime()) / rttUnit
+	ad := c.deliveredTime.Sub(m.GetDeliveredTime()) / rttUnit
 	interval := ad
 	if sd > ad {
 		interval = sd
 	}
-	d := c.delivered - m.GetDelivered()
+	d := (c.delivered - m.GetDelivered()) * BW_UNIT
 	drate := rate(d / uint64(interval))
 	c.GetContextLogger().Debugf("drate(%d) d %d interval %d sd %d ad %d", drate, d, interval, sd, ad)
 	mr := c.rttSamples.getMin()
 	if mr <= 0 {
 		return
 	}
-	rtt := uint64(time.Duration(mr) / time.Millisecond)
+	rtt := uint64(time.Duration(mr) / rttUnit)
 	if uint64(interval) < rtt {
 		return
 	}
@@ -611,28 +610,57 @@ func (c *UDPConn) updateDeliveryRate(m *msg.UDPMessage) {
 	if hm <= 0 {
 		return
 	}
-	cwnd := uint32(float64(max*rtt) * c.pacingGain)
+	cwnd := c.targetCwnd(max, rtt, c.cwndGain)
 	if c.ca.mode == startup {
 		if hm > drate {
 			c.fullCnt++
-			if c.fullCnt > 3 {
+			if c.fullBwReached() {
 				c.ca.mode = drain
-				c.ca.pacingGain = drainGain
+				c.ca.cwndGain = highGain
 			}
 		}
 	}
 	c.GetContextLogger().Debugf("mode %d, max bw %d rtt %d: cwnd %d", c.mode, max, rtt, cwnd)
-	if c.ca.mode == startup && cwnd > c.cwnd {
-		//c.cwnd = cwnd
-	} else if c.ca.mode == drain {
-		pcwnd := uint32(max * rtt)
+	if c.ca.mode == drain {
+		pcwnd := c.targetCwnd(max, rtt, c.cwndGain)
 		if c.ca.bif < int(pcwnd) {
 			c.ca.mode = probeBW
-			c.ca.pacingGain = 1
-			cwnd = pcwnd
+			c.ca.cwndGain = cwndGain
 		}
-		//c.cwnd = cwnd
 	}
+
+	c.setCwnd(d, max, rtt, c.cwndGain)
+}
+
+func (c *UDPConn) targetCwnd(bw, rtt uint64, gain int) uint32 {
+	cwnd := ((uint32(int(bw*rtt)*c.cwndGain) >> BBR_SCALE) + BW_UNIT - 1) / BW_UNIT
+	return cwnd
+}
+
+func (ca *ca) fullBwReached() bool {
+	return ca.fullCnt > 3
+}
+
+func (c *UDPConn) setCwnd(acked, bw, rtt uint64, gain int) {
+	target := c.targetCwnd(bw, rtt, gain)
+
+	cwnd := c.ca.getCwnd()
+	if c.fullBwReached() {
+		n := cwnd + uint32(acked)
+		if n < target {
+			cwnd = n
+		} else {
+			cwnd = target
+		}
+	} else if cwnd < target {
+		cwnd = cwnd + uint32(acked)
+	}
+	if 4 > cwnd {
+		cwnd = 4
+	}
+
+	c.GetContextLogger().Debugf("setCwnd %d", cwnd)
+	c.ca.setCwnd(cwnd)
 }
 
 type ca struct {
@@ -642,8 +670,10 @@ type ca struct {
 	rttSamples    *rttSampler
 	rateSamples   *rateSampler
 	cwnd          uint32
+	usedCwnd      uint32
+	cwndMtx       sync.Mutex
 	mode
-	pacingGain float64
+	cwndGain   int
 	fullCnt    uint
 	pendingCnt int32
 
@@ -679,8 +709,7 @@ func newCA() *ca {
 	c := &ca{
 		rttSamples:  newRttSampler(16),
 		rateSamples: newRateSampler(16),
-		pacingGain:  highGain,
-		cwnd:        20480,
+		cwndGain:    highGain,
 		bifPdChans:  make(map[int]*pdChan),
 	}
 
@@ -743,18 +772,22 @@ func (ca *ca) addToPendingChannel(channel int, m *msg.UDPMessage) bool {
 	}
 
 	ch.mtx.Lock()
-	if ch.pd.Len()+1 > ch.maxPd && channel != 0 {
+	for ch.pd.Len()+1 > ch.maxPd && channel != 0 {
 		ch.cond.Wait()
 	}
 	ch.seq++
 	m.SetSeq(ch.seq)
 	min := ch.pd.Min()
-	if (min != nil && min.Less(m)) || int(ca.cwnd) < ca.bif+m.PkgBytesLen() {
+	ca.cwndMtx.Lock()
+	if (min != nil && min.Less(m)) || ca.cwnd < ca.usedCwnd+1 {
 		atomic.AddInt32(&ca.pendingCnt, 1)
 		ch.pd.ReplaceOrInsert(m)
+		ca.cwndMtx.Unlock()
 		ch.mtx.Unlock()
 		return false
 	}
+	ca.usedCwnd++
+	ca.cwndMtx.Unlock()
 	ch.mtx.Unlock()
 
 	ca.bifMtx.Lock()
@@ -763,14 +796,7 @@ func (ca *ca) addToPendingChannel(channel int, m *msg.UDPMessage) bool {
 	return true
 }
 
-func (ca *ca) popMessage(s int) (m *msg.UDPMessage) {
-	ca.bifMtx.Lock()
-	if ca.bif < s {
-		panic(fmt.Errorf("popMessage ca.bif(%d) < s(%d)", ca.bif, s))
-	}
-	ca.bif -= s
-	ca.bifMtx.Unlock()
-
+func (ca *ca) popMessage() (m *msg.UDPMessage) {
 	for _, v := range ca.bifPdChans {
 		v.mtx.Lock()
 		pd := v.pd
@@ -785,11 +811,15 @@ func (ca *ca) popMessage(s int) (m *msg.UDPMessage) {
 		}
 		m = element.(*msg.UDPMessage)
 
-		if int(ca.cwnd) < ca.bif+m.PkgBytesLen() {
+		ca.cwndMtx.Lock()
+		if ca.cwnd < ca.usedCwnd+1 {
 			m = nil
+			ca.cwndMtx.Unlock()
 			v.mtx.Unlock()
-			continue
+			return
 		}
+		ca.usedCwnd++
+		ca.cwndMtx.Unlock()
 		pd.DeleteMin()
 		v.mtx.Unlock()
 		v.cond.Broadcast()
@@ -810,15 +840,13 @@ func (ca *ca) getBytesInFlight() (r int) {
 	return
 }
 
-func (ca *ca) getCwnd() (r uint32) {
-	ca.RLock()
-	r = ca.cwnd
-	ca.RUnlock()
+func (ca *ca) getCwnd() (cwnd uint32) {
+	cwnd = ca.cwnd
 	return
 }
 
 func (ca *ca) setCwnd(cwnd uint32) {
-	if cwnd < MAX_UDP_PACKAGE_SIZE {
+	if cwnd < 4 {
 		return
 	}
 	ca.cwnd = cwnd

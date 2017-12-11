@@ -115,7 +115,7 @@ type PriorityMsg struct {
 	Priority Priority `json:"priority"`
 	Msg      string   `json:"msg"`
 	Type     MsgType  `json:"type"`
-	Time 	 int64 	  `json:"time"`
+	Time     int64    `json:"time"`
 }
 
 type AppConnResp struct {

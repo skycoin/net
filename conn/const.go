@@ -13,12 +13,31 @@ const (
 )
 
 const (
-	highGain  = 2.885
-	drainGain = 1 / highGain
+	BW_SCALE = 24
+	BW_UNIT  = 1 << BW_SCALE
+)
+
+const (
+	BBR_SCALE = 8
+	BBR_UNIT  = 1 << BBR_SCALE
+)
+
+const (
+	highGain  = BBR_UNIT*2885/1000 + 1
+	drainGain = BBR_UNIT * 1000 / 2885
+	cwndGain  = BBR_UNIT * 2
 )
 
 var (
 	pacingGain = [...]float64{
 		1.25, 0.75, 1, 1, 1, 1, 1, 1,
 	}
+)
+
+type mode int
+
+const (
+	startup mode = iota
+	drain
+	probeBW
 )
