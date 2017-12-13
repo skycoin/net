@@ -174,6 +174,27 @@ func (c *UDPConn) Write(bytes []byte) (err error) {
 }
 
 func (c *UDPConn) WriteToChannel(channel int, bytes []byte) (err error) {
+	if len(bytes) > MAX_UDP_PACKAGE_SIZE {
+		for i := 0; i < len(bytes)/MAX_UDP_PACKAGE_SIZE; i++ {
+			err = c.writeToChannel(channel, bytes[i*MAX_UDP_PACKAGE_SIZE:(i+1)*MAX_UDP_PACKAGE_SIZE])
+			if err != nil {
+				return
+			}
+		}
+		i := len(bytes) % MAX_UDP_PACKAGE_SIZE
+		if i > 0 {
+			err = c.writeToChannel(channel, bytes[len(bytes)-i:])
+			if err != nil {
+				return
+			}
+		}
+	} else {
+		err = c.writeToChannel(channel, bytes)
+	}
+	return
+}
+
+func (c *UDPConn) writeToChannel(channel int, bytes []byte) (err error) {
 	m := msg.NewUDPWithoutSeq(msg.TYPE_NORMAL, bytes)
 	ok := c.addToPendingChannel(channel, m)
 	c.GetContextLogger().Debugf("bif %d, ok %t", c.ca.getBytesInFlight(), ok)
