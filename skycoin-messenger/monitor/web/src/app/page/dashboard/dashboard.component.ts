@@ -17,7 +17,7 @@ import { Subject } from 'rxjs/Subject';
   encapsulation: ViewEncapsulation.None
 })
 export class DashboardComponent implements OnInit, OnDestroy {
-  displayedColumns = ['index', 'label', 'status', 'key', 'send', 'recv', 'seen'];
+  displayedColumns = ['index', 'label', 'status', 'key', 'seen'];
   dataSource: ConnDataSource | null;
   _database = new ConnDatabase(this.api);
   labelObj = null;

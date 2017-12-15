@@ -19,7 +19,7 @@ import { Observable } from 'rxjs/Observable';
 import { Subscription } from 'rxjs/Subscription';
 import { Subject } from 'rxjs/Subject';
 import { FormControl, FormGroup, Validators } from '@angular/forms';
-import { UpdateCardComponent, AlertComponent, LoadingComponent } from '../../components';
+import { UpdateCardComponent, AlertComponent, LoadingComponent, TerminalComponent } from '../../components';
 import 'rxjs/add/observable/of';
 import 'rxjs/add/observable/timer';
 import 'rxjs/add/operator/debounceTime';
@@ -116,11 +116,31 @@ export class SubStatusComponent implements OnInit, OnDestroy {
       this.power = 'warn';
       this.isManager = env.isManager;
     });
-
-
+    // setTimeout(() => {
+    //   this.api.runShell(this.status.addr).subscribe(result => {
+    //     if (result) {
+    //       const ref = this.dialog.open(TerminalComponent, {
+    //         panelClass: 'log-dialog',
+    //         width: '800px'
+    //       });
+    //       ref.componentInstance.addr = this.status.addr;
+    //     }
+    //   });
+    // }, 1000);
   }
   ngOnDestroy() {
     this.close();
+  }
+  terminal(ev: Event) {
+    ev.stopImmediatePropagation();
+    ev.stopPropagation();
+    ev.preventDefault();
+    const ref = this.dialog.open(TerminalComponent, {
+      panelClass: 'log-dialog',
+      width: '800px',
+      disableClose: true
+    });
+    ref.componentInstance.addr = this.status.addr;
   }
   openDebug(ev: Event, content: any) {
     this.api.getDebugPage('192.168.0.2:6001').subscribe((res) => {
@@ -157,13 +177,15 @@ export class SubStatusComponent implements OnInit, OnDestroy {
   openLog(service: string, content: any) {
     this.showMsgs = [];
     const app = this.findService(service);
-    const data = new FormData();
-    data.append('key', app.key);
-    this.api.checkAppMsg(this.status.addr, data).subscribe((res) => {
-      console.log('check msg:', res);
-      this.showMsgs = res;
-      this.task.next();
-    });
+    if (app) {
+      const data = new FormData();
+      data.append('key', app.key);
+      this.api.checkAppMsg(this.status.addr, data).subscribe((res) => {
+        console.log('check msg:', res);
+        this.showMsgs = res;
+        this.task.next();
+      });
+    }
     this.dialog.open(content, {
       panelClass: 'log-dialog'
     });
@@ -175,6 +197,9 @@ export class SubStatusComponent implements OnInit, OnDestroy {
       const result = this.feedBacks.find(el => {
         return el.key === app.key;
       });
+      if (!result) {
+        return 0;
+      }
       return result.unread;
     }
     return 0;
@@ -549,6 +574,9 @@ export class SubStatusComponent implements OnInit, OnDestroy {
       const result = this.feedBacks.find(el => {
         return el.key === app.key;
       });
+      if (!result) {
+        return 0;
+      }
       port = result.port ? result.port : 0;
     }
     switch (client) {

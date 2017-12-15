@@ -16,6 +16,8 @@ import (
 	"path/filepath"
 	"github.com/skycoin/skycoin/src/util/file"
 	"strconv"
+	"github.com/gorilla/websocket"
+	"fmt"
 )
 
 type Conn struct {
@@ -86,6 +88,7 @@ func (m *Monitor) Start(webDir string) {
 	http.HandleFunc("/conn/editClientConnection", bundle(m.EditClientConnection))
 	http.HandleFunc("/conn/getClientConnection", bundle(m.GetClientConnection))
 	http.HandleFunc("/node", bundle(requestNode))
+	http.HandleFunc("/term", m.handleNodeTerm)
 	go func() {
 		if err := m.srv.ListenAndServe(); err != nil {
 			log.Printf("http server: ListenAndServe() error: %s", err)
@@ -126,6 +129,7 @@ func requestNode(w http.ResponseWriter, r *http.Request) (result []byte, err err
 	defer res.Body.Close()
 	result, err = ioutil.ReadAll(res.Body)
 	if err != nil {
+		log.Debugf("node error: %s", err.Error())
 		return result, err, SERVER_ERROR
 	}
 	return
@@ -405,4 +409,58 @@ func getFilePath(client string) string {
 		client = socketClient
 	}
 	return client
+}
+
+var upgrader = websocket.Upgrader{
+	ReadBufferSize:  1024,
+	WriteBufferSize: 1024,
+}
+
+func (m *Monitor) handleNodeTerm(w http.ResponseWriter, r *http.Request) {
+	url := r.URL.Query()["url"][0]
+	if len(url) <= 0 {
+		log.Errorf("url is: %s", url)
+		return
+	}
+	upgrader.CheckOrigin = func(r *http.Request) bool {
+		return true
+	}
+	conn, err := upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		log.Errorf("ws error: %s", err.Error())
+		conn.WriteMessage(websocket.TextMessage, []byte(err.Error()))
+		return
+	}
+	c, _, err := websocket.DefaultDialer.Dial(string(url), nil)
+	if err != nil {
+		log.Errorf("node connection error: %s", err.Error())
+		conn.WriteMessage(websocket.BinaryMessage, []byte(fmt.Sprintf("node connection error: %s", err.Error())))
+		return
+	}
+	go func() {
+		defer func() {
+			conn.Close()
+			c.Close()
+		}()
+		for {
+			messageType, p, err := c.ReadMessage()
+			if err != nil {
+				return
+			}
+			conn.WriteMessage(messageType, p)
+		}
+	}()
+	go func() {
+		defer func() {
+			conn.Close()
+			c.Close()
+		}()
+		for {
+			messageType, p, err := conn.ReadMessage()
+			if err != nil {
+				return
+			}
+			c.WriteMessage(messageType, p)
+		}
+	}()
 }

@@ -26,7 +26,12 @@ import { ApiService, UserService } from './service';
 import { TimeAgoPipe, ByteToPipe, EllipsisPipe, IterablePipe, SafeHTMLPipe } from './pipe';
 import { LabelDirective, ShortcutInputDirective, DebugDirective } from './directives';
 import { DashboardComponent, SubStatusComponent } from './page';
-import { UpdateCardComponent, AlertComponent, LoadingComponent } from './components';
+import {
+  UpdateCardComponent,
+  AlertComponent,
+  LoadingComponent,
+  TerminalComponent,
+} from './components';
 import { AppRoutingModule } from './route/app-routing.module';
 
 @NgModule({
@@ -46,12 +51,14 @@ import { AppRoutingModule } from './route/app-routing.module';
     SubStatusComponent,
     UpdateCardComponent,
     AlertComponent,
-    LoadingComponent
+    LoadingComponent,
+    TerminalComponent,
   ],
   entryComponents: [
     UpdateCardComponent,
     AlertComponent,
-    LoadingComponent
+    LoadingComponent,
+    TerminalComponent,
   ],
   imports: [
     BrowserModule,

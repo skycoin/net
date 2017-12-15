@@ -53,75 +53,17 @@
         </p>
         <p class="status-box-item-content">{{status?.start_time | timeAgo}}</p>
       </mat-grid-tile>
-      <!-- <mat-grid-tile>
-        <p class="status-box-item-title">
-          <small>Send</small>
-          <mat-icon>arrow_upward</mat-icon>
-        </p>
-        <p class="status-box-item-content">{{status?.send_bytes | byteTo}} </p>
-      </mat-grid-tile> -->
-      <!-- <mat-grid-tile>
-        <p class="status-box-item-title">
-          <small>Recv</small>
-          <mat-icon>arrow_downward</mat-icon>
-        </p>
-        <p class="status-box-item-content">{{status?.recv_bytes | byteTo}}</p>
-      </mat-grid-tile> -->
     </mat-grid-list>
   </mat-card-content>
 </mat-card>
+
 <mat-card *ngIf="isManager">
   <mat-card-title>
     <span>Operations</span>
   </mat-card-title>
   <mat-card-content>
     <mat-grid-list cols="6" rowHeight="2:1">
-      <mat-grid-tile>
-        <p class="status-box-item-title">
-          <small>Shadowsocks</small>
-          <button class="icon-pointer" mat-icon-button [matMenuTriggerFor]="socketServermenu" [class.unread]="isUnread('socks') > 0">
-            <mat-icon aria-label="more">more_vert</mat-icon>
-          </button>
-          <mat-menu #socketServermenu="matMenu">
-            <button mat-menu-item (click)="openSettings($event,sockSettings,'SSH')">
-              <mat-icon>settings</mat-icon>
-              <span>Setting</span>
-            </button>
-            <button mat-menu-item (click)="openLog('socks',logDialog)" [class.unread]="isUnread('socks') > 0">
-              <mat-icon>description</mat-icon>
-              <span>Messages</span>
-            </button>
-          </mat-menu>
-        </p>
-        <p class="status-box-item-content">
-          <button mat-icon-button (click)="runSocketServer($event)" [ngClass]="socketColor">
-            <mat-icon aria-label="Shadowsocks">near_me</mat-icon>
-          </button>
-        </p>
-      </mat-grid-tile>
-      <mat-grid-tile>
-        <p class="status-box-item-title">
-          <small style="margin-left: 1.5rem;">SSH</small>
-          <button class="icon-pointer" mat-icon-button [matMenuTriggerFor]="sshServermenu" [class.unread]="isUnread('sshs') > 0">
-            <mat-icon aria-label="more">more_vert</mat-icon>
-          </button>
-          <mat-menu #sshServermenu="matMenu">
-            <button mat-menu-item (click)="openSettings($event,sshSettings,'SSH')" [class.unread]="isUnread('sshs') > 0">
-              <mat-icon>settings</mat-icon>
-              <span>Setting</span>
-            </button>
-            <button mat-menu-item (click)="openLog('sshs',logDialog)">
-              <mat-icon>description</mat-icon>
-              <span>Messages</span>
-            </button>
-          </mat-menu>
-        </p>
-        <p class="status-box-item-content">
-          <button mat-icon-button (click)="runSSHServer($event)" [ngClass]="sshColor">
-            <mat-icon aria-label="SSH">computer</mat-icon>
-          </button>
-        </p>
-      </mat-grid-tile>
+
       <mat-grid-tile>
         <p class="status-box-item-title">
           <small>Check Update</small>
@@ -153,18 +95,86 @@
           </button>
         </p>
       </mat-grid-tile>
-      <!-- <mat-grid-tile>
+      <mat-grid-tile>
         <p class="status-box-item-title">
-          <small>debug</small>
+          <small>terminal</small>
+          <!-- <mat-icon class="icon-pointer" (click)="discoveriesStatus($event,discoveryStatus)">info</mat-icon> -->
         </p>
         <p class="status-box-item-content">
-          <button mat-icon-button color="primary" (click)="openDebug($event,debugPage)">
-            <mat-icon aria-label="debug">warning</mat-icon>
+          <button mat-icon-button color="primary" (click)="terminal($event)">
+            <img src="../../../assets/cmd.svg" alt="terminal" width="24" height="24">
           </button>
         </p>
-      </mat-grid-tile> -->
+      </mat-grid-tile>
+      <!-- <mat-grid-tile>
+            <p class="status-box-item-title">
+              <small>debug</small>
+            </p>
+            <p class="status-box-item-content">
+              <button mat-icon-button color="primary" (click)="openDebug($event,debugPage)">
+                <mat-icon aria-label="debug">warning</mat-icon>
+              </button>
+            </p>
+          </mat-grid-tile> -->
     </mat-grid-list>
+  </mat-card-content>
+</mat-card>
+
+<mat-card *ngIf="isManager">
+  <mat-card-title>
+    <span>Apps</span>
+  </mat-card-title>
+  <mat-card-content>
+
     <mat-grid-list cols="6" rowHeight="2:1">
+      <mat-grid-tile>
+        <p class="status-box-item-title">
+          <small>Shadowsocks</small>
+          <button class="icon-pointer" mat-icon-button [matMenuTriggerFor]="socketServermenu" [class.unread]="isUnread('socks') > 0">
+            <mat-icon aria-label="more">more_vert</mat-icon>
+          </button>
+          <mat-menu #socketServermenu="matMenu">
+            <button mat-menu-item (click)="openSettings($event,sockSettings,'SSH')">
+              <mat-icon>settings</mat-icon>
+              <span>Setting</span>
+            </button>
+            <button mat-menu-item (click)="openLog('socks',logDialog)" [class.unread]="isUnread('socks') > 0">
+              <mat-icon>description</mat-icon>
+              <span>Messages</span>
+            </button>
+          </mat-menu>
+        </p>
+        <p class="status-box-item-content">
+          <button mat-icon-button (click)="runSocketServer($event)" [ngClass]="socketColor">
+            <mat-icon aria-label="Shadowsocks">near_me</mat-icon>
+          </button>
+        </p>
+        <p class="status-item"></p>
+      </mat-grid-tile>
+      <mat-grid-tile>
+        <p class="status-box-item-title">
+          <small style="margin-left: 1.5rem;">SSH</small>
+          <button class="icon-pointer" mat-icon-button [matMenuTriggerFor]="sshServermenu" [class.unread]="isUnread('sshs') > 0">
+            <mat-icon aria-label="more">more_vert</mat-icon>
+          </button>
+          <mat-menu #sshServermenu="matMenu">
+            <button mat-menu-item (click)="openSettings($event,sshSettings,'SSH')" [class.unread]="isUnread('sshs') > 0">
+              <mat-icon>settings</mat-icon>
+              <span>Setting</span>
+            </button>
+            <button mat-menu-item (click)="openLog('sshs',logDialog)">
+              <mat-icon>description</mat-icon>
+              <span>Messages</span>
+            </button>
+          </mat-menu>
+        </p>
+        <p class="status-box-item-content">
+          <button mat-icon-button (click)="runSSHServer($event)" [ngClass]="sshColor">
+            <mat-icon aria-label="SSH">computer</mat-icon>
+          </button>
+        </p>
+        <p class="status-item"></p>
+      </mat-grid-tile>
       <mat-grid-tile>
         <p class="status-box-item-title status-item">
           <small>Shadowsocks Client</small>
@@ -255,10 +265,10 @@
 
 
 <div *ngIf="_appData?.isShow">
-  <h3 class="status-app-title">
+  <!-- <h3 class="status-app-title">
     <span>Apps</span>
     <mat-icon>apps</mat-icon>
-  </h3>
+  </h3> -->
   <mat-table #table [dataSource]="appSource" [trackBy]="appTrackBy">
     <ng-container matColumnDef="index">
       <mat-header-cell *matHeaderCellDef [style.flex]="'0 0 3rem'"> # </mat-header-cell>
@@ -288,7 +298,6 @@
     <div class="log-content">
       <ul class="list">
         <li *ngFor="let item of showMsgs">
-          <!--  -->
           <span class="time">[{{item?.time * 1000 | date: 'yyyy-LL-dd HH:mm:ss'}}]</span>
           <span class="msg">{{item?.msg}}</span>
         </li>
@@ -399,7 +408,7 @@
           Please enter a valid Node Key
         </mat-error>
         <mat-error *ngIf="sshClientForm.get('nodeKey').hasError('minlength') || sshClientForm.get('nodeKey').hasError('minlength')">
-          The Node Key must be  66 characters long.
+          The Node Key must be 66 characters long.
         </mat-error>
       </mat-form-field>
       <mat-form-field>
@@ -408,7 +417,7 @@
           Please enter a valid App Key
         </mat-error>
         <mat-error *ngIf="sshClientForm.get('appKey').hasError('minlength') || sshClientForm.get('appKey').hasError('minlength')">
-          The Node Key must be  66 characters long.
+          The Node Key must be 66 characters long.
         </mat-error>
       </mat-form-field>
     </form>
@@ -458,7 +467,7 @@
           Please enter a valid Node Key
         </mat-error>
         <mat-error *ngIf="socketClientForm.get('nodeKey').hasError('minlength') || socketClientForm.get('nodeKey').hasError('minlength')">
-          The Node Key must be  66 characters long.
+          The Node Key must be 66 characters long.
         </mat-error>
       </mat-form-field>
       <mat-form-field>
@@ -467,7 +476,7 @@
           Please enter a valid App Key
         </mat-error>
         <mat-error *ngIf="socketClientForm.get('appKey').hasError('minlength') || socketClientForm.get('appKey').hasError('minlength')">
-          The Node Key must be  66 characters long.
+          The Node Key must be 66 characters long.
         </mat-error>
       </mat-form-field>
     </form>

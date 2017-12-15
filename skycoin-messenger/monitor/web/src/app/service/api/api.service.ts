@@ -92,7 +92,7 @@ export class ApiService {
     }
     return this.httpClient.get(url).catch(err => Observable.throw(err));
   }
-  handleNodePost(nodeAddr: string, api: string, data?: FormData) {
+  handleNodePost(nodeAddr: string, api: string, data?: FormData, opts?: any) {
     if (nodeAddr === '' || api === '') {
       return Observable.throw('nodeAddr or api is empty.');
     }
@@ -101,13 +101,13 @@ export class ApiService {
       data = new FormData();
     }
     data.append('addr', nodeAddr);
-    return this.handlePost(this.nodeUrl, data);
+    return this.handlePost(this.nodeUrl, data, opts);
   }
-  handlePost(url: string, data: FormData) {
+  handlePost(url: string, data: FormData, opts?: any) {
     if (url === '') {
       return Observable.throw('Url is empty.');
     }
-    return this.httpClient.post(url, data).catch(err => Observable.throw(err));
+    return this.httpClient.post(url, data, opts).catch(err => Observable.throw(err));
   }
 }
 export interface ConnectServiceInfo {

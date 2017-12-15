@@ -30,14 +30,14 @@
     <mat-header-cell *matHeaderCellDef [style.flex]="'0 0 33rem'"> Key </mat-header-cell>
     <mat-cell *matCellDef="let data" [style.flex]="'0 0 33rem'"> {{data.key}} </mat-cell>
   </ng-container>
-  <ng-container matColumnDef="send">
+  <!-- <ng-container matColumnDef="send">
     <mat-header-cell *matHeaderCellDef [style.flex]="'0 0 7rem'"> Send </mat-header-cell>
     <mat-cell *matCellDef="let data" [style.flex]="'0 0 7rem'"> {{data.send_bytes | byteTo}} </mat-cell>
   </ng-container>
   <ng-container matColumnDef="recv">
     <mat-header-cell *matHeaderCellDef [style.flex]="'0 0 7rem'"> Recv </mat-header-cell>
     <mat-cell *matCellDef="let data" [style.flex]="'0 0 7rem'"> {{data.recv_bytes | byteTo}} </mat-cell>
-  </ng-container>
+  </ng-container> -->
   <ng-container matColumnDef="seen">
     <mat-header-cell *matHeaderCellDef> Started </mat-header-cell>
     <mat-cell *matCellDef="let data"> {{data.start_time | timeAgo}} </mat-cell>

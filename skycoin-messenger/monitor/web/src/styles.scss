@@ -1,6 +1,7 @@
 @import 'variables';
 @import '~@angular/material/prebuilt-themes/deeppurple-amber.css';
 @import './app.scss';
+@import '~xterm/dist/xterm.css';
 
 /* fallback */
 
@@ -162,5 +163,14 @@ snack-bar-container {
     height: 13px;
     content: '';
     background-color: red;
+  }
+}
+
+.xterm-theme-default {
+  .xterm-viewport {
+    overflow: auto !important;
+  }
+  .xterm-rows {
+    padding-left: .5em;
   }
 }
