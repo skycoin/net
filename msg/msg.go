@@ -151,6 +151,13 @@ func (msg *Message) Transmitted() {
 	msg.Unlock()
 }
 
+func (msg *Message) IsTransmitted() (r bool) {
+	msg.RLock()
+	r = msg.status&MSG_STATUS_TRANSMITTED > 0
+	msg.RUnlock()
+	return
+}
+
 func (msg *UDPMessage) IsAcked() (r bool) {
 	msg.RLock()
 	r = msg.status&MSG_STATUS_ACKED > 0
@@ -163,6 +170,12 @@ func (msg *Message) Acked() {
 	msg.status |= MSG_STATUS_ACKED
 	msg.ackedAt = time.Now()
 	msg.rtt = msg.ackedAt.Sub(msg.transmittedAt)
+	msg.Unlock()
+}
+
+func (msg *Message) Loss() {
+	msg.Lock()
+	msg.status |= MSG_STATUS_LOSS
 	msg.Unlock()
 }
 
@@ -198,13 +211,6 @@ func NewUDPWithoutSeq(t uint8, bytes []byte) *UDPMessage {
 	return &UDPMessage{
 		Message: NewWithoutSeq(t, bytes),
 	}
-}
-
-func (msg *UDPMessage) Transmitted() {
-	msg.Lock()
-	msg.status |= MSG_STATUS_TRANSMITTED
-	msg.transmittedAt = time.Now()
-	msg.Unlock()
 }
 
 func (msg *UDPMessage) UpdateState(delivered uint64, deliveredTime, sentTime time.Time) {
@@ -278,6 +284,9 @@ func (msg *UDPMessage) GetTransmittedTime() time.Time {
 }
 
 func (msg *UDPMessage) Less(b btree.Item) bool {
+	if msg.IsTransmitted() {
+		return atomic.LoadUint32(&msg.seq) < atomic.LoadUint32(&b.(*UDPMessage).seq)
+	}
 	return atomic.LoadUint32(&msg.channelSeq) < atomic.LoadUint32(&b.(*UDPMessage).channelSeq)
 }
 

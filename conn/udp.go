@@ -43,6 +43,8 @@ type UDPConn struct {
 
 	// congestion algorithm
 	*ca
+	pacingTimer *time.Timer
+	pacingChan  chan struct{}
 }
 
 // used for server spawn udp conn
@@ -55,13 +57,12 @@ func NewUDPConn(c *net.UDPConn, addr *net.UDPAddr) *UDPConn {
 		streamQueue:      newStreamQueue(),
 		rto:              300 * time.Millisecond,
 	}
-	conn.ca = newCA(func() {
-		err := conn.writePendingMsgs()
-		if err != nil {
-			conn.SetStatusToError(err)
-			conn.Close()
-		}
-	})
+	conn.ca = newCA()
+	conn.pacingTimer = time.NewTimer(0)
+	if !conn.pacingTimer.Stop() {
+		<-conn.pacingTimer.C
+	}
+	conn.pacingChan = make(chan struct{}, 1)
 	conn.lastAckCond = sync.NewCond(&conn.lastAckMtx)
 	go conn.ackLoop()
 	return conn
@@ -98,6 +99,18 @@ func (c *UDPConn) writeLoop() (err error) {
 			if err != nil {
 				c.GetContextLogger().Debugf("write msg is failed %v", err)
 				return err
+			}
+		case <-c.pacingChan:
+			err := c.writePendingMsgs()
+			if err != nil {
+				c.SetStatusToError(err)
+				c.Close()
+			}
+		case <-c.pacingTimer.C:
+			err := c.writePendingMsgs()
+			if err != nil {
+				c.SetStatusToError(err)
+				c.Close()
 			}
 		}
 	}
@@ -136,6 +149,18 @@ func (c *UDPConn) writeLoopWithPing() (err error) {
 			if err != nil {
 				c.GetContextLogger().Debugf("write msg is failed %v", err)
 				return err
+			}
+		case <-c.pacingChan:
+			err := c.writePendingMsgs()
+			if err != nil {
+				c.SetStatusToError(err)
+				c.Close()
+			}
+		case <-c.pacingTimer.C:
+			err := c.writePendingMsgs()
+			if err != nil {
+				c.SetStatusToError(err)
+				c.Close()
 			}
 		}
 	}
@@ -202,14 +227,14 @@ func (c *UDPConn) WriteToChannel(channel int, bytes []byte) (err error) {
 
 func (c *UDPConn) writeToChannel(channel int, bytes []byte) (err error) {
 	m := msg.NewUDPWithoutSeq(msg.TYPE_NORMAL, bytes)
-	ok := c.addToPendingChannel(channel, m, true)
+	ok := c.addToPendingChannel(channel, m)
 	c.GetContextLogger().Debugf("bif %d, ok %t", c.ca.getBytesInFlight(), ok)
 	if !ok {
 		return nil
 	}
 	m.SetSeq(c.GetNextSeq())
 	c.GetContextLogger().Debugf("new msg seq %d", m.GetSeq())
-	err = c.WriteBytes(m.PkgBytes())
+	err = c.pacingWriteBytes(m.PkgBytes())
 	if err != nil {
 		return err
 	}
@@ -241,13 +266,12 @@ func (c *UDPConn) resendMsg(m *msg.UDPMessage) (err error) {
 		return
 	}
 	c.GetContextLogger().Debugf("resendMsg %s", m)
-	ok := c.addToPendingChannel(m.GetChannel(), m, false)
-	c.GetContextLogger().Debugf("bif %d, ok %t", c.ca.getBytesInFlight(), ok)
+	ok := c.addToResendChannel(m)
 	if !ok {
 		return nil
 	}
 	c.GetContextLogger().Debugf("resend msg seq %d", m.GetSeq())
-	err = c.WriteBytes(m.PkgBytes())
+	err = c.pacingWriteBytes(m.PkgBytes())
 	m.SetRTO(c.getRTO(), c.resendCallback)
 	return
 }
@@ -259,16 +283,21 @@ func (c *UDPConn) writePendingMsgs() error {
 		if m == nil {
 			return nil
 		}
-		m.SetSeq(c.GetNextSeq())
-		c.GetContextLogger().Debugf("new msg seq %d", m.GetSeq())
-		err := c.WriteBytes(m.PkgBytes())
+		tx := !m.IsTransmitted()
+		if tx {
+			m.SetSeq(c.GetNextSeq())
+			c.GetContextLogger().Debugf("new msg seq %d", m.GetSeq())
+		} else {
+			c.GetContextLogger().Debugf("resend msg seq %d", m.GetSeq())
+		}
+		err := c.pacingWriteBytes(m.PkgBytes())
 		if err != nil {
 			return err
 		}
-		if m.GetResendCount() > 0 {
-			m.SetRTO(c.getRTO(), c.resendCallback)
-		} else {
+		if tx {
 			c.transmitted(m)
+		} else {
+			m.SetRTO(c.getRTO(), c.resendCallback)
 		}
 	}
 }
@@ -281,6 +310,12 @@ func (c *UDPConn) WriteBytes(bytes []byte) error {
 	if err == nil && n != l {
 		return errors.New("nothing was written")
 	}
+	return err
+}
+
+func (c *UDPConn) pacingWriteBytes(bytes []byte) error {
+	err := c.WriteBytes(bytes)
+	c.pacingTimer.Reset(c.ca.calcPacingTime(len(bytes)))
 	return err
 }
 
@@ -356,7 +391,7 @@ func (c *UDPConn) RecvAck(m []byte) (err error) {
 		}
 	}
 
-	return c.writePendingMsgs()
+	return
 }
 
 func (c *UDPConn) Ping() error {
@@ -439,6 +474,7 @@ func (c *UDPConn) delMsg(seq uint32, ignore bool) error {
 			}
 		}
 		c.UpdateLastAck(seq)
+		c.pacingChan <- struct{}{}
 		c.ca.cwndMtx.Lock()
 		c.ca.usedCwnd--
 		c.ca.cwndMtx.Unlock()
@@ -731,8 +767,6 @@ type ca struct {
 	pacingGain      int
 	pacingRate      uint64
 	nextPacingTime  time.Time
-	nextPacingTimer *time.Timer
-	nextPacingFn    pacingFunc
 	nextPacingMutex sync.RWMutex
 	cwndGain        int
 	fullCnt         uint
@@ -742,6 +776,8 @@ type ca struct {
 	bifMtx     sync.RWMutex
 	bifPdId    int
 	bifPdChans map[int]*pdChan
+
+	resendChan *reChan
 
 	appLimited   bool
 	endOfLimited uint32
@@ -766,7 +802,18 @@ func newPdChan(max int) *pdChan {
 	return pd
 }
 
-func newCA(pacingFn pacingFunc) *ca {
+type reChan struct {
+	pd  *btree.BTree
+	mtx sync.Mutex
+}
+
+func newReChan() *reChan {
+	return &reChan{
+		pd: btree.New(2),
+	}
+}
+
+func newCA() *ca {
 	c := &ca{
 		rttSamples:  newRttSampler(16),
 		rateSamples: newRateSampler(16),
@@ -775,8 +822,7 @@ func newCA(pacingFn pacingFunc) *ca {
 		pacingRate:  highGain * 10 * BW_UNIT / 1000,
 		cwndGain:    highGain,
 		bifPdChans:  make(map[int]*pdChan),
-
-		nextPacingFn: pacingFn,
+		resendChan:  newReChan(),
 	}
 
 	c.bifPdChans[c.bifPdId] = newPdChan(100)
@@ -829,7 +875,7 @@ func (c *UDPConn) NewPendingChannel() (channel int) {
 	return c.ca.newPendingChannel()
 }
 
-func (ca *ca) addToPendingChannel(channel int, m *msg.UDPMessage, new bool) bool {
+func (ca *ca) addToPendingChannel(channel int, m *msg.UDPMessage) bool {
 	ca.bifMtx.RLock()
 	ch, ok := ca.bifPdChans[channel]
 	ca.bifMtx.RUnlock()
@@ -844,22 +890,16 @@ func (ca *ca) addToPendingChannel(channel int, m *msg.UDPMessage, new bool) bool
 	//	ch.cond.Wait()
 	//	ca.cwndMtx.Lock()
 	//}
-	if new {
-		ch.seq++
-		m.SetChannelSeq(channel, ch.seq)
-	}
+	ch.seq++
+	m.SetChannelSeq(channel, ch.seq)
 	min := ch.pd.Min()
-	ca.nextPacingMutex.Lock()
-	if (min != nil && min.Less(m)) || time.Now().Before(ca.nextPacingTime) {
+	if (min != nil && min.Less(m)) || !ca.isPacingTime() || ca.cwnd < ca.usedCwnd+1 {
 		atomic.AddInt32(&ca.pendingCnt, 1)
 		ch.pd.ReplaceOrInsert(m)
-		ca.nextPacingMutex.Unlock()
 		ca.cwndMtx.Unlock()
 		ch.mtx.Unlock()
 		return false
 	}
-	ca.calcPacingTime(m.PkgBytesLen())
-	ca.nextPacingMutex.Unlock()
 	ca.usedCwnd++
 	ca.cwndMtx.Unlock()
 	ch.mtx.Unlock()
@@ -870,10 +910,37 @@ func (ca *ca) addToPendingChannel(channel int, m *msg.UDPMessage, new bool) bool
 	return true
 }
 
+func (ca *ca) addToResendChannel(m *msg.UDPMessage) bool {
+	ca.resendChan.mtx.Lock()
+	defer ca.resendChan.mtx.Unlock()
+	min := ca.resendChan.pd.Min()
+	if (min != nil && min.Less(m)) || !ca.isPacingTime() {
+		ca.resendChan.pd.ReplaceOrInsert(m)
+		return false
+	}
+	return true
+}
+
 func (ca *ca) popMessage() (m *msg.UDPMessage) {
 	if !ca.isPacingTime() {
 		return
 	}
+	ca.resendChan.mtx.Lock()
+	for {
+		element := ca.resendChan.pd.Min()
+		if element == nil {
+			break
+		}
+		m = element.(*msg.UDPMessage)
+		ca.resendChan.pd.DeleteMin()
+		if m.IsAcked() {
+			continue
+		}
+		ca.resendChan.mtx.Unlock()
+		return
+	}
+	ca.resendChan.mtx.Unlock()
+
 	ca.bifMtx.Lock()
 	defer ca.bifMtx.Unlock()
 OUT:
@@ -957,21 +1024,20 @@ func (ca *ca) setPacingRate(rate uint64) {
 	atomic.StoreUint64(&ca.pacingRate, rate)
 }
 
-func (ca *ca) calcPacingTime(len int) {
-	d := time.Duration(uint64(len*1000000000) / ca.getPacingRate())
-	d *= 1000
+func (ca *ca) calcPacingTime(len int) (d time.Duration) {
+	ca.nextPacingMutex.Lock()
+	d = time.Duration(uint64(len*1000000000) / ca.getPacingRate())
 	r := time.Now().Add(d)
 	logrus.Debugf("calcPacingTime %s", d)
 	ca.nextPacingTime = r
-	if ca.nextPacingTimer != nil {
-		ca.nextPacingTimer.Stop()
-	}
-	ca.nextPacingTimer = time.AfterFunc(d, ca.nextPacingFn)
+	ca.nextPacingMutex.Unlock()
+	return
 }
 
 func (ca *ca) isPacingTime() (r bool) {
 	ca.nextPacingMutex.RLock()
 	r = !time.Now().Before(ca.nextPacingTime)
+	logrus.Debugf("nextPacingTime %s %t", ca.nextPacingTime, r)
 	ca.nextPacingMutex.RUnlock()
 	return
 }

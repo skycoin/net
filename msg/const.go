@@ -43,6 +43,7 @@ const (
 	MSG_STATUS_INIT = 1 << iota
 	MSG_STATUS_TRANSMITTED
 	MSG_STATUS_ACKED
+	MSG_STATUS_LOSS
 )
 
 // ack msg index
