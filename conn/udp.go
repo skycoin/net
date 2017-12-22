@@ -43,8 +43,9 @@ type UDPConn struct {
 
 	// congestion algorithm
 	*ca
-	pacingTimer *time.Timer
-	pacingChan  chan struct{}
+	pacingTimer      *time.Timer
+	pacingTimerMutex sync.Mutex
+	pacingChan       chan struct{}
 }
 
 // used for server spawn udp conn
@@ -64,7 +65,7 @@ func NewUDPConn(c *net.UDPConn, addr *net.UDPAddr) *UDPConn {
 	}
 	conn.pacingChan = make(chan struct{}, 1)
 	conn.lastAckCond = sync.NewCond(&conn.lastAckMtx)
-	go conn.ackLoop()
+	//go conn.ackLoop()
 	return conn
 }
 
@@ -166,38 +167,38 @@ func (c *UDPConn) writeLoopWithPing() (err error) {
 	}
 }
 
-func (c *UDPConn) ackLoop() (err error) {
-	t := time.NewTicker(2 * time.Millisecond)
-	defer func() {
-		t.Stop()
-		if err != nil {
-			c.SetStatusToError(err)
-		}
-	}()
-
-	for {
-		select {
-		case <-t.C:
-			la := atomic.LoadUint32(&c.lastAck)
-			lt := atomic.LoadUint32(&c.lastCnt)
-			if lt != c.lastCnted {
-				err = c.ack(la)
-				if err != nil {
-					return
-				}
-				c.lastCnted = lt
-			} else {
-				t.Stop()
-				c.lastAckMtx.Lock()
-				c.lastAckCond.Wait()
-				c.lastAckMtx.Unlock()
-				t = time.NewTicker(2 * time.Millisecond)
-			}
-		case <-c.disconnected:
-			return
-		}
-	}
-}
+//func (c *UDPConn) ackLoop() (err error) {
+//	t := time.NewTicker(2 * time.Millisecond)
+//	defer func() {
+//		t.Stop()
+//		if err != nil {
+//			c.SetStatusToError(err)
+//		}
+//	}()
+//
+//	for {
+//		select {
+//		case <-t.C:
+//			la := atomic.LoadUint32(&c.lastAck)
+//			lt := atomic.LoadUint32(&c.lastCnt)
+//			if lt != c.lastCnted {
+//				err = c.ack(la)
+//				if err != nil {
+//					return
+//				}
+//				c.lastCnted = lt
+//			} else {
+//				t.Stop()
+//				c.lastAckMtx.Lock()
+//				c.lastAckCond.Wait()
+//				c.lastAckMtx.Unlock()
+//				t = time.NewTicker(2 * time.Millisecond)
+//			}
+//		case <-c.disconnected:
+//			return
+//		}
+//	}
+//}
 
 func (c *UDPConn) Write(bytes []byte) (err error) {
 	err = c.WriteToChannel(0, bytes)
@@ -254,6 +255,7 @@ func (c *UDPConn) resendCallback(m *msg.UDPMessage) (err error) {
 
 func (c *UDPConn) transmitted(m *msg.UDPMessage) {
 	seq := m.GetSeq()
+	c.ca.updateLastSentSeq(seq)
 	c.ca.checkAppLimited(seq)
 	c.addMsg(seq, m)
 	m.Transmitted()
@@ -315,18 +317,21 @@ func (c *UDPConn) WriteBytes(bytes []byte) error {
 
 func (c *UDPConn) pacingWriteBytes(bytes []byte) error {
 	err := c.WriteBytes(bytes)
-	c.pacingTimer.Reset(c.ca.calcPacingTime(len(bytes)))
+	d := c.ca.calcPacingTime(len(bytes))
+	c.pacingTimerMutex.Lock()
+	c.pacingTimer.Reset(d)
+	c.pacingTimerMutex.Unlock()
 	return err
 }
 
-func (c *UDPConn) Ack(seq uint32) error {
-	atomic.StoreUint32(&c.lastAck, seq)
-	atomic.AddUint32(&c.lastCnt, 1)
-	c.lastAckCond.Broadcast()
-	return nil
-}
+//func (c *UDPConn) Ack(seq uint32) error {
+//	atomic.StoreUint32(&c.lastAck, seq)
+//	atomic.AddUint32(&c.lastCnt, 1)
+//	c.lastAckCond.Broadcast()
+//	return nil
+//}
 
-func (c *UDPConn) ack(seq uint32) error {
+func (c *UDPConn) Ack(seq uint32) error {
 	nSeq := c.getNextAckSeq()
 	c.GetContextLogger().Debugf("ack %d, next %d", seq, nSeq)
 	var missing []uint32
@@ -474,10 +479,10 @@ func (c *UDPConn) delMsg(seq uint32, ignore bool) error {
 			}
 		}
 		c.UpdateLastAck(seq)
-		c.pacingChan <- struct{}{}
 		c.ca.cwndMtx.Lock()
 		c.ca.usedCwnd--
 		c.ca.cwndMtx.Unlock()
+		c.pacingChan <- struct{}{}
 		c.ca.bifMtx.Lock()
 		c.ca.bif -= um.PkgBytesLen()
 		c.ca.bifMtx.Unlock()
@@ -646,6 +651,9 @@ const rttUnit = time.Microsecond
 func (c *UDPConn) updateDeliveryRate(m *msg.UDPMessage) {
 	c.ca.Lock()
 	defer c.ca.Unlock()
+
+	isRoundStart := c.ca.updateRoundTripCounter(m.GetSeq())
+
 	c.delivered++
 	c.deliveredTime = time.Now()
 	c.sentTime = m.GetTransmittedTime()
@@ -655,6 +663,10 @@ func (c *UDPConn) updateDeliveryRate(m *msg.UDPMessage) {
 	}
 
 	c.tryToCancelAppLimited(m.GetSeq())
+	if c.isAppLimited() {
+		c.GetContextLogger().Debug("app limited")
+		return
+	}
 
 	sd := c.sentTime.Sub(m.GetSentTime()) / rttUnit
 	ad := c.deliveredTime.Sub(m.GetDeliveredTime()) / rttUnit
@@ -665,6 +677,9 @@ func (c *UDPConn) updateDeliveryRate(m *msg.UDPMessage) {
 	d := c.delivered - m.GetDelivered()
 	drate := rate(d * BW_UNIT / uint64(interval))
 	c.GetContextLogger().Debugf("drate(%d) d %d interval %d sd %d ad %d", drate, d, interval, sd, ad)
+	if drate <= 0 {
+		return
+	}
 	mr := c.rttSamples.getMin()
 	if mr <= 0 {
 		return
@@ -673,39 +688,21 @@ func (c *UDPConn) updateDeliveryRate(m *msg.UDPMessage) {
 	if uint64(interval) < rtt {
 		return
 	}
-	if drate <= 0 {
-		return
-	}
 
-	if c.isAppLimited() {
-		return
-	}
-	max := uint64(c.rateSamples.push(drate))
 	hm := c.rateSamples.getMax()
+	if drate >= c.rateSamples.getMax() {
+		hm = c.rateSamples.push(drate)
+	}
 	if hm <= 0 {
 		return
 	}
+	max := uint64(hm)
 	cwnd := c.targetCwnd(max, rtt, c.cwndGain)
-	if c.ca.mode == startup {
-		if hm > drate {
-			c.fullCnt++
-			if c.fullBwReached() {
-				c.ca.mode = drain
-				c.ca.pacingGain = drainGain
-				c.ca.cwndGain = highGain
-			}
-		}
+	if isRoundStart {
+		c.ca.checkFullBwReached()
 	}
+	c.ca.checkDrain(max, rtt)
 	c.GetContextLogger().Debugf("mode %d, max bw %d rtt %d: cwnd %d", c.mode, max, rtt, cwnd)
-	if c.ca.mode == drain {
-		pcwnd := c.targetCwnd(max, rtt, BBR_UNIT)
-		c.GetContextLogger().Debugf("pcwnd %d", pcwnd)
-		if c.ca.getUsedCwnd() <= pcwnd {
-			c.ca.mode = probeBW
-			c.ca.cwndGain = cwndGain
-			c.ca.pacingGain = BBR_UNIT
-		}
-	}
 	c.setPacingRate(max, c.pacingGain)
 	c.setCwnd(d, max, rtt, c.cwndGain)
 }
@@ -720,14 +717,10 @@ func (c *UDPConn) setPacingRate(bw uint64, gain int) {
 	c.ca.setPacingRate(rate)
 }
 
-func (c *UDPConn) targetCwnd(bw, rtt uint64, gain int) uint32 {
-	cwnd := uint32((((bw * rtt * uint64(c.cwndGain)) >> BBR_SCALE) + BW_UNIT - 1) / BW_UNIT)
+func (ca *ca) targetCwnd(bw, rtt uint64, gain int) uint32 {
+	cwnd := uint32((((bw * rtt * uint64(ca.cwndGain)) >> BBR_SCALE) + BW_UNIT - 1) / BW_UNIT)
 	cwnd = (cwnd + 1) & ^uint32(1)
 	return cwnd
-}
-
-func (ca *ca) fullBwReached() bool {
-	return ca.fullCnt > 3
 }
 
 func (c *UDPConn) setCwnd(acked, bw, rtt uint64, gain int) {
@@ -744,15 +737,13 @@ func (c *UDPConn) setCwnd(acked, bw, rtt uint64, gain int) {
 	} else if cwnd < target {
 		cwnd = cwnd + uint32(acked)
 	}
-	if 4 > cwnd {
-		cwnd = 4
+	if 10 > cwnd {
+		cwnd = 10
 	}
 
 	c.GetContextLogger().Debugf("setCwnd %d", cwnd)
 	c.ca.setCwnd(cwnd)
 }
-
-type pacingFunc func()
 
 type ca struct {
 	delivered     uint64
@@ -769,7 +760,8 @@ type ca struct {
 	nextPacingTime  time.Time
 	nextPacingMutex sync.RWMutex
 	cwndGain        int
-	fullCnt         uint
+	fullBwCnt       uint
+	fullBw          rate
 	pendingCnt      int32
 
 	bif        int
@@ -781,6 +773,11 @@ type ca struct {
 
 	appLimited   bool
 	endOfLimited uint32
+
+	lastSentSeq    uint32
+	roundTripCount uint32
+	currentTripEnd uint32
+	roundTripMutex sync.Mutex
 
 	sync.RWMutex
 }
@@ -893,7 +890,7 @@ func (ca *ca) addToPendingChannel(channel int, m *msg.UDPMessage) bool {
 	ch.seq++
 	m.SetChannelSeq(channel, ch.seq)
 	min := ch.pd.Min()
-	if (min != nil && min.Less(m)) || !ca.isPacingTime() || ca.cwnd < ca.usedCwnd+1 {
+	if (min != nil && min.Less(m)) || !ca.isPacingTime() || ca.usedCwnd+1 > ca.cwnd {
 		atomic.AddInt32(&ca.pendingCnt, 1)
 		ch.pd.ReplaceOrInsert(m)
 		ca.cwndMtx.Unlock()
@@ -934,12 +931,20 @@ func (ca *ca) popMessage() (m *msg.UDPMessage) {
 		m = element.(*msg.UDPMessage)
 		ca.resendChan.pd.DeleteMin()
 		if m.IsAcked() {
+			m = nil
 			continue
 		}
 		ca.resendChan.mtx.Unlock()
 		return
 	}
 	ca.resendChan.mtx.Unlock()
+
+	ca.cwndMtx.Lock()
+	if ca.cwnd < ca.usedCwnd+1 {
+		ca.cwndMtx.Unlock()
+		return
+	}
+	ca.cwndMtx.Unlock()
 
 	ca.bifMtx.Lock()
 	defer ca.bifMtx.Unlock()
@@ -958,23 +963,17 @@ OUT:
 				continue OUT
 			}
 			m = element.(*msg.UDPMessage)
+			pd.DeleteMin()
 			if m.IsAcked() {
-				pd.DeleteMin()
+				m = nil
 				continue
 			}
 			break
 		}
 
 		ca.cwndMtx.Lock()
-		if ca.cwnd < ca.usedCwnd+1 {
-			m = nil
-			ca.cwndMtx.Unlock()
-			v.mtx.Unlock()
-			return
-		}
 		ca.usedCwnd++
 		ca.cwndMtx.Unlock()
-		pd.DeleteMin()
 		v.mtx.Unlock()
 		v.cond.Broadcast()
 		atomic.AddInt32(&ca.pendingCnt, -1)
@@ -1002,6 +1001,13 @@ func (ca *ca) getCwnd() (cwnd uint32) {
 func (ca *ca) getUsedCwnd() (cwnd uint32) {
 	ca.cwndMtx.Lock()
 	cwnd = ca.usedCwnd
+	ca.cwndMtx.Unlock()
+	return
+}
+
+func (ca *ca) isCwndFull() (r bool) {
+	ca.cwndMtx.Lock()
+	r = ca.usedCwnd >= ca.cwnd
 	ca.cwndMtx.Unlock()
 	return
 }
@@ -1043,10 +1049,14 @@ func (ca *ca) isPacingTime() (r bool) {
 }
 
 func (ca *ca) checkAppLimited(seq uint32) {
-	pd := atomic.LoadInt32(&ca.pendingCnt)
-	if pd == 0 {
-		ca.setAppLimited(seq)
+	//pd := atomic.LoadInt32(&ca.pendingCnt)
+	//if pd > 0 || ca.isCwndFull() {
+	//	return
+	//}
+	if ca.isCwndFull() {
+		return
 	}
+	ca.setAppLimited(seq)
 }
 
 func (ca *ca) tryToCancelAppLimited(seq uint32) {
@@ -1065,4 +1075,56 @@ func (ca *ca) setAppLimited(seq uint32) {
 func (ca *ca) isAppLimited() (r bool) {
 	r = ca.appLimited
 	return
+}
+
+func (ca *ca) fullBwReached() bool {
+	return ca.fullBwCnt >= fullBwCnt
+}
+
+func (ca *ca) checkFullBwReached() {
+	if ca.fullBwReached() || ca.isAppLimited() {
+		return
+	}
+
+	bwt := ca.fullBw * fullBwThresh >> BBR_SCALE
+	max := ca.rateSamples.getMax()
+	if max >= bwt {
+		ca.fullBw = max
+		ca.fullBwCnt = 0
+		return
+	}
+	ca.fullBwCnt++
+}
+
+func (ca *ca) checkDrain(bw, rtt uint64) {
+	if ca.mode == startup && ca.fullBwReached() {
+		ca.mode = drain
+		ca.pacingGain = drainGain
+		ca.cwndGain = highGain
+	}
+	if ca.mode == drain {
+		pcwnd := ca.targetCwnd(bw, rtt, BBR_UNIT)
+		if ca.getUsedCwnd() <= pcwnd {
+			ca.mode = probeBW
+			ca.cwndGain = cwndGain
+			ca.pacingGain = BBR_UNIT
+		}
+	}
+}
+
+func (ca *ca) updateRoundTripCounter(seq uint32) bool {
+	ca.roundTripMutex.Lock()
+	defer ca.roundTripMutex.Unlock()
+	if seq > ca.currentTripEnd {
+		ca.roundTripCount++
+		ca.currentTripEnd = ca.lastSentSeq
+		return true
+	}
+	return false
+}
+
+func (ca *ca) updateLastSentSeq(seq uint32) {
+	ca.roundTripMutex.Lock()
+	ca.lastSentSeq = seq
+	ca.roundTripMutex.Unlock()
 }

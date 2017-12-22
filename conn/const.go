@@ -26,6 +26,9 @@ const (
 	highGain  = BBR_UNIT*2885/1000 + 1
 	drainGain = BBR_UNIT * 1000 / 2885
 	cwndGain  = BBR_UNIT * 2
+
+	fullBwThresh = BBR_UNIT * 5 / 4
+	fullBwCnt    = 3
 )
 
 var (
