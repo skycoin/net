@@ -65,7 +65,7 @@ func NewUDPConn(c *net.UDPConn, addr *net.UDPAddr) *UDPConn {
 	}
 	conn.pacingChan = make(chan struct{}, 1)
 	conn.lastAckCond = sync.NewCond(&conn.lastAckMtx)
-	//go conn.ackLoop()
+	go conn.ackLoop()
 	return conn
 }
 
@@ -167,38 +167,38 @@ func (c *UDPConn) writeLoopWithPing() (err error) {
 	}
 }
 
-//func (c *UDPConn) ackLoop() (err error) {
-//	t := time.NewTicker(2 * time.Millisecond)
-//	defer func() {
-//		t.Stop()
-//		if err != nil {
-//			c.SetStatusToError(err)
-//		}
-//	}()
-//
-//	for {
-//		select {
-//		case <-t.C:
-//			la := atomic.LoadUint32(&c.lastAck)
-//			lt := atomic.LoadUint32(&c.lastCnt)
-//			if lt != c.lastCnted {
-//				err = c.ack(la)
-//				if err != nil {
-//					return
-//				}
-//				c.lastCnted = lt
-//			} else {
-//				t.Stop()
-//				c.lastAckMtx.Lock()
-//				c.lastAckCond.Wait()
-//				c.lastAckMtx.Unlock()
-//				t = time.NewTicker(2 * time.Millisecond)
-//			}
-//		case <-c.disconnected:
-//			return
-//		}
-//	}
-//}
+func (c *UDPConn) ackLoop() (err error) {
+	t := time.NewTicker(2 * time.Millisecond)
+	defer func() {
+		t.Stop()
+		if err != nil {
+			c.SetStatusToError(err)
+		}
+	}()
+
+	for {
+		select {
+		case <-t.C:
+			la := atomic.LoadUint32(&c.lastAck)
+			lt := atomic.LoadUint32(&c.lastCnt)
+			if lt != c.lastCnted {
+				err = c.ack(la)
+				if err != nil {
+					return
+				}
+				c.lastCnted = lt
+			} else {
+				t.Stop()
+				c.lastAckMtx.Lock()
+				c.lastAckCond.Wait()
+				c.lastAckMtx.Unlock()
+				t = time.NewTicker(2 * time.Millisecond)
+			}
+		case <-c.disconnected:
+			return
+		}
+	}
+}
 
 func (c *UDPConn) Write(bytes []byte) (err error) {
 	err = c.WriteToChannel(0, bytes)
@@ -228,18 +228,8 @@ func (c *UDPConn) WriteToChannel(channel int, bytes []byte) (err error) {
 
 func (c *UDPConn) writeToChannel(channel int, bytes []byte) (err error) {
 	m := msg.NewUDPWithoutSeq(msg.TYPE_NORMAL, bytes)
-	ok := c.addToPendingChannel(channel, m)
-	c.GetContextLogger().Debugf("bif %d, ok %t", c.ca.getBytesInFlight(), ok)
-	if !ok {
-		return nil
-	}
-	m.SetSeq(c.GetNextSeq())
-	c.GetContextLogger().Debugf("new msg seq %d", m.GetSeq())
-	err = c.pacingWriteBytes(m.PkgBytes())
-	if err != nil {
-		return err
-	}
-	c.transmitted(m)
+	c.addToPendingChannel(channel, m)
+	c.pacingChan <- struct{}{}
 	return
 }
 
@@ -268,18 +258,18 @@ func (c *UDPConn) resendMsg(m *msg.UDPMessage) (err error) {
 		return
 	}
 	c.GetContextLogger().Debugf("resendMsg %s", m)
-	ok := c.addToResendChannel(m)
-	if !ok {
-		return nil
-	}
-	c.GetContextLogger().Debugf("resend msg seq %d", m.GetSeq())
-	err = c.pacingWriteBytes(m.PkgBytes())
-	m.SetRTO(c.getRTO(), c.resendCallback)
+	c.addToResendChannel(m)
+	c.pacingChan <- struct{}{}
 	return
 }
 
 func (c *UDPConn) writePendingMsgs() error {
+	c.ca.nextPacingMutex.Lock()
+	defer c.ca.nextPacingMutex.Unlock()
 	for {
+		if !c.ca.isPacingTime() {
+			return nil
+		}
 		m := c.ca.popMessage()
 		c.GetContextLogger().Debugf("popMessage bif %d, m %v", c.ca.getBytesInFlight(), m)
 		if m == nil {
@@ -292,10 +282,14 @@ func (c *UDPConn) writePendingMsgs() error {
 		} else {
 			c.GetContextLogger().Debugf("resend msg seq %d", m.GetSeq())
 		}
-		err := c.pacingWriteBytes(m.PkgBytes())
+		err := c.WriteBytes(m.PkgBytes())
 		if err != nil {
 			return err
 		}
+		d := c.ca.calcPacingTime(m.PkgBytesLen())
+		c.pacingTimerMutex.Lock()
+		c.pacingTimer.Reset(d)
+		c.pacingTimerMutex.Unlock()
 		if tx {
 			c.transmitted(m)
 		} else {
@@ -315,23 +309,14 @@ func (c *UDPConn) WriteBytes(bytes []byte) error {
 	return err
 }
 
-func (c *UDPConn) pacingWriteBytes(bytes []byte) error {
-	err := c.WriteBytes(bytes)
-	d := c.ca.calcPacingTime(len(bytes))
-	c.pacingTimerMutex.Lock()
-	c.pacingTimer.Reset(d)
-	c.pacingTimerMutex.Unlock()
-	return err
+func (c *UDPConn) Ack(seq uint32) error {
+	atomic.StoreUint32(&c.lastAck, seq)
+	atomic.AddUint32(&c.lastCnt, 1)
+	c.lastAckCond.Broadcast()
+	return nil
 }
 
-//func (c *UDPConn) Ack(seq uint32) error {
-//	atomic.StoreUint32(&c.lastAck, seq)
-//	atomic.AddUint32(&c.lastCnt, 1)
-//	c.lastAckCond.Broadcast()
-//	return nil
-//}
-
-func (c *UDPConn) Ack(seq uint32) error {
+func (c *UDPConn) ack(seq uint32) error {
 	nSeq := c.getNextAckSeq()
 	c.GetContextLogger().Debugf("ack %d, next %d", seq, nSeq)
 	var missing []uint32
@@ -482,10 +467,10 @@ func (c *UDPConn) delMsg(seq uint32, ignore bool) error {
 		c.ca.cwndMtx.Lock()
 		c.ca.usedCwnd--
 		c.ca.cwndMtx.Unlock()
-		c.pacingChan <- struct{}{}
 		c.ca.bifMtx.Lock()
 		c.ca.bif -= um.PkgBytesLen()
 		c.ca.bifMtx.Unlock()
+		return c.writePendingMsgs()
 	} else if !ignore {
 		c.GetContextLogger().Debugf("over ack %s", c)
 		c.AddOverAckCount()
@@ -664,7 +649,7 @@ func (c *UDPConn) updateDeliveryRate(m *msg.UDPMessage) {
 
 	c.tryToCancelAppLimited(m.GetSeq())
 	if c.isAppLimited() {
-		c.GetContextLogger().Debug("app limited")
+		c.GetContextLogger().Debugf("app limited used:%d max:%d", c.getUsedCwnd(), c.getCwnd())
 		return
 	}
 
@@ -872,7 +857,7 @@ func (c *UDPConn) NewPendingChannel() (channel int) {
 	return c.ca.newPendingChannel()
 }
 
-func (ca *ca) addToPendingChannel(channel int, m *msg.UDPMessage) bool {
+func (ca *ca) addToPendingChannel(channel int, m *msg.UDPMessage) {
 	ca.bifMtx.RLock()
 	ch, ok := ca.bifPdChans[channel]
 	ca.bifMtx.RUnlock()
@@ -881,7 +866,7 @@ func (ca *ca) addToPendingChannel(channel int, m *msg.UDPMessage) bool {
 	}
 
 	ch.mtx.Lock()
-	ca.cwndMtx.Lock()
+	//ca.cwndMtx.Lock()
 	//for ca.usedCwnd+1 > ca.cwnd {
 	//	ca.cwndMtx.Unlock()
 	//	ch.cond.Wait()
@@ -889,39 +874,19 @@ func (ca *ca) addToPendingChannel(channel int, m *msg.UDPMessage) bool {
 	//}
 	ch.seq++
 	m.SetChannelSeq(channel, ch.seq)
-	min := ch.pd.Min()
-	if (min != nil && min.Less(m)) || !ca.isPacingTime() || ca.usedCwnd+1 > ca.cwnd {
-		atomic.AddInt32(&ca.pendingCnt, 1)
-		ch.pd.ReplaceOrInsert(m)
-		ca.cwndMtx.Unlock()
-		ch.mtx.Unlock()
-		return false
-	}
-	ca.usedCwnd++
-	ca.cwndMtx.Unlock()
+	atomic.AddInt32(&ca.pendingCnt, 1)
+	ch.pd.ReplaceOrInsert(m)
+	//ca.cwndMtx.Unlock()
 	ch.mtx.Unlock()
-
-	ca.bifMtx.Lock()
-	ca.bif += m.PkgBytesLen()
-	ca.bifMtx.Unlock()
-	return true
 }
 
-func (ca *ca) addToResendChannel(m *msg.UDPMessage) bool {
+func (ca *ca) addToResendChannel(m *msg.UDPMessage) {
 	ca.resendChan.mtx.Lock()
-	defer ca.resendChan.mtx.Unlock()
-	min := ca.resendChan.pd.Min()
-	if (min != nil && min.Less(m)) || !ca.isPacingTime() {
-		ca.resendChan.pd.ReplaceOrInsert(m)
-		return false
-	}
-	return true
+	ca.resendChan.pd.ReplaceOrInsert(m)
+	ca.resendChan.mtx.Unlock()
 }
 
 func (ca *ca) popMessage() (m *msg.UDPMessage) {
-	if !ca.isPacingTime() {
-		return
-	}
 	ca.resendChan.mtx.Lock()
 	for {
 		element := ca.resendChan.pd.Min()
@@ -940,11 +905,11 @@ func (ca *ca) popMessage() (m *msg.UDPMessage) {
 	ca.resendChan.mtx.Unlock()
 
 	ca.cwndMtx.Lock()
+	defer ca.cwndMtx.Unlock()
 	if ca.cwnd < ca.usedCwnd+1 {
-		ca.cwndMtx.Unlock()
+		logrus.Debugf("popMessage cwnd %d used %d", ca.cwnd, ca.usedCwnd)
 		return
 	}
-	ca.cwndMtx.Unlock()
 
 	ca.bifMtx.Lock()
 	defer ca.bifMtx.Unlock()
@@ -971,9 +936,7 @@ OUT:
 			break
 		}
 
-		ca.cwndMtx.Lock()
 		ca.usedCwnd++
-		ca.cwndMtx.Unlock()
 		v.mtx.Unlock()
 		v.cond.Broadcast()
 		atomic.AddInt32(&ca.pendingCnt, -1)
@@ -1013,11 +976,10 @@ func (ca *ca) isCwndFull() (r bool) {
 }
 
 func (ca *ca) setCwnd(cwnd uint32) {
-	ca.cwndMtx.Lock()
 	if cwnd < 4 {
-		ca.cwndMtx.Unlock()
 		return
 	}
+	ca.cwndMtx.Lock()
 	ca.cwnd = cwnd
 	ca.cwndMtx.Unlock()
 }
@@ -1031,28 +993,24 @@ func (ca *ca) setPacingRate(rate uint64) {
 }
 
 func (ca *ca) calcPacingTime(len int) (d time.Duration) {
-	ca.nextPacingMutex.Lock()
 	d = time.Duration(uint64(len*1000000000) / ca.getPacingRate())
 	r := time.Now().Add(d)
 	logrus.Debugf("calcPacingTime %s", d)
 	ca.nextPacingTime = r
-	ca.nextPacingMutex.Unlock()
 	return
 }
 
 func (ca *ca) isPacingTime() (r bool) {
-	ca.nextPacingMutex.RLock()
 	r = !time.Now().Before(ca.nextPacingTime)
 	logrus.Debugf("nextPacingTime %s %t", ca.nextPacingTime, r)
-	ca.nextPacingMutex.RUnlock()
 	return
 }
 
 func (ca *ca) checkAppLimited(seq uint32) {
-	//pd := atomic.LoadInt32(&ca.pendingCnt)
-	//if pd > 0 || ca.isCwndFull() {
-	//	return
-	//}
+	pd := atomic.LoadInt32(&ca.pendingCnt)
+	if pd > 0 {
+		return
+	}
 	if ca.isCwndFull() {
 		return
 	}
