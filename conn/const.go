@@ -32,9 +32,14 @@ const (
 )
 
 var (
-	pacingGain = [...]float64{
-		1.25, 0.75, 1, 1, 1, 1, 1, 1,
+	pacingGain = [...]int{
+		BBR_UNIT * 5 / 4,             /* probe for more available bw */
+		BBR_UNIT * 3 / 4,             /* drain queue and/or yield bw to other flows */
+		BBR_UNIT, BBR_UNIT, BBR_UNIT, /* cruise at 1.0*bw to utilize pipe, */
+		BBR_UNIT, BBR_UNIT, BBR_UNIT, /* without creating excess queue... */
 	}
+	gainCycleLength     = len(pacingGain)
+	bandwidthWindowSize = roundTripCount(gainCycleLength + 2)
 )
 
 type mode int

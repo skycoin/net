@@ -179,6 +179,13 @@ func (msg *Message) Loss() {
 	msg.Unlock()
 }
 
+func (msg *UDPMessage) IsLoss() (r bool) {
+	msg.RLock()
+	r = msg.status&MSG_STATUS_LOSS > 0
+	msg.RUnlock()
+	return
+}
+
 func (msg *Message) GetRTT() (rtt time.Duration) {
 	msg.RLock()
 	rtt = msg.rtt

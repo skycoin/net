@@ -257,6 +257,7 @@ func (c *UDPConn) resendMsg(m *msg.UDPMessage) (err error) {
 	if m.IsAcked() {
 		return
 	}
+	m.Loss()
 	c.GetContextLogger().Debugf("resendMsg %s", m)
 	c.addToResendChannel(m)
 	c.pacingChan <- struct{}{}
@@ -447,7 +448,7 @@ func (c *UDPConn) delMsg(seq uint32, ignore bool) error {
 	ok, um, msgs := c.DelMsgAndGetLossMsgs(seq, 3)
 	if ok {
 		c.AddAckCount()
-		if !ignore {
+		if !ignore && !um.IsLoss() {
 			c.updateRTT(um.GetRTT())
 		}
 		c.updateDeliveryRate(um)
@@ -579,58 +580,6 @@ func (c *UDPConn) updateRTT(t time.Duration) {
 	}
 }
 
-type rateSampler struct {
-	tree  *btree.BTree
-	ring  []rate
-	mask  int
-	index int
-}
-
-type rate uint64
-
-func (a rate) Less(b btree.Item) bool {
-	return a < b.(rate)
-}
-
-// size should be power of 2
-func newRateSampler(size int) *rateSampler {
-	if size < 2 || (size&(size-1)) > 0 {
-		var n uint
-		for size > 0 {
-			size >>= 1
-			n++
-		}
-		size = 1 << n
-	}
-	return &rateSampler{
-		ring: make([]rate, size),
-		mask: size - 1,
-		tree: btree.New(2),
-	}
-}
-
-func (t *rateSampler) push(r rate) rate {
-	if r <= 0 {
-		panic("push rate <= 0")
-	}
-	or := t.ring[t.index]
-	if or > 0 {
-		t.tree.Delete(or)
-	}
-	t.ring[t.index] = r
-	t.tree.ReplaceOrInsert(r)
-	t.index = (t.index + 1) & t.mask
-	return t.tree.Max().(rate)
-}
-
-func (t *rateSampler) getMax() rate {
-	item := t.tree.Max()
-	if item == nil {
-		return 0
-	}
-	return item.(rate)
-}
-
 const rttUnit = time.Microsecond
 
 func (c *UDPConn) updateDeliveryRate(m *msg.UDPMessage) {
@@ -674,22 +623,25 @@ func (c *UDPConn) updateDeliveryRate(m *msg.UDPMessage) {
 		return
 	}
 
-	hm := c.rateSamples.getMax()
-	if drate >= c.rateSamples.getMax() {
-		hm = c.rateSamples.push(drate)
+	hm := c.bwFilter.GetBest()
+	if drate >= hm {
+		c.bwFilter.Update(drate, c.ca.getRoundTripCount())
+		hm = c.bwFilter.GetBest()
 	}
 	if hm <= 0 {
 		return
 	}
 	max := uint64(hm)
-	cwnd := c.targetCwnd(max, rtt, c.cwndGain)
+	if c.ca.mode == probeBW {
+		c.ca.updateGainCyclePhase(max, rtt)
+	}
 	if isRoundStart {
 		c.ca.checkFullBwReached()
 	}
 	c.ca.checkDrain(max, rtt)
-	c.GetContextLogger().Debugf("mode %d, max bw %d rtt %d: cwnd %d", c.mode, max, rtt, cwnd)
 	c.setPacingRate(max, c.pacingGain)
 	c.setCwnd(d, max, rtt, c.cwndGain)
+	c.GetContextLogger().Debugf("mode %d, max bw %d rtt %d", c.mode, max, rtt)
 }
 
 func (c *UDPConn) setPacingRate(bw uint64, gain int) {
@@ -700,12 +652,6 @@ func (c *UDPConn) setPacingRate(bw uint64, gain int) {
 	rate := bw >> BW_SCALE
 	c.GetContextLogger().Debugf("setPacingRate: rate %d", rate)
 	c.ca.setPacingRate(rate)
-}
-
-func (ca *ca) targetCwnd(bw, rtt uint64, gain int) uint32 {
-	cwnd := uint32((((bw * rtt * uint64(ca.cwndGain)) >> BBR_SCALE) + BW_UNIT - 1) / BW_UNIT)
-	cwnd = (cwnd + 1) & ^uint32(1)
-	return cwnd
 }
 
 func (c *UDPConn) setCwnd(acked, bw, rtt uint64, gain int) {
@@ -735,7 +681,7 @@ type ca struct {
 	deliveredTime time.Time
 	sentTime      time.Time
 	rttSamples    *rttSampler
-	rateSamples   *rateSampler
+	bwFilter      *maxBandwidthFilter
 	cwnd          uint32
 	usedCwnd      uint32
 	cwndMtx       sync.Mutex
@@ -744,6 +690,8 @@ type ca struct {
 	pacingRate      uint64
 	nextPacingTime  time.Time
 	nextPacingMutex sync.RWMutex
+	lastCycleStart  time.Time
+	cycleOffset     int
 	cwndGain        int
 	fullBwCnt       uint
 	fullBw          rate
@@ -760,9 +708,9 @@ type ca struct {
 	endOfLimited uint32
 
 	lastSentSeq    uint32
-	roundTripCount uint32
+	roundTripCount roundTripCount
 	currentTripEnd uint32
-	roundTripMutex sync.Mutex
+	roundTripMutex sync.RWMutex
 
 	sync.RWMutex
 }
@@ -797,14 +745,14 @@ func newReChan() *reChan {
 
 func newCA() *ca {
 	c := &ca{
-		rttSamples:  newRttSampler(16),
-		rateSamples: newRateSampler(16),
-		cwnd:        10,
-		pacingGain:  highGain,
-		pacingRate:  highGain * 10 * BW_UNIT / 1000,
-		cwndGain:    highGain,
-		bifPdChans:  make(map[int]*pdChan),
-		resendChan:  newReChan(),
+		rttSamples: newRttSampler(16),
+		bwFilter:   newMaxBandwidthFilter(bandwidthWindowSize, 0, 0),
+		cwnd:       10,
+		pacingGain: highGain,
+		pacingRate: highGain * 10 * BW_UNIT / 1000,
+		cwndGain:   highGain,
+		bifPdChans: make(map[int]*pdChan),
+		resendChan: newReChan(),
 	}
 
 	c.bifPdChans[c.bifPdId] = newPdChan(100)
@@ -977,8 +925,11 @@ func (ca *ca) isCwndFull() (r bool) {
 
 func (ca *ca) setCwnd(cwnd uint32) {
 	if cwnd < 4 {
-		return
+		cwnd = 4
+	} else if cwnd > 200 {
+		cwnd = 200
 	}
+
 	ca.cwndMtx.Lock()
 	ca.cwnd = cwnd
 	ca.cwndMtx.Unlock()
@@ -1045,7 +996,7 @@ func (ca *ca) checkFullBwReached() {
 	}
 
 	bwt := ca.fullBw * fullBwThresh >> BBR_SCALE
-	max := ca.rateSamples.getMax()
+	max := ca.bwFilter.GetBest()
 	if max >= bwt {
 		ca.fullBw = max
 		ca.fullBwCnt = 0
@@ -1085,4 +1036,34 @@ func (ca *ca) updateLastSentSeq(seq uint32) {
 	ca.roundTripMutex.Lock()
 	ca.lastSentSeq = seq
 	ca.roundTripMutex.Unlock()
+}
+
+func (ca *ca) getRoundTripCount() (c roundTripCount) {
+	ca.roundTripMutex.RLock()
+	c = ca.roundTripCount
+	ca.roundTripMutex.RUnlock()
+	return
+}
+
+func (ca *ca) targetCwnd(bw, rtt uint64, gain int) uint32 {
+	cwnd := uint32((((bw * rtt * uint64(ca.cwndGain)) >> BBR_SCALE) + BW_UNIT - 1) / BW_UNIT)
+	cwnd = (cwnd + 1) & ^uint32(1)
+	return cwnd
+}
+
+func (ca *ca) updateGainCyclePhase(bw, rtt uint64) {
+	b := time.Now().Sub(ca.lastCycleStart) > time.Duration(ca.rttSamples.getMin())
+	if ca.pacingGain > BBR_UNIT && ca.getUsedCwnd() < ca.targetCwnd(bw, rtt, ca.pacingGain) {
+		b = false
+	}
+
+	if ca.pacingGain < BBR_UNIT && ca.getUsedCwnd() <= ca.targetCwnd(bw, rtt, BBR_UNIT) {
+		b = true
+	}
+
+	if b {
+		ca.cycleOffset = (ca.cycleOffset + 1) % gainCycleLength
+		ca.lastCycleStart = time.Now()
+		ca.pacingGain = pacingGain[ca.cycleOffset]
+	}
 }
