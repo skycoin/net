@@ -177,10 +177,10 @@ func (t *Transport) nodeReadLoop(conn *Connection, getAppConn func(id uint32) ne
 				appConn.Close()
 				continue
 			}
-			body := m[PKG_HEADER_END:]
-			if len(body) < 1 {
+			if len(m) <= PKG_HEADER_END {
 				continue
 			}
+			body := m[PKG_HEADER_END:]
 			err = writeAll(appConn, body)
 			if err != nil {
 				conn.GetContextLogger().Debugf("app conn write err %v", err)
