@@ -21,7 +21,7 @@ const (
 type UDPConn struct {
 	ConnCommonFields
 	*UDPPendingMap
-	*streamQueue
+	streamQueue
 	UdpConn *net.UDPConn
 	addr    *net.UDPAddr
 
@@ -46,7 +46,16 @@ type UDPConn struct {
 	pacingTimer      *time.Timer
 	pacingTimerMutex sync.Mutex
 	pacingChan       chan struct{}
+
+	// fec
+	*fecEncoder
+	*fecDecoder
 }
+
+const (
+	dataShards   = 10
+	parityShards = 3
+)
 
 // used for server spawn udp conn
 func NewUDPConn(c *net.UDPConn, addr *net.UDPAddr) *UDPConn {
@@ -55,8 +64,10 @@ func NewUDPConn(c *net.UDPConn, addr *net.UDPAddr) *UDPConn {
 		addr:             addr,
 		ConnCommonFields: NewConnCommonFileds(),
 		UDPPendingMap:    NewUDPPendingMap(),
-		streamQueue:      newStreamQueue(),
+		streamQueue:      newFECStreamQueue(dataShards, parityShards),
 		rto:              300 * time.Millisecond,
+		fecEncoder:       newFECEncoder(dataShards, parityShards, msg.PKG_HEADER_SIZE+msg.MSG_LEN_BEGIN),
+		fecDecoder:       newFECDecoder(dataShards, parityShards, msg.MSG_LEN_BEGIN),
 	}
 	conn.ca = newCA()
 	conn.pacingTimer = time.NewTimer(0)
@@ -283,7 +294,8 @@ func (c *UDPConn) writePendingMsgs() error {
 		} else {
 			c.GetContextLogger().Debugf("resend msg seq %d", m.GetSeq())
 		}
-		err := c.WriteBytes(m.PkgBytes())
+		pkgBytes := m.PkgBytes()
+		err := c.WriteBytes(pkgBytes)
 		if err != nil {
 			return err
 		}
@@ -293,10 +305,83 @@ func (c *UDPConn) writePendingMsgs() error {
 		c.pacingTimerMutex.Unlock()
 		if tx {
 			c.transmitted(m)
+			ps, err := c.fecEncoder.encode(pkgBytes)
+			if err != nil {
+				return err
+			}
+			if len(ps) > 0 {
+				for _, v := range ps {
+					markFEC(v, c.GetNextSeq())
+					err = c.WriteBytes(v)
+					if err != nil {
+						return err
+					}
+				}
+			}
 		} else {
 			m.SetRTO(c.getRTO(), c.resendCallback)
 		}
 	}
+}
+
+func markFEC(b []byte, seq uint32) {
+	m := b[msg.PKG_HEADER_SIZE:]
+	m[0] = msg.TYPE_FEC
+	binary.BigEndian.PutUint32(m[msg.MSG_SEQ_BEGIN:msg.MSG_SEQ_END], seq)
+	checksum := crc32.ChecksumIEEE(m)
+	binary.BigEndian.PutUint32(b[msg.PKG_CRC32_BEGIN:], checksum)
+}
+
+func (c *UDPConn) Process(t byte, m []byte) (err error) {
+	seq := binary.BigEndian.Uint32(m[msg.MSG_SEQ_BEGIN:msg.MSG_SEQ_END])
+	l := binary.BigEndian.Uint32(m[msg.MSG_LEN_BEGIN:msg.MSG_LEN_END])
+	c.GetContextLogger().Debugf("seq %d l %d, len %d \n%x", seq, l, len(m), m)
+	if t == msg.TYPE_NORMAL &&
+		uint32(len(m)) >= msg.MSG_HEADER_END+l {
+		err = c.process(seq, m[msg.MSG_HEADER_END:msg.MSG_HEADER_END+l])
+		if err != nil {
+			return
+		}
+	}
+	g, err := c.decode(seq, m)
+	if err != nil {
+		return
+	}
+	if g != nil && g.recovered {
+		for i, b := range g.dataRecv {
+			if !b {
+				s := g.startSeq + uint32(i) + 1
+				m := g.datas[i]
+				c.GetContextLogger().Debugf("fec recovered seq %d len %d\n%x\n", s, len(m), m)
+				if len(m) <= msg.MSG_LEN_SIZE {
+					continue
+				}
+				l := binary.BigEndian.Uint32(m[0:msg.MSG_LEN_SIZE])
+				if uint32(len(m)) >= msg.MSG_LEN_SIZE+l {
+					c.process(s, m[msg.MSG_LEN_SIZE:msg.MSG_LEN_SIZE+l])
+				}
+			}
+		}
+	}
+
+	return
+}
+
+func (c *UDPConn) process(seq uint32, m []byte) (err error) {
+	err = c.Ack(seq)
+	if err != nil {
+		return
+	}
+	ok, ms := c.Push(seq, m)
+	if ok {
+		if len(ms) < 1 {
+			return
+		}
+		for _, m := range ms {
+			c.In <- m
+		}
+	}
+	return
 }
 
 func (c *UDPConn) WriteBytes(bytes []byte) error {
@@ -318,12 +403,12 @@ func (c *UDPConn) Ack(seq uint32) error {
 }
 
 func (c *UDPConn) ack(seq uint32) error {
-	nSeq := c.getNextAckSeq()
+	nSeq := c.GetNextAckSeq()
 	c.GetContextLogger().Debugf("ack %d, next %d", seq, nSeq)
 	var missing []uint32
 	var ml int
 	if seq > nSeq+1 {
-		missing = c.getMissingSeqs(nSeq+1, seq)
+		missing = c.GetMissingSeqs(nSeq+1, seq)
 		c.GetContextLogger().Debugf("missing %v", missing)
 		ml = len(missing)
 	}

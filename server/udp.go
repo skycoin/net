@@ -110,7 +110,7 @@ func (c *ServerUDPConn) ReadLoop(fn func(c *net.UDPConn, addr *net.UDPAddr) *con
 				}
 				cc.GetContextLogger().Debugf("pong")
 			}()
-		case msg.TYPE_NORMAL:
+		case msg.TYPE_NORMAL, msg.TYPE_FEC:
 			nt = time.Now()
 			func() {
 				var err error
@@ -124,19 +124,9 @@ func (c *ServerUDPConn) ReadLoop(fn func(c *net.UDPConn, addr *net.UDPAddr) *con
 						cc.Close()
 					}
 				}()
-				seq := binary.BigEndian.Uint32(m[msg.MSG_SEQ_BEGIN:msg.MSG_SEQ_END])
-
-				ok, ms := cc.Push(seq, m[msg.MSG_HEADER_END:])
-				err = cc.Ack(seq)
+				err = cc.Process(t, m)
 				if err != nil {
 					return
-				}
-				if ok {
-					for _, m := range ms {
-						cc.GetContextLogger().Debugf("msg in")
-						cc.In <- m
-						cc.GetContextLogger().Debugf("msg out")
-					}
 				}
 			}()
 			c.GetContextLogger().Debugf("process normal d %s", time.Now().Sub(nt))
