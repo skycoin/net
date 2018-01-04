@@ -3,7 +3,6 @@ package conn
 import (
 	"errors"
 	"github.com/klauspost/reedsolomon"
-	"github.com/sirupsen/logrus"
 )
 
 type fecDecoder struct {
@@ -187,9 +186,6 @@ func (fec *fecEncoder) encode(data []byte) (datas [][]byte, err error) {
 		if err = fec.codec.Encode(c); err == nil {
 			datas = fec.cache[fec.dataShards:]
 			for i, v := range datas {
-				if len(v) < fec.maxSize {
-					logrus.Errorf("len(v) < fec.maxSize %d %d \n%x", len(v), fec.maxSize, v)
-				}
 				datas[i] = v[:fec.maxSize]
 			}
 		}
