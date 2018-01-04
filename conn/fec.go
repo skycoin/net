@@ -71,18 +71,22 @@ func (fec *fecDecoder) decode(seq uint32, data []byte) (g *group, err error) {
 	}
 
 	index := seq % fec.shardSize
-	sz -= fec.headerOffset
-	data = data[fec.headerOffset:]
-	if sz > g.maxSize {
-		g.maxSize = sz
-	}
-	g.datas[index] = make([]byte, 1500)
-	g.datas[index] = g.datas[index][:sz]
-	copy(g.datas[index], data)
-	g.count++
-	if index < uint32(fec.dataShards) {
-		g.dataCount++
-		g.dataRecv[index] = true
+	if g.datas[index] == nil {
+		sz -= fec.headerOffset
+		data = data[fec.headerOffset:]
+		if sz > g.maxSize {
+			g.maxSize = sz
+		}
+		g.count++
+		if index < uint32(fec.dataShards) {
+			g.dataCount++
+			g.dataRecv[index] = true
+		}
+		g.datas[index] = make([]byte, 1500)
+		g.datas[index] = g.datas[index][:sz]
+		copy(g.datas[index], data)
+	} else {
+		return nil, nil
 	}
 
 	if g.dataCount == fec.dataShards {
