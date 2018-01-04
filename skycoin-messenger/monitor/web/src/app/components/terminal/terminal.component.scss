@@ -1,4 +1,11 @@
-.terminal {
+
+
+.terminal-box {
+  position: absolute;
+  width: 800px;
+
+  border-radius: .75rem;
+  box-shadow: 0px 2px 12px rgba(0, 0, 0, 0.5), 10px 4px 30px rgba(0, 0, 0, 0.1);
   .terminal-header {
     width: 100%;
     height: 1.5em;
@@ -6,6 +13,10 @@
     border-top: 1px solid white;
     border-bottom: 1px solid #b3b3b3;
     padding: .2em .3em;
+    border-top-left-radius: .5rem;
+    border-top-right-radius: .5rem;
+    user-select: none;
+    // cursor: pointer;
     .terminal-btn {
       display: inline-block;
       position: relative;
@@ -46,8 +57,11 @@
   .terminal-content {
     background-color: #000;
     color: #fff;
-    overflow: auto;
-
+    overflow: hidden;
+    min-width: 100%;
+    min-height: 300px;
+    border-bottom-left-radius: .25rem;
+    border-bottom-right-radius: .25rem;
   }
 }
 
@@ -65,5 +79,3 @@
     outline: none;
   }
 }
-
-

@@ -18,12 +18,13 @@ import {
   MatFormFieldModule,
   MatInputModule,
   MatProgressSpinnerModule,
-  MatMenuModule
+  MatMenuModule,
+  MatPaginatorModule
 } from '@angular/material';
 import { AppComponent } from './app.component';
 import { HttpClientModule } from '@angular/common/http';
 import { ApiService, UserService } from './service';
-import { TimeAgoPipe, ByteToPipe, EllipsisPipe, IterablePipe, SafeHTMLPipe } from './pipe';
+import { TimeAgoPipe, ByteToPipe, EllipsisPipe, IterablePipe, SafePipe } from './pipe';
 import { LabelDirective, ShortcutInputDirective, DebugDirective } from './directives';
 import { DashboardComponent, SubStatusComponent } from './page';
 import {
@@ -42,7 +43,7 @@ import { AppRoutingModule } from './route/app-routing.module';
     ByteToPipe,
     EllipsisPipe,
     IterablePipe,
-    SafeHTMLPipe,
+    SafePipe,
 
     LabelDirective,
     ShortcutInputDirective,
@@ -82,7 +83,8 @@ import { AppRoutingModule } from './route/app-routing.module';
     MatFormFieldModule,
     MatInputModule,
     MatProgressSpinnerModule,
-    MatMenuModule
+    MatMenuModule,
+    MatPaginatorModule
   ],
   providers: [ApiService, UserService],
   bootstrap: [AppComponent]
