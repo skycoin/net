@@ -2,6 +2,7 @@
 @import '~@angular/material/prebuilt-themes/deeppurple-amber.css';
 @import './app.scss';
 @import '~xterm/dist/xterm.css';
+@import '~xterm/dist/addons/fullscreen/fullscreen.css';
 
 /* fallback */
 
@@ -166,11 +167,23 @@ snack-bar-container {
   }
 }
 
-.xterm-theme-default {
-  .xterm-viewport {
-    overflow: auto !important;
-  }
-  .xterm-rows {
-    padding-left: .5em;
+// .xterm-theme-default {
+//   .xterm-viewport {
+//     overflow: auto !important;
+//   }
+//   .xterm-rows {
+//     padding-left: .5em;
+//   }
+// }
+
+.terminal-dialog {
+  height: 100%;
+  max-width: 100% !important;
+  .mat-dialog-container {
+    position: relative;
+    padding: 0;
+    border-radius: none;
+    background-color: transparent !important;
+    box-shadow: none !important;
   }
 }

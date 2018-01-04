@@ -89,6 +89,7 @@ export class SubStatusComponent implements OnInit, OnDestroy {
   debugData = '';
   messages: Array<Message> = [];
   showMsgs: Array<MessageItem> = [];
+  dialogMode = '';
   constructor(
     private router: Router,
     private route: ActivatedRoute,
@@ -136,8 +137,9 @@ export class SubStatusComponent implements OnInit, OnDestroy {
     ev.stopPropagation();
     ev.preventDefault();
     const ref = this.dialog.open(TerminalComponent, {
-      panelClass: 'log-dialog',
-      width: '800px',
+      panelClass: 'terminal-dialog',
+      backdropClass: 'terminal-backdrop',
+      width: '100%',
       disableClose: true
     });
     ref.componentInstance.addr = this.status.addr;
@@ -155,6 +157,7 @@ export class SubStatusComponent implements OnInit, OnDestroy {
     ev.stopImmediatePropagation();
     ev.stopPropagation();
     ev.preventDefault();
+
     const value = { nodeKey: info.nodeKey, appKey: info.appKey };
     switch (form) {
       case 'sshClient':
@@ -164,6 +167,7 @@ export class SubStatusComponent implements OnInit, OnDestroy {
         this.socketClientForm.patchValue(value);
         break;
     }
+    this.dialogMode = 'enter';
   }
   editTaskTime(time: number) {
     this.close();
@@ -444,10 +448,12 @@ export class SubStatusComponent implements OnInit, OnDestroy {
         this.clientConnectionInfo = info;
       });
     }
+    this.dialogMode = '';
     this.sshClientForm.reset();
     this.socketClientForm.reset();
     this.dialog.open(content, {
-      width: '450px'
+      width: '450px',
+      panelClass: 'multipage-dialog'
     });
   }
   openSettings(ev: Event, content: any, title: string) {
@@ -462,7 +468,7 @@ export class SubStatusComponent implements OnInit, OnDestroy {
     }
     this.dialogTitle = title;
     this.dialog.open(content, {
-      width: '800px',
+      width: '800px'
     });
   }
   openSockSettings(ev: Event, content: any, title: string) {
@@ -687,6 +693,12 @@ export class SubStatusComponent implements OnInit, OnDestroy {
           }
         });
       }
+    });
+  }
+  search(content) {
+    this.dialog.open(content, {
+      width: '100%',
+      height: '95%'
     });
   }
   removeClientConnection(action: string, index: number) {
