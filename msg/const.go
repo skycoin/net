@@ -34,6 +34,7 @@ const (
 
 const (
 	TYPE_NORMAL = 0x01
+	TYPE_FEC    = 0x02
 	TYPE_ACK    = 0x80
 	TYPE_PING   = 0x81
 	TYPE_PONG   = 0x82
@@ -43,6 +44,7 @@ const (
 	MSG_STATUS_INIT = 1 << iota
 	MSG_STATUS_TRANSMITTED
 	MSG_STATUS_ACKED
+	MSG_STATUS_LOSS
 )
 
 // ack msg index

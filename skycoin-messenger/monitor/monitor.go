@@ -2,22 +2,22 @@ package monitor
 
 import (
 	"encoding/json"
+	"fmt"
+	"github.com/gorilla/websocket"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/skycoin/net/skycoin-messenger/factory"
 	"github.com/skycoin/skycoin/src/cipher"
+	"github.com/skycoin/skycoin/src/util/file"
 	"io/ioutil"
 	"net"
 	"net/http"
+	"os"
+	"path/filepath"
+	"sort"
+	"strconv"
 	"sync"
 	"time"
-	"os"
-	"sort"
-	"path/filepath"
-	"github.com/skycoin/skycoin/src/util/file"
-	"strconv"
-	"github.com/gorilla/websocket"
-	"fmt"
 )
 
 type Conn struct {

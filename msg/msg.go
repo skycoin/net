@@ -151,12 +151,39 @@ func (msg *Message) Transmitted() {
 	msg.Unlock()
 }
 
+func (msg *Message) IsTransmitted() (r bool) {
+	msg.RLock()
+	r = msg.status&MSG_STATUS_TRANSMITTED > 0
+	msg.RUnlock()
+	return
+}
+
+func (msg *UDPMessage) IsAcked() (r bool) {
+	msg.RLock()
+	r = msg.status&MSG_STATUS_ACKED > 0
+	msg.RUnlock()
+	return
+}
+
 func (msg *Message) Acked() {
 	msg.Lock()
 	msg.status |= MSG_STATUS_ACKED
 	msg.ackedAt = time.Now()
 	msg.rtt = msg.ackedAt.Sub(msg.transmittedAt)
 	msg.Unlock()
+}
+
+func (msg *Message) Loss() {
+	msg.Lock()
+	msg.status |= MSG_STATUS_LOSS
+	msg.Unlock()
+}
+
+func (msg *UDPMessage) IsLoss() (r bool) {
+	msg.RLock()
+	r = msg.status&MSG_STATUS_LOSS > 0
+	msg.RUnlock()
+	return
 }
 
 func (msg *Message) GetRTT() (rtt time.Duration) {
@@ -176,6 +203,9 @@ type UDPMessage struct {
 	delivered     uint64
 	deliveredTime time.Time
 	sentTime      time.Time
+
+	channel    int64
+	channelSeq uint32
 }
 
 func NewUDP(t uint8, seq uint32, bytes []byte) *UDPMessage {
@@ -190,13 +220,6 @@ func NewUDPWithoutSeq(t uint8, bytes []byte) *UDPMessage {
 	}
 }
 
-func (msg *UDPMessage) Transmitted() {
-	msg.Lock()
-	msg.status |= MSG_STATUS_TRANSMITTED
-	msg.transmittedAt = time.Now()
-	msg.Unlock()
-}
-
 func (msg *UDPMessage) UpdateState(delivered uint64, deliveredTime, sentTime time.Time) {
 	msg.Lock()
 	msg.delivered = delivered
@@ -205,7 +228,7 @@ func (msg *UDPMessage) UpdateState(delivered uint64, deliveredTime, sentTime tim
 	msg.Unlock()
 }
 
-func (msg *UDPMessage) SetRTO(rto time.Duration, fn func() error) {
+func (msg *UDPMessage) SetRTO(rto time.Duration, fn func(m *UDPMessage) error) {
 	msg.Lock()
 	msg.resendTimer = time.AfterFunc(rto*time.Duration((msg.resendCnt)*3/2+1), func() {
 		msg.Lock()
@@ -216,12 +239,16 @@ func (msg *UDPMessage) SetRTO(rto time.Duration, fn func() error) {
 		msg.resendCnt++
 		msg.Unlock()
 		msg.ResetMiss()
-		err := fn()
-		if err == nil {
-			msg.SetRTO(rto, fn)
-		}
+		fn(msg)
 	})
 	msg.Unlock()
+}
+
+func (msg *UDPMessage) GetResendCount() (c uint32) {
+	msg.RLock()
+	c = msg.resendCnt
+	msg.RUnlock()
+	return
 }
 
 func (msg *UDPMessage) Acked() {
@@ -264,5 +291,17 @@ func (msg *UDPMessage) GetTransmittedTime() time.Time {
 }
 
 func (msg *UDPMessage) Less(b btree.Item) bool {
-	return msg.GetSeq() < b.(*UDPMessage).GetSeq()
+	if msg.IsTransmitted() {
+		return atomic.LoadUint32(&msg.seq) < atomic.LoadUint32(&b.(*UDPMessage).seq)
+	}
+	return atomic.LoadUint32(&msg.channelSeq) < atomic.LoadUint32(&b.(*UDPMessage).channelSeq)
+}
+
+func (msg *UDPMessage) SetChannelSeq(channel int, seq uint32) {
+	atomic.StoreInt64(&msg.channel, int64(channel))
+	atomic.StoreUint32(&msg.channelSeq, seq)
+}
+
+func (msg *UDPMessage) GetChannel() int {
+	return int(atomic.LoadInt64(&msg.channel))
 }

@@ -246,6 +246,14 @@ func (c *Connection) FindServiceNodesByAttributes(attrs ...string) error {
 	return c.writeOP(OP_QUERY_BY_ATTRS, newQueryByAttrs(attrs))
 }
 
+// find services by attributes
+func (c *Connection) FindServiceNodesWithSeqByAttributes(attrs ...string) (seq uint32, err error) {
+	q := newQueryByAttrs(attrs)
+	seq = q.Seq
+	err = c.writeOP(OP_QUERY_BY_ATTRS, q)
+	return
+}
+
 // find services nodes by service public keys
 func (c *Connection) FindServiceNodesByKeys(keys []cipher.PubKey) error {
 	return c.writeOP(OP_QUERY_SERVICE_NODES, newQuery(keys))

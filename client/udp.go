@@ -54,17 +54,10 @@ func (c *ClientUDPConn) ReadLoop() (err error) {
 			if err != nil {
 				return err
 			}
-		case msg.TYPE_NORMAL:
-			seq := binary.BigEndian.Uint32(m[msg.MSG_SEQ_BEGIN:msg.MSG_SEQ_END])
-			ok, ms := c.Push(seq, m[msg.MSG_HEADER_END:])
-			err := c.Ack(seq)
+		case msg.TYPE_NORMAL, msg.TYPE_FEC:
+			err = c.Process(t, m)
 			if err != nil {
 				return err
-			}
-			if ok {
-				for _, m := range ms {
-					c.In <- m
-				}
 			}
 		default:
 			c.GetContextLogger().Debugf("not implemented msg type %d", t)
