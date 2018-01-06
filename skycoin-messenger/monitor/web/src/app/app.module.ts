@@ -32,6 +32,7 @@ import {
   AlertComponent,
   LoadingComponent,
   TerminalComponent,
+  SearchServiceComponent
 } from './components';
 import { AppRoutingModule } from './route/app-routing.module';
 
@@ -54,12 +55,14 @@ import { AppRoutingModule } from './route/app-routing.module';
     AlertComponent,
     LoadingComponent,
     TerminalComponent,
+    SearchServiceComponent
   ],
   entryComponents: [
     UpdateCardComponent,
     AlertComponent,
     LoadingComponent,
     TerminalComponent,
+    SearchServiceComponent
   ],
   imports: [
     BrowserModule,

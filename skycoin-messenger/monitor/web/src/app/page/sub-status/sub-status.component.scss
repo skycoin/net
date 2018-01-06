@@ -101,42 +101,7 @@ app-sub-status {
   }
 }
 
-.search-page {
-  height: 90%;
-  .search-title {
-    .text {
-      font-size: 1.5em;
-    }
-    .refresh {
-      color: blue;
-      cursor: pointer;
-      vertical-align: sub;
-    }
-  }
-  .search-table {
-    width: 100%;
-    border-collapse: collapse;
-    td,
-    th {
-      padding: 15px 5px;
-      display: table-cell;
-      text-align: left;
-      vertical-align: middle;
-      border-radius: 2px;
-    }
-    thead {
-      border-bottom: 1px solid #d0d0d0;
-    }
-    tbody {
-      tr {
-        border-bottom: 1px solid #d0d0d0;
-      }
-      .key {
-        font-size: xx-small;
-      }
-    }
-  }
-}
+
 
 .dialog-title {
   margin: 0 !important;

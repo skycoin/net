@@ -19,7 +19,7 @@ import { Observable } from 'rxjs/Observable';
 import { Subscription } from 'rxjs/Subscription';
 import { Subject } from 'rxjs/Subject';
 import { FormControl, FormGroup, Validators } from '@angular/forms';
-import { UpdateCardComponent, AlertComponent, LoadingComponent, TerminalComponent } from '../../components';
+import { UpdateCardComponent, AlertComponent, LoadingComponent, TerminalComponent, SearchServiceComponent } from '../../components';
 import 'rxjs/add/observable/of';
 import 'rxjs/add/observable/timer';
 import 'rxjs/add/operator/debounceTime';
@@ -117,17 +117,7 @@ export class SubStatusComponent implements OnInit, OnDestroy {
       this.power = 'warn';
       this.isManager = env.isManager;
     });
-    // setTimeout(() => {
-    //   this.api.runShell(this.status.addr).subscribe(result => {
-    //     if (result) {
-    //       const ref = this.dialog.open(TerminalComponent, {
-    //         panelClass: 'log-dialog',
-    //         width: '800px'
-    //       });
-    //       ref.componentInstance.addr = this.status.addr;
-    //     }
-    //   });
-    // }, 1000);
+
   }
   ngOnDestroy() {
     this.close();
@@ -588,44 +578,7 @@ export class SubStatusComponent implements OnInit, OnDestroy {
         break;
     }
   }
-  // showMessage(msgs: Array<Array<Message>>) {
-  //   if (!msgs || msgs[0] == null) {
-  //     return;
-  //   } else if (msgs.length === 1) {
-  //     msgs[0].sort(this.compareMsg);
-  //   } else {
-  //     msgs.sort((m1, m2) => {
-  //       m1.sort(this.compareMsg);
-  //       m2.sort(this.compareMsg);
-  //       if (m1[0].priority < m2[0].priority) {
-  //         return 1;
-  //       }
-  //       if (m1[0].priority > m2[0].priority) {
-  //         return -1;
-  //       }
-  //       return 0;
-  //     });
-  //   }
-  //   this.alertMsg = msgs[0][0].msg;
-  //   setTimeout(() => {
-  //     this.dialog.open(AlertComponent, {
-  //       width: '45rem',
-  //       panelClass: 'alert',
-  //       data: {
-  //         msg: this.alertMsg
-  //       }
-  //     });
-  //   }, 500);
-  // }
-  // compareMsg(msg1: Message, msg2: Message) {
-  //   if (msg1.priority < msg2.priority) {
-  //     return 1;
-  //   }
-  //   if (msg1.priority > msg2.priority) {
-  //     return -1;
-  //   }
-  //   return 0;
-  // }
+
   fillApps() {
     if (env.isManager) {
       this.api.getApps(this.status.addr).subscribe((apps: Array<App>) => {
@@ -685,10 +638,18 @@ export class SubStatusComponent implements OnInit, OnDestroy {
       }
     });
   }
-  search(content) {
-    this.dialog.open(content, {
-      width: '100%',
-      height: '95%'
+  search(ev: Event, searchStr: string) {
+    const ref = this.dialog.open(SearchServiceComponent, {
+      minWidth: '1200px',
+      height: '800px'
+    });
+    ref.componentInstance.nodeAddr = this.status.addr;
+    ref.componentInstance.searchStr = searchStr;
+    ref.afterClosed().subscribe(result => {
+      if (result) {
+        this.init();
+        this.dialog.closeAll();
+      }
     });
   }
   removeClientConnection(action: string, index: number) {

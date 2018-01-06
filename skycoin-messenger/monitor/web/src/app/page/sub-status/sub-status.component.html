@@ -394,83 +394,12 @@
   </div>
 </ng-template>
 
-<ng-template #serviceSearchPage>
-  <div class="search-page">
-    <p class="text-center search-title">
-      <span class="text-center text">Search Result</span>
-      <mat-icon class="refresh">refresh</mat-icon>
-    </p>
-    <table class="search-table">
-      <thead>
-        <tr>
-          <th>Index</th>
-          <th>Node Key</th>
-          <th>App Key</th>
-          <th>Operation</th>
-        </tr>
-      </thead>
-
-      <tbody>
-        <tr>
-          <td>1</td>
-          <td class="key">038b558e91a343c0f449b536ceab640d4055dbced85f6f5969a58ee56f2280588c</td>
-          <td class="key">038b558e91a343c0f449b536ceab640d4055dbced85f6f5969a58ee56f2280588c</td>
-          <td>
-            <button mat-raised-button color="primary">select</button>
-          </td>
-        </tr>
-        <tr>
-          <td>2</td>
-          <td class="key">038b558e91a343c0f449b536ceab640d4055dbced85f6f5969a58ee56f2280588c</td>
-          <td class="key">038b558e91a343c0f449b536ceab640d4055dbced85f6f5969a58ee56f2280588c</td>
-          <td>
-            <button mat-raised-button color="primary">select</button>
-          </td>
-        </tr>
-        <tr>
-          <td>3</td>
-          <td class="key">038b558e91a343c0f449b536ceab640d4055dbced85f6f5969a58ee56f2280588c</td>
-          <td class="key">038b558e91a343c0f449b536ceab640d4055dbced85f6f5969a58ee56f2280588c</td>
-          <td>
-            <button mat-raised-button color="primary">select</button>
-          </td>
-        </tr>
-      </tbody>
-    </table>
-  </div>
-  <p class="search-foot text-right">
-    <mat-paginator [length]="10" [pageSize]="10" [pageSizeOptions]="[5, 10, 25, 100]">
-    </mat-paginator>
-  </p>
-</ng-template>
-
 <ng-template #sshClientDialog>
   <div mat-dialog-title class="dialog-title">
     <div class="title-text">SSH Service keys</div>
   </div>
-  <p class="dialog-sub-title" *ngIf="dialogMode !== ''">
-    <small>
-      <a href="javascript:void(0);" (click)="search(serviceSearchPage)">
-        <mat-icon>search</mat-icon>
-        <span>Search services</span>
-      </a>
-    </small>
-  </p>
-  <div *ngIf="!dialogMode" class="dialog-model-box">
-    <p class="text-center">
-      <a href="javascript:void(0);" (click)="search(serviceSearchPage)">
-        <mat-icon>search</mat-icon>
-        <span>Search services</span>
-      </a>
-    </p>
-    <p class="text-center">or</p>
-    <p class="text-center">
-      <a href="javascript:void(0);" (click)="dialogMode='enter'">
-        Enter the key for node and app
-      </a>
-    </p>
-  </div>
-  <div *ngIf="dialogMode" class="dialog-input-box">
+
+  <div class="dialog-input-box">
     <div mat-dialog-content class="setting-dialog">
       <form [formGroup]="sshClientForm">
         <mat-form-field>
@@ -532,30 +461,54 @@
     <span>Socket Service keys</span>
     <mat-icon>network_locked </mat-icon>
   </h1>
-  <div mat-dialog-content class="setting-dialog">
-    <form [formGroup]="socketClientForm">
-      <mat-form-field>
-        <input matInput placeholder="Input Node Key" formControlName="nodeKey" autocomplete="off">
-        <mat-error *ngIf="socketClientForm.get('nodeKey').hasError('required')">
-          Please enter a valid Node Key
-        </mat-error>
-        <mat-error *ngIf="socketClientForm.get('nodeKey').hasError('minlength') || socketClientForm.get('nodeKey').hasError('minlength')">
-          The Node Key must be 66 characters long.
-        </mat-error>
-      </mat-form-field>
-      <mat-form-field>
-        <input matInput placeholder="Input App Key" formControlName="appKey" autocomplete="off">
-        <mat-error *ngIf="socketClientForm.get('appKey').hasError('required')">
-          Please enter a valid App Key
-        </mat-error>
-        <mat-error *ngIf="socketClientForm.get('appKey').hasError('minlength') || socketClientForm.get('appKey').hasError('minlength')">
-          The Node Key must be 66 characters long.
-        </mat-error>
-      </mat-form-field>
-    </form>
-    <p class="text-right">
-      <button mat-raised-button color="primary" [disabled]="!socketClientForm.valid" (click)="connectSocket($event,'socket')">Connect</button>
+  <p class="dialog-sub-title" *ngIf="dialogMode !== ''">
+    <small>
+      <a href="javascript:void(0);" (click)="search($event,'sockss')">
+        <mat-icon>search</mat-icon>
+        <span>Search services</span>
+      </a>
+    </small>
+  </p>
+  <div *ngIf="!dialogMode" class="dialog-model-box">
+    <p class="text-center">
+      <a href="javascript:void(0);" (click)="search($event,'sockss')">
+        <mat-icon>search</mat-icon>
+        <span>Search services</span>
+      </a>
     </p>
+    <p class="text-center">or</p>
+    <p class="text-center">
+      <a href="javascript:void(0);" (click)="dialogMode='enter'">
+        Enter the key for node and app
+      </a>
+    </p>
+  </div>
+  <div *ngIf="dialogMode" class="dialog-input-box">
+    <div mat-dialog-content class="setting-dialog">
+      <form [formGroup]="socketClientForm">
+        <mat-form-field>
+          <input matInput placeholder="Input Node Key" formControlName="nodeKey" autocomplete="off">
+          <mat-error *ngIf="socketClientForm.get('nodeKey').hasError('required')">
+            Please enter a valid Node Key
+          </mat-error>
+          <mat-error *ngIf="socketClientForm.get('nodeKey').hasError('minlength') || socketClientForm.get('nodeKey').hasError('minlength')">
+            The Node Key must be 66 characters long.
+          </mat-error>
+        </mat-form-field>
+        <mat-form-field>
+          <input matInput placeholder="Input App Key" formControlName="appKey" autocomplete="off">
+          <mat-error *ngIf="socketClientForm.get('appKey').hasError('required')">
+            Please enter a valid App Key
+          </mat-error>
+          <mat-error *ngIf="socketClientForm.get('appKey').hasError('minlength') || socketClientForm.get('appKey').hasError('minlength')">
+            The Node Key must be 66 characters long.
+          </mat-error>
+        </mat-form-field>
+      </form>
+      <p class="text-right">
+        <button mat-raised-button color="primary" [disabled]="!socketClientForm.valid" (click)="connectSocket($event,'socket')">Connect</button>
+      </p>
+    </div>
   </div>
   <div class="quick-box" *ngIf="clientConnectionInfo?.length > 0">
     <h5>Records:</h5>

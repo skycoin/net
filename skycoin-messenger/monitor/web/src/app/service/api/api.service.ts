@@ -14,6 +14,7 @@ export class ApiService {
   constructor(private httpClient: HttpClient) { }
 
 
+
   getAllNode() {
     return this.handleGet(this.connUrl + 'getAll');
   }
@@ -44,7 +45,12 @@ export class ApiService {
   checkAppMsg(addr: string, data?: FormData) {
     return this.handleNodePost(addr, '/node/getMsg', data);
   }
-
+  searchServices(addr: string, data?: FormData) {
+    return this.handleNodePost(addr, '/node/run/searchServices', data);
+  }
+  getServicesResult(addr: string, data?: FormData) {
+    return this.handleNodePost(addr, '/node/run/getSearchServicesResult', data);
+  }
   connectSSHClient(addr: string, data?: FormData) {
     return this.handleNodePost(addr, '/node/run/sshc', data);
   }
