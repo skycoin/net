@@ -41,6 +41,9 @@ type Connection interface {
 	WriteToChannel(channel int, bytes []byte) (err error)
 
 	WaitForDisconnected()
+
+	SetCrypto(crypto *Crypto)
+	GetCrypto() *Crypto
 }
 
 type ConnCommonFields struct {
@@ -65,6 +68,8 @@ type ConnCommonFields struct {
 	disconnected chan struct{}
 
 	ctxLogger atomic.Value
+
+	crypto atomic.Value
 }
 
 func NewConnCommonFileds() ConnCommonFields {
@@ -180,4 +185,16 @@ func (c *ConnCommonFields) DeletePendingChannel(channel int) {
 
 func (c *ConnCommonFields) WriteToChannel(channel int, bytes []byte) (err error) {
 	panic("not implemented")
+}
+
+func (c *ConnCommonFields) SetCrypto(crypto *Crypto) {
+	c.crypto.Store(crypto)
+}
+
+func (c *ConnCommonFields) GetCrypto() *Crypto {
+	x := c.crypto.Load()
+	if x == nil {
+		return nil
+	}
+	return x.(*Crypto)
 }

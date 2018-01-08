@@ -13,6 +13,10 @@ const (
 )
 
 const (
+	MTU = 1500
+)
+
+const (
 	BW_SCALE = 24
 	BW_UNIT  = 1 << BW_SCALE
 )

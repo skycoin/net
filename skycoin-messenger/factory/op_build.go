@@ -307,7 +307,7 @@ func (req *forwardNodeConnResp) Run(conn *Connection) (err error) {
 		return
 	}
 	if len(req.Address) > 0 {
-		err = tr.connect(req.Address)
+		err = tr.clientSideConnect(req.Address, conn.factory.GetDefaultSeedConfig())
 	}
 	return
 }
@@ -371,7 +371,7 @@ func (req *buildConn) Run(conn *Connection) (err error) {
 	if err != nil {
 		return
 	}
-	err = tr.Connect(req.Address, s.Address)
+	err = tr.serverSiceConnect(req.Address, s.Address, conn.factory.GetDefaultSeedConfig())
 	appConn.setTransport(req.FromApp, tr)
 	tr.SetupTimeout()
 	return

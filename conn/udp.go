@@ -53,8 +53,8 @@ type UDPConn struct {
 }
 
 const (
-	dataShards   = 10
-	parityShards = 3
+	dataShards   = 4
+	parityShards = 1
 )
 
 // used for server spawn udp conn
@@ -384,7 +384,13 @@ func (c *UDPConn) process(seq uint32, m []byte) (err error) {
 	return
 }
 
-func (c *UDPConn) WriteBytes(bytes []byte) error {
+func (c *UDPConn) WriteBytes(bytes []byte) (err error) {
+	if c.crypto != nil {
+		bytes, err = c.crypto.Encrypt(bytes)
+		if err != nil {
+			return
+		}
+	}
 	l := len(bytes)
 	c.AddSentBytes(l)
 	n, err := c.UdpConn.WriteToUDP(bytes, c.addr)
@@ -392,7 +398,7 @@ func (c *UDPConn) WriteBytes(bytes []byte) error {
 	if err == nil && n != l {
 		return errors.New("nothing was written")
 	}
-	return err
+	return
 }
 
 func (c *UDPConn) Ack(seq uint32) error {

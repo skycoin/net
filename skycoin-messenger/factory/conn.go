@@ -2,6 +2,7 @@ package factory
 
 import (
 	"encoding/json"
+	"github.com/skycoin/net/conn"
 	"github.com/skycoin/net/factory"
 	"github.com/skycoin/skycoin/src/cipher"
 	"sync"
@@ -196,7 +197,7 @@ func (c *Connection) Reg() error {
 }
 
 func (c *Connection) RegWithKey(key cipher.PubKey, context map[string]string) error {
-	return c.writeOP(OP_REG_KEY, &regWithKey{PublicKey: key, Context: context})
+	return c.writeOP(OP_REG_KEY, &regWithKey{PublicKey: key, Context: context, Version: RegWithKeyAndEncryptionVersion})
 }
 
 // register services to discovery
@@ -479,4 +480,10 @@ func (c *Connection) GetAppFeedback() *AppFeedback {
 		return nil
 	}
 	return v
+}
+
+func (c *Connection) SetCrypto(pk cipher.PubKey, sk cipher.SecKey, target cipher.PubKey) {
+	crypto := conn.NewCrypto(pk, sk)
+	crypto.SetTargetKey(target)
+	c.Connection.SetCrypto(crypto)
 }

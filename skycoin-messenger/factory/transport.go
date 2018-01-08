@@ -76,13 +76,14 @@ func (t *Transport) String() string {
 // Listen and connect to node manager
 func (t *Transport) ListenAndConnect(address string) (conn *Connection, err error) {
 	conn, err = t.factory.connectUDPWithConfig(address, &ConnConfig{
-		Creator: t.creator,
+		Creator:   t.creator,
+		UseCrypto: RegWithKeyAndEncryptionVersion,
 	})
 	return
 }
 
 // Connect to node B
-func (t *Transport) connect(address string) (err error) {
+func (t *Transport) clientSideConnect(address string, sc *SeedConfig) (err error) {
 	t.fieldsMutex.Lock()
 	if t.connAcked {
 		t.fieldsMutex.Unlock()
@@ -92,10 +93,7 @@ func (t *Transport) connect(address string) (err error) {
 	t.fieldsMutex.Unlock()
 	_, err = t.factory.acceptUDPWithConfig(address, &ConnConfig{
 		OnConnected: func(connection *Connection) {
-			//connection.writeOP(OP_APP_CONN_ACK|RESP_PREFIX, &connAck{
-			//	FromApp: t.FromApp,
-			//	App:     t.ToApp,
-			//})
+			connection.SetCrypto(sc.publicKey, sc.secKey, t.ToNode)
 			connection.writeOP(OP_BUILD_APP_CONN_OK|RESP_PREFIX, &nop{})
 		},
 		Creator: t.creator,
@@ -110,9 +108,10 @@ func (t *Transport) connAck() {
 }
 
 // Connect to node A and server app
-func (t *Transport) Connect(address, appAddress string) (err error) {
+func (t *Transport) serverSiceConnect(address, appAddress string, sc *SeedConfig) (err error) {
 	conn, err := t.factory.connectUDPWithConfig(address, &ConnConfig{
 		OnConnected: func(connection *Connection) {
+			connection.SetCrypto(sc.publicKey, sc.secKey, t.FromNode)
 			connection.writeOP(OP_BUILD_APP_CONN_OK,
 				&buildConnResp{
 					FromNode: t.FromNode,

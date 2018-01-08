@@ -39,7 +39,7 @@ func (c *ServerUDPConn) ReadLoop(fn func(c *net.UDPConn, addr *net.UDPAddr) *con
 	var at = time.Time{}
 	var nt = time.Time{}
 	for {
-		maxBuf := make([]byte, conn.MAX_UDP_PACKAGE_SIZE)
+		maxBuf := make([]byte, conn.MTU)
 		rt = time.Now()
 		n, addr, err := c.UdpConn.ReadFromUDP(maxBuf)
 		c.GetContextLogger().Debugf("process read udp d %s", time.Now().Sub(rt))
@@ -60,13 +60,19 @@ func (c *ServerUDPConn) ReadLoop(fn func(c *net.UDPConn, addr *net.UDPAddr) *con
 		}
 		c.AddReceivedBytes(n)
 		maxBuf = maxBuf[:n]
+		cc := fn(c.UdpConn, addr)
+		if cc.GetCrypto() != nil {
+			maxBuf, err = cc.GetCrypto().Decrypt(maxBuf)
+			if err != nil {
+				return
+			}
+		}
 		m := maxBuf[msg.PKG_HEADER_SIZE:]
 		checksum := binary.BigEndian.Uint32(maxBuf[msg.PKG_CRC32_BEGIN:])
 		if checksum != crc32.ChecksumIEEE(m) {
 			c.GetContextLogger().Infof("checksum !=")
 			continue
 		}
-		cc := fn(c.UdpConn, addr)
 
 		t := m[msg.MSG_TYPE_BEGIN]
 		switch t {

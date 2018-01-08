@@ -73,14 +73,33 @@ const (
 	randomBytes
 )
 
+type RegVersion int
+
+const (
+	regWithKeyVersion RegVersion = iota
+	RegWithKeyAndEncryptionVersion
+)
+
 type regWithKey struct {
 	PublicKey cipher.PubKey
 	Context   map[string]string
+	Version   RegVersion
 }
 
 func (reg *regWithKey) Execute(f *MessengerFactory, conn *Connection) (r resp, err error) {
 	if conn.IsKeySet() {
 		conn.GetContextLogger().Infof("reg %s already", conn.key.Hex())
+		return
+	}
+	if reg.Version == RegWithKeyAndEncryptionVersion {
+		for k, v := range reg.Context {
+			conn.StoreContext(k, v)
+		}
+		conn.StoreContext(publicKey, reg.PublicKey)
+		pk, sec := cipher.GenerateKeyPair()
+		r := &regWithKeyResp{PublicKey: pk, Version: reg.Version}
+		err = conn.writeOP(OP_REG_KEY|RESP_PREFIX, r)
+		conn.SetCrypto(pk, sec, reg.PublicKey)
 		return
 	}
 	for k, v := range reg.Context {
@@ -94,10 +113,17 @@ func (reg *regWithKey) Execute(f *MessengerFactory, conn *Connection) (r resp, e
 }
 
 type regWithKeyResp struct {
-	Num []byte
+	Num       []byte
+	PublicKey cipher.PubKey
+	Version   RegVersion
 }
 
 func (resp *regWithKeyResp) Run(conn *Connection) (err error) {
+	if resp.Version == RegWithKeyAndEncryptionVersion {
+		conn.SetCrypto(conn.GetKey(), conn.GetSecKey(), resp.PublicKey)
+		err = conn.writeOP(OP_REG_SIG, &regCheckSig{Version: resp.Version})
+		return
+	}
 	sk := conn.GetSecKey()
 	hash := cipher.SumSHA256(resp.Num)
 	sig := cipher.SignHash(hash, sk)
@@ -106,7 +132,8 @@ func (resp *regWithKeyResp) Run(conn *Connection) (err error) {
 }
 
 type regCheckSig struct {
-	Sig cipher.Sig
+	Sig     cipher.Sig
+	Version RegVersion
 }
 
 func (reg *regCheckSig) Execute(f *MessengerFactory, conn *Connection) (r resp, err error) {
@@ -124,18 +151,24 @@ func (reg *regCheckSig) Execute(f *MessengerFactory, conn *Connection) (r resp, 
 		err = errors.New("public key invalid")
 		return
 	}
-	n, ok := conn.context.Load(randomBytes)
-	if !ok {
-		err = errors.New("randomBytes not found")
-		return
+	if reg.Version == RegWithKeyAndEncryptionVersion && conn.GetCrypto() != nil {
+		goto OK
+	} else {
+		n, ok := conn.context.Load(randomBytes)
+		if !ok {
+			err = errors.New("randomBytes not found")
+			return
+		}
+		hash := cipher.SumSHA256(n.([]byte))
+		err = cipher.VerifySignature(pk, reg.Sig, hash)
+		if err != nil {
+			return
+		}
 	}
-	hash := cipher.SumSHA256(n.([]byte))
-	err = cipher.VerifySignature(pk, reg.Sig, hash)
-	if err == nil {
-		conn.SetKey(pk)
-		conn.SetContextLogger(conn.GetContextLogger().WithField("pubkey", pk.Hex()))
-		f.register(pk, conn)
-		r = &regResp{PubKey: pk}
-	}
+OK:
+	conn.SetKey(pk)
+	conn.SetContextLogger(conn.GetContextLogger().WithField("pubkey", pk.Hex()))
+	f.register(pk, conn)
+	r = &regResp{PubKey: pk}
 	return
 }
