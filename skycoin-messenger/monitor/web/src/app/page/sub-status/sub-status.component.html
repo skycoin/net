@@ -128,7 +128,7 @@
 
     <mat-grid-list cols="6" rowHeight="2:1">
       <mat-grid-tile>
-        <p class="status-box-item-title">
+        <p class="status-box-item-title status-item">
           <small>Shadowsocks</small>
           <button class="icon-pointer" mat-icon-button [matMenuTriggerFor]="socketServermenu" [class.unread]="isUnread('socks') > 0">
             <mat-icon aria-label="more">more_vert</mat-icon>
@@ -144,7 +144,7 @@
             </button>
           </mat-menu>
         </p>
-        <p class="status-box-item-content">
+        <p class="status-box-item-content status-item">
           <button mat-icon-button (click)="runSocketServer($event)" [ngClass]="socketColor">
             <mat-icon aria-label="Shadowsocks">near_me</mat-icon>
           </button>
@@ -152,7 +152,7 @@
         <p class="status-item"></p>
       </mat-grid-tile>
       <mat-grid-tile>
-        <p class="status-box-item-title">
+        <p class="status-box-item-title status-item">
           <small style="margin-left: 1.5rem;">SSH</small>
           <button class="icon-pointer" mat-icon-button [matMenuTriggerFor]="sshServermenu" [class.unread]="isUnread('sshs') > 0">
             <mat-icon aria-label="more">more_vert</mat-icon>
@@ -168,7 +168,7 @@
             </button>
           </mat-menu>
         </p>
-        <p class="status-box-item-content">
+        <p class="status-box-item-content status-item">
           <button mat-icon-button (click)="runSSHServer($event)" [ngClass]="sshColor">
             <mat-icon aria-label="SSH">computer</mat-icon>
           </button>

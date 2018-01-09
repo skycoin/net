@@ -41,10 +41,10 @@ export class ApiService {
     return this.handleNodePost(addr, '/node/reboot');
   }
   getAutoStart(addr: string) {
-    return this.handleNodePost(addr, '/node/run/getLaunchConfig');
+    return this.handleNodePost(addr, '/node/run/getAutoStartConfig');
   }
   setAutoStart(addr: string, data?: FormData) {
-    return this.handleNodePost(addr, '/node/run/setLaunchConfig', data);
+    return this.handleNodePost(addr, '/node/run/setAutoStartConfig', data);
   }
   checkAppMsg(addr: string, data?: FormData) {
     return this.handleNodePost(addr, '/node/getMsg', data);
