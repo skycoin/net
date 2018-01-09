@@ -34,7 +34,7 @@ func (c *TCPConn) ReadLoop() (err error) {
 		c.Close()
 	}()
 	header := make([]byte, msg.MSG_HEADER_SIZE)
-	reader := bufio.NewReader(c.TcpConn)
+	reader := bufio.NewReader(NewCryptoReader(c.TcpConn, c))
 
 	for {
 		t, err := reader.Peek(msg.MSG_TYPE_SIZE)
@@ -122,8 +122,14 @@ func (c *TCPConn) Write(bytes []byte) error {
 	return c.WriteBytes(m.Bytes())
 }
 
-func (c *TCPConn) WriteBytes(bytes []byte) error {
+func (c *TCPConn) WriteBytes(bytes []byte) (err error) {
 	//c.GetContextLogger().Debugf("write %x", bytes)
+	if c.GetCrypto() != nil {
+		bytes, err = c.GetCrypto().Encrypt(bytes)
+		if err != nil {
+			return
+		}
+	}
 	c.WriteMutex.Lock()
 	defer c.WriteMutex.Unlock()
 	for index := 0; index != len(bytes); {
@@ -134,7 +140,7 @@ func (c *TCPConn) WriteBytes(bytes []byte) error {
 		index += n
 		c.AddSentBytes(n)
 	}
-	return nil
+	return
 }
 
 func (c *TCPConn) Ack(seq uint32) error {

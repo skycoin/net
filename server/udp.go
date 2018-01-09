@@ -61,10 +61,11 @@ func (c *ServerUDPConn) ReadLoop(fn func(c *net.UDPConn, addr *net.UDPAddr) *con
 		c.AddReceivedBytes(n)
 		maxBuf = maxBuf[:n]
 		cc := fn(c.UdpConn, addr)
-		if cc.GetCrypto() != nil {
-			maxBuf, err = cc.GetCrypto().Decrypt(maxBuf)
+		crypto := cc.GetCrypto()
+		if crypto != nil {
+			maxBuf, err = crypto.Decrypt(maxBuf)
 			if err != nil {
-				return
+				return err
 			}
 		}
 		m := maxBuf[msg.PKG_HEADER_SIZE:]

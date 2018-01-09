@@ -8,15 +8,19 @@ import (
 	"fmt"
 	"github.com/skycoin/skycoin/src/cipher"
 	"io"
+	"sync"
+	"sync/atomic"
 )
 
 type Crypto struct {
-	key    cipher.PubKey
-	secKey cipher.SecKey
-	target cipher.PubKey
-	block  cipher2.Block
-	es     cipher2.Stream
-	ds     cipher2.Stream
+	key     cipher.PubKey
+	secKey  cipher.SecKey
+	target  cipher.PubKey
+	block   atomic.Value
+	es      cipher2.Stream
+	esMutex sync.Mutex
+	ds      cipher2.Stream
+	dsMutex sync.Mutex
 }
 
 func NewCrypto(key cipher.PubKey, secKey cipher.SecKey) *Crypto {
@@ -34,25 +38,31 @@ func (c *Crypto) SetTargetKey(target cipher.PubKey) (err error) {
 	}()
 	c.target = target
 	ecdh := cipher.ECDH(target, c.secKey)
-	c.block, err = aes.NewCipher(ecdh)
+	b, err := aes.NewCipher(ecdh)
+	c.block.Store(b)
 	return
 }
 
 func (c *Crypto) Encrypt(data []byte) (result []byte, err error) {
-	if c.block == nil {
+	block := c.block.Load()
+	if block == nil {
 		err = errors.New("call SetTargetKey first")
 		return
 	}
 
+	c.esMutex.Lock()
 	if c.es == nil {
 		result = make([]byte, aes.BlockSize+len(data))
 		if _, err = io.ReadFull(rand.Reader, result[:aes.BlockSize]); err != nil {
+			c.esMutex.Unlock()
 			return
 		}
-		c.es = cipher2.NewCFBEncrypter(c.block, result[:aes.BlockSize])
+		c.es = cipher2.NewCFBEncrypter(block.(cipher2.Block), result[:aes.BlockSize])
 		c.es.XORKeyStream(result[aes.BlockSize:], data)
+		c.esMutex.Unlock()
 		return
 	}
+	c.esMutex.Unlock()
 
 	c.es.XORKeyStream(data, data)
 	result = data
@@ -60,17 +70,55 @@ func (c *Crypto) Encrypt(data []byte) (result []byte, err error) {
 }
 
 func (c *Crypto) Decrypt(data []byte) (result []byte, err error) {
-	if c.block == nil {
+	block := c.block.Load()
+	if block == nil {
 		err = errors.New("call SetTargetKey first")
 		return
 	}
 
+	c.dsMutex.Lock()
 	if c.ds == nil {
-		c.ds = cipher2.NewCFBDecrypter(c.block, data[:aes.BlockSize])
+		c.ds = cipher2.NewCFBDecrypter(block.(cipher2.Block), data[:aes.BlockSize])
 		data = data[aes.BlockSize:]
 	}
+	c.dsMutex.Unlock()
 
 	c.ds.XORKeyStream(data, data)
 	result = data
+	return
+}
+
+type CryptoGetter interface {
+	GetCrypto() *Crypto
+}
+
+type CryptoReader struct {
+	rd io.Reader
+	cg CryptoGetter
+}
+
+func NewCryptoReader(rd io.Reader, getter CryptoGetter) *CryptoReader {
+	return &CryptoReader{
+		rd: rd,
+		cg: getter,
+	}
+}
+
+func (cr *CryptoReader) Read(p []byte) (n int, err error) {
+	n, err = cr.rd.Read(p)
+	if err != nil || n == 0 {
+		return
+	}
+	crypto := cr.cg.GetCrypto()
+	if crypto == nil {
+		return
+	}
+	r, err := crypto.Decrypt(p[:n])
+	if err != nil {
+		return
+	}
+	if n != len(r) {
+		n = copy(p, r)
+	}
 	return
 }

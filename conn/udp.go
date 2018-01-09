@@ -385,8 +385,8 @@ func (c *UDPConn) process(seq uint32, m []byte) (err error) {
 }
 
 func (c *UDPConn) WriteBytes(bytes []byte) (err error) {
-	if c.crypto != nil {
-		bytes, err = c.crypto.Encrypt(bytes)
+	if c.GetCrypto() != nil {
+		bytes, err = c.GetCrypto().Encrypt(bytes)
 		if err != nil {
 			return
 		}

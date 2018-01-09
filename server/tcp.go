@@ -37,7 +37,7 @@ func (c *ServerTCPConn) ReadLoop() (err error) {
 	}()
 	header := make([]byte, msg.MSG_HEADER_SIZE)
 	pingHeader := make([]byte, msg.PING_MSG_HEADER_SIZE)
-	reader := bufio.NewReader(c.TcpConn)
+	reader := bufio.NewReader(conn.NewCryptoReader(c.TcpConn, c))
 
 	for {
 		t, err := reader.Peek(msg.MSG_TYPE_SIZE)

@@ -93,7 +93,10 @@ func (t *Transport) clientSideConnect(address string, sc *SeedConfig) (err error
 	t.fieldsMutex.Unlock()
 	_, err = t.factory.acceptUDPWithConfig(address, &ConnConfig{
 		OnConnected: func(connection *Connection) {
-			connection.SetCrypto(sc.publicKey, sc.secKey, t.ToNode)
+			err = connection.SetCrypto(sc.publicKey, sc.secKey, t.ToNode)
+			if err != nil {
+				connection.GetContextLogger().Errorf("clientSideConnect OnConnected %v", err)
+			}
 			connection.writeOP(OP_BUILD_APP_CONN_OK|RESP_PREFIX, &nop{})
 		},
 		Creator: t.creator,
@@ -111,7 +114,10 @@ func (t *Transport) connAck() {
 func (t *Transport) serverSiceConnect(address, appAddress string, sc *SeedConfig) (err error) {
 	conn, err := t.factory.connectUDPWithConfig(address, &ConnConfig{
 		OnConnected: func(connection *Connection) {
-			connection.SetCrypto(sc.publicKey, sc.secKey, t.FromNode)
+			err = connection.SetCrypto(sc.publicKey, sc.secKey, t.FromNode)
+			if err != nil {
+				connection.GetContextLogger().Errorf("serverSiceConnect OnConnected %v", err)
+			}
 			connection.writeOP(OP_BUILD_APP_CONN_OK,
 				&buildConnResp{
 					FromNode: t.FromNode,

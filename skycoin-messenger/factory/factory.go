@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	log "github.com/sirupsen/logrus"
-	"github.com/skycoin/net/conn"
 	"github.com/skycoin/net/factory"
 	"github.com/skycoin/skycoin/src/cipher"
 	"io/ioutil"
@@ -215,14 +214,21 @@ func (f *MessengerFactory) loadSeedConfig(config *ConnConfig) (key cipher.PubKey
 	var sc *SeedConfig
 	if config.SeedConfig != nil {
 		sc = config.SeedConfig
+		err = sc.parse()
+		if err != nil {
+			return
+		}
 	} else if len(config.SeedConfigPath) > 0 {
 		sc, err = ReadOrCreateSeedConfig(config.SeedConfigPath)
 	} else {
 		sc = f.GetDefaultSeedConfig()
+
 	}
 	if sc == nil {
 		err = fmt.Errorf("failed to load seed config %#v", config)
 	}
+	key = sc.publicKey
+	secKey = sc.secKey
 	return
 }
 

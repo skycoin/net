@@ -197,6 +197,7 @@ func (c *Connection) Reg() error {
 }
 
 func (c *Connection) RegWithKey(key cipher.PubKey, context map[string]string) error {
+	c.SetKey(key)
 	return c.writeOP(OP_REG_KEY, &regWithKey{PublicKey: key, Context: context, Version: RegWithKeyAndEncryptionVersion})
 }
 
@@ -386,6 +387,17 @@ func (c *Connection) writeOP(op byte, object interface{}) error {
 	return c.writeOPBytes(op, js)
 }
 
+func (c *Connection) genOPBytes(op byte, object interface{}) (data []byte, err error) {
+	js, err := json.Marshal(object)
+	if err != nil {
+		return
+	}
+	data = make([]byte, MSG_HEADER_END+len(js))
+	data[MSG_OP_BEGIN] = op
+	copy(data[MSG_HEADER_END:], js)
+	return
+}
+
 func (c *Connection) setTransport(to cipher.PubKey, tr *Transport) {
 	c.appTransportsMutex.Lock()
 	if tr == nil {
@@ -482,8 +494,12 @@ func (c *Connection) GetAppFeedback() *AppFeedback {
 	return v
 }
 
-func (c *Connection) SetCrypto(pk cipher.PubKey, sk cipher.SecKey, target cipher.PubKey) {
+func (c *Connection) SetCrypto(pk cipher.PubKey, sk cipher.SecKey, target cipher.PubKey) (err error) {
 	crypto := conn.NewCrypto(pk, sk)
-	crypto.SetTargetKey(target)
+	err = crypto.SetTargetKey(target)
+	if err != nil {
+		return
+	}
 	c.Connection.SetCrypto(crypto)
+	return
 }

@@ -50,6 +50,27 @@ type SeedConfig struct {
 	secKey    cipher.SecKey
 }
 
+func (sc *SeedConfig) parse() (err error) {
+	defer func() {
+		if e := recover(); e != nil {
+			err = fmt.Errorf("invalid seed config %#v", sc)
+		}
+	}()
+	var key cipher.PubKey
+	key, err = cipher.PubKeyFromHex(sc.PublicKey)
+	if err != nil {
+		return
+	}
+	sc.publicKey = key
+	var secKey cipher.SecKey
+	secKey, err = cipher.SecKeyFromHex(sc.SecKey)
+	if err != nil {
+		return
+	}
+	sc.secKey = secKey
+	return
+}
+
 func NewSeedConfig() *SeedConfig {
 	entropy, err := bip39.NewEntropy(128)
 	if err != nil {
@@ -60,7 +81,13 @@ func NewSeedConfig() *SeedConfig {
 		return nil
 	}
 	pk, sk := cipher.GenerateDeterministicKeyPair([]byte(seed))
-	sc := &SeedConfig{PublicKey: pk.Hex(), SecKey: sk.Hex(), Seed: seed}
+	sc := &SeedConfig{
+		PublicKey: pk.Hex(),
+		SecKey:    sk.Hex(),
+		Seed:      seed,
+		publicKey: pk,
+		secKey:    sk,
+	}
 	return sc
 }
 
@@ -71,6 +98,9 @@ func ReadSeedConfig(path string) (sc *SeedConfig, err error) {
 	}
 	sc = &SeedConfig{}
 	err = json.Unmarshal(fb, sc)
+	if err == nil {
+		err = sc.parse()
+	}
 	return
 }
 
@@ -90,30 +120,6 @@ func ReadOrCreateSeedConfig(path string) (sc *SeedConfig, err error) {
 			}
 		} else {
 			err = fmt.Errorf("failed to read seed config %v", err)
-			return
-		}
-	}
-	if sc != nil {
-		func() {
-			defer func() {
-				if e := recover(); e != nil {
-					err = fmt.Errorf("invalid seed config %#v", sc)
-				}
-			}()
-			var key cipher.PubKey
-			key, err = cipher.PubKeyFromHex(sc.PublicKey)
-			if err != nil {
-				return
-			}
-			sc.publicKey = key
-			var secKey cipher.SecKey
-			secKey, err = cipher.SecKeyFromHex(sc.SecKey)
-			if err != nil {
-				return
-			}
-			sc.secKey = secKey
-		}()
-		if err != nil {
 			return
 		}
 	}
