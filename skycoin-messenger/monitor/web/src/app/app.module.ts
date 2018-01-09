@@ -19,7 +19,8 @@ import {
   MatInputModule,
   MatProgressSpinnerModule,
   MatMenuModule,
-  MatPaginatorModule
+  MatPaginatorModule,
+  MatSlideToggleModule
 } from '@angular/material';
 import { AppComponent } from './app.component';
 import { HttpClientModule } from '@angular/common/http';
@@ -87,7 +88,8 @@ import { AppRoutingModule } from './route/app-routing.module';
     MatInputModule,
     MatProgressSpinnerModule,
     MatMenuModule,
-    MatPaginatorModule
+    MatPaginatorModule,
+    MatSlideToggleModule
   ],
   providers: [ApiService, UserService],
   bootstrap: [AppComponent]

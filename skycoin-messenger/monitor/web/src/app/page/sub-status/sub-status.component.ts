@@ -11,7 +11,8 @@ import {
   FeedBackItem,
   UserService,
   ConnectServiceInfo,
-  MessageItem
+  MessageItem,
+  AutoStartConfig
 } from '../../service';
 import { MatSnackBar, MatDialog, MatDialogRef } from '@angular/material';
 import { DataSource } from '@angular/cdk/collections';
@@ -72,7 +73,9 @@ export class SubStatusComponent implements OnInit, OnDestroy {
     appKey: new FormControl('', this.formValidatorsSlice),
   });
   configForm = new FormGroup({
-    DiscoveryAddresses: new FormControl('', this.formValidatorsSlice),
+    DiscoveryAddresses: new FormControl(''),
+    socksServer: new FormControl(''),
+    sshServer: new FormControl('')
   });
   sshClientPort = 0;
   socketClientPort = 0;
@@ -90,6 +93,7 @@ export class SubStatusComponent implements OnInit, OnDestroy {
   messages: Array<Message> = [];
   showMsgs: Array<MessageItem> = [];
   dialogMode = '';
+  autoStart: AutoStartConfig = null;
   constructor(
     private router: Router,
     private route: ActivatedRoute,
@@ -213,12 +217,17 @@ export class SubStatusComponent implements OnInit, OnDestroy {
     ev.stopPropagation();
     ev.preventDefault();
     const data = new FormData();
-    const jsonStr = {
-      label: '',
-      nodeKey: this.socketClientForm.get('nodeKey').value,
-      appKey: this.socketClientForm.get('appKey').value,
-      count: 1
-    };
+    let jsonStr = null;
+    if (info) {
+      jsonStr = info;
+    } else {
+      jsonStr = {
+        label: '',
+        nodeKey: this.socketClientForm.get('nodeKey').value,
+        appKey: this.socketClientForm.get('appKey').value,
+        count: 1
+      };
+    }
     data.append('client', action);
     data.append('data', JSON.stringify(jsonStr));
     this.api.saveClientConnection(data).subscribe(res => {
@@ -243,12 +252,17 @@ export class SubStatusComponent implements OnInit, OnDestroy {
     ev.stopPropagation();
     ev.preventDefault();
     const data = new FormData();
-    const jsonStr = {
-      label: '',
-      nodeKey: this.sshClientForm.get('nodeKey').value,
-      appKey: this.sshClientForm.get('appKey').value,
-      count: 1
-    };
+    let jsonStr = null;
+    if (info) {
+      jsonStr = info;
+    } else {
+      jsonStr = {
+        label: '',
+        nodeKey: this.sshClientForm.get('nodeKey').value,
+        appKey: this.sshClientForm.get('appKey').value,
+        count: 1
+      };
+    }
     data.append('client', action);
     data.append('data', JSON.stringify(jsonStr));
     this.api.saveClientConnection(data).subscribe(res => {
@@ -599,6 +613,11 @@ export class SubStatusComponent implements OnInit, OnDestroy {
   }
   openConfigSettings(ev: Event, content: any) {
     this.configForm.reset();
+    this.api.getAutoStart(this.status.addr).subscribe((config: AutoStartConfig) => {
+      this.autoStart = config;
+      this.configForm.patchValue({ 'socksServer': config.socks_server });
+      this.configForm.patchValue({ 'sshServer': config.ssh_server });
+    });
     this.dialog.open(content, {
       width: '400px'
     });
@@ -606,37 +625,49 @@ export class SubStatusComponent implements OnInit, OnDestroy {
   updateSettings(ev: Event) {
     this.dialog.closeAll();
     const jsonStr = {
-      DiscoveryAddresses: this.configForm.get('DiscoveryAddresses').value.split(',')
+      // DiscoveryAddresses: this.configForm.get('DiscoveryAddresses').value.split(','),
+      socks_server: this.configForm.get('socksServer').value,
+      ssh_server: this.configForm.get('sshServer').value
     };
+    const tmp = this.configForm.get('DiscoveryAddresses').value;
+    if (tmp) {
+      jsonStr['DiscoveryAddresses'] = tmp.split(',');
+    }
     const data = new FormData();
     data.append('key', this.key);
     data.append('data', JSON.stringify(jsonStr));
-    this.api.setNodeConfig(data).subscribe(result => {
-      if (result) {
-        this.dialog.open(AlertComponent, {
-          width: '45rem',
-          panelClass: 'alert',
-          data: {
-            msg: 'Do you restart node immediately?',
-            confirm: true
-          }
-        }).afterClosed().subscribe(isRestart => {
-          if (isRestart) {
-            this.api.updateNodeConfig(this.status.addr).subscribe(isSuccess => {
-              if (isSuccess) {
-                this.dialog.open(LoadingComponent, {
-                  panelClass: 'loading',
-                  disableClose: true,
-                  data: {
-                    taskTime: 30,
-                  }
-                });
-              }
-            });
-          }
-        });
-      }
+    this.api.setAutoStart(this.status.addr, data).subscribe(result => {
+      console.log('set auto config:', result);
     });
+    if (tmp) {
+      console.log('update discovery address');
+      this.api.setNodeConfig(data).subscribe(result => {
+        if (result) {
+          this.dialog.open(AlertComponent, {
+            width: '45rem',
+            panelClass: 'alert',
+            data: {
+              msg: 'Do you restart node immediately?',
+              confirm: true
+            }
+          }).afterClosed().subscribe(isRestart => {
+            if (isRestart) {
+              this.api.updateNodeConfig(this.status.addr).subscribe(isSuccess => {
+                if (isSuccess) {
+                  this.dialog.open(LoadingComponent, {
+                    panelClass: 'loading',
+                    disableClose: true,
+                    data: {
+                      taskTime: 30,
+                    }
+                  });
+                }
+              });
+            }
+          });
+        }
+      });
+    }
   }
   search(ev: Event, searchStr: string) {
     const ref = this.dialog.open(SearchServiceComponent, {

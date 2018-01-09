@@ -18,7 +18,6 @@ export class ApiService {
   getAllNode() {
     return this.handleGet(this.connUrl + 'getAll');
   }
-
   getNodeStatus(data: FormData) {
     return this.handlePost(this.connUrl + 'getNode', data);
   }
@@ -41,7 +40,12 @@ export class ApiService {
   reboot(addr: string) {
     return this.handleNodePost(addr, '/node/reboot');
   }
-
+  getAutoStart(addr: string) {
+    return this.handleNodePost(addr, '/node/run/getLaunchConfig');
+  }
+  setAutoStart(addr: string, data?: FormData) {
+    return this.handleNodePost(addr, '/node/run/setLaunchConfig', data);
+  }
   checkAppMsg(addr: string, data?: FormData) {
     return this.handleNodePost(addr, '/node/getMsg', data);
   }
@@ -189,4 +193,9 @@ export interface MessageItem {
   priority?: number;
   time?: number;
   type?: number;
+}
+
+export interface AutoStartConfig {
+  socks_server?: boolean;
+  ssh_server?: boolean;
 }

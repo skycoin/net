@@ -554,26 +554,41 @@
 </ng-template>
 
 <ng-template #config>
-  <form [formGroup]="configForm">
+  <form [formGroup]="configForm" class="setting-box">
     <mat-form-field style="width: 100%">
       <textarea matInput placeholder="Input discovery addresses" rows="5" formControlName="DiscoveryAddresses"></textarea>
       <mat-hint align="start" class="hint-text">Multiple public keys are separated by commas</mat-hint>
     </mat-form-field>
-    <p class="text-right">
+    <section class="auto-setting-box">
+      <p class="title item">Automatic startup</p>
+      <section class="item">
+        <span class="left">ShadowSocks Server</span>
+        <mat-slide-toggle class="right" formControlName="socksServer"></mat-slide-toggle>
+      </section>
+      <section class="item">
+        <span class="left">SSH Server</span>
+        <mat-slide-toggle class="right" formControlName="sshServer"></mat-slide-toggle>
+      </section>
+    </section>
+    <section class="discovery-address-box">
+        <p class="title">Discovery Addresses Status</p>
+        <ul class="discovery-status-list">
+          <li *ngFor="let kv of discoveries | iterable">
+            <div class="content">
+              <div class="url">{{kv?.key}}</div>
+              <div class="status">
+                <mat-icon class="icon success" *ngIf="kv?.value">check</mat-icon>
+                <mat-icon class="icon error" *ngIf="!kv?.value">error</mat-icon>
+              </div>
+            </div>
+          </li>
+        </ul>
+      </section>
+    <p class="text-right" style="margin-top: 3rem;">
       <button mat-raised-button color="primary" [disabled]="!configForm.valid" (click)="updateSettings($event)">Update</button>
     </p>
   </form>
-  <ul class="discovery-status-list">
-    <li *ngFor="let kv of discoveries | iterable">
-      <div class="content">
-        <div class="url">{{kv?.key}}</div>
-        <div class="status">
-          <mat-icon class="icon success" *ngIf="kv?.value">check</mat-icon>
-          <mat-icon class="icon error" *ngIf="!kv?.value">error</mat-icon>
-        </div>
-      </div>
-    </li>
-  </ul>
+
 </ng-template>
 
 <ng-template #debugPage>

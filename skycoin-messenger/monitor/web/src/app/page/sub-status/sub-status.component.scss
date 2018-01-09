@@ -101,8 +101,6 @@ app-sub-status {
   }
 }
 
-
-
 .dialog-title {
   margin: 0 !important;
   .title-text {
@@ -146,36 +144,6 @@ app-sub-status {
     }
     .hint-text {
       color: rgb(255, 123, 0);
-    }
-  }
-}
-
-.discovery-status-list {
-  list-style: none;
-  margin: 1rem 0;
-  padding: .5rem 0; // border-top: 1px solid #ccc;
-  li {
-    .content {
-      .url,
-      .status {
-        float: left;
-      }
-      .url {
-        width: 70%;
-      }
-      .status {
-        width: 30%;
-        text-align: right;
-      }
-      .icon {
-        vertical-align: sub;
-      }
-      .success {
-        color: green;
-      }
-      .error {
-        color: rgb(156, 3, 3);
-      }
     }
   }
 }
@@ -295,6 +263,71 @@ app-sub-status {
           color: #999;
         }
       }
+    }
+  }
+}
+
+.discovery-address-box {
+  margin: 1.5rem 0;
+  .title {
+    font-size: smaller;
+    color: rgba(0, 0, 0, .54);
+    padding: 5px 0;
+    border-bottom: 1px solid #d0d0d0;
+  }
+  .discovery-status-list {
+    list-style: none;
+    li {
+      .content {
+        display: flex;
+        .url,
+        .status {
+          float: left;
+        }
+        .url {
+          width: 70%;
+        }
+        .status {
+          width: 30%;
+          text-align: right;
+        }
+        .icon {
+          vertical-align: sub;
+        }
+        .success {
+          color: green;
+        }
+        .error {
+          color: rgb(156, 3, 3);
+        }
+      }
+    }
+  }
+}
+
+.setting-box {
+  .auto-setting-box {
+    margin-top: 3rem;
+    .item {
+      display: flex;
+      margin: 1rem 0;
+      .left,
+      .right {
+        display: block;
+        float: left;
+      }
+      .left {
+        width: 85%;
+      }
+      .right {
+        width: 15%;
+      }
+    }
+    .title {
+      font-size: smaller;
+      color: rgba(0, 0, 0, .54);
+      padding: 5px 0;
+      border-bottom: 1px solid #d0d0d0;
     }
   }
 }
