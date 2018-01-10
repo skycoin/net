@@ -117,7 +117,7 @@ func (c *ServerUDPConn) ReadLoop(fn func(c *net.UDPConn, addr *net.UDPAddr) *con
 				}
 				cc.GetContextLogger().Debugf("pong")
 			}()
-		case msg.TYPE_NORMAL, msg.TYPE_FEC:
+		case msg.TYPE_NORMAL, msg.TYPE_FEC, msg.TYPE_DIR:
 			nt = time.Now()
 			func() {
 				var err error

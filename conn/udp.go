@@ -66,8 +66,8 @@ func NewUDPConn(c *net.UDPConn, addr *net.UDPAddr) *UDPConn {
 		UDPPendingMap:    NewUDPPendingMap(),
 		streamQueue:      newFECStreamQueue(dataShards, parityShards),
 		rto:              300 * time.Millisecond,
-		fecEncoder:       newFECEncoder(dataShards, parityShards, msg.PKG_HEADER_SIZE+msg.MSG_LEN_BEGIN),
-		fecDecoder:       newFECDecoder(dataShards, parityShards, msg.MSG_LEN_BEGIN),
+		fecEncoder:       newFECEncoder(dataShards, parityShards),
+		fecDecoder:       newFECDecoder(dataShards, parityShards),
 	}
 	conn.ca = newCA()
 	conn.pacingTimer = time.NewTimer(0)
@@ -217,28 +217,33 @@ func (c *UDPConn) Write(bytes []byte) (err error) {
 }
 
 func (c *UDPConn) WriteToChannel(channel int, bytes []byte) (err error) {
+	err = c.writeToChannel(channel, bytes, false)
+	return
+}
+
+func (c *UDPConn) writeToChannel(channel int, bytes []byte, directly bool) (err error) {
 	if len(bytes) > MAX_UDP_PACKAGE_SIZE {
 		for i := 0; i < len(bytes)/MAX_UDP_PACKAGE_SIZE; i++ {
-			err = c.writeToChannel(channel, bytes[i*MAX_UDP_PACKAGE_SIZE:(i+1)*MAX_UDP_PACKAGE_SIZE])
+			err = c.addToChannel(channel, bytes[i*MAX_UDP_PACKAGE_SIZE:(i+1)*MAX_UDP_PACKAGE_SIZE], directly)
 			if err != nil {
 				return
 			}
 		}
 		i := len(bytes) % MAX_UDP_PACKAGE_SIZE
 		if i > 0 {
-			err = c.writeToChannel(channel, bytes[len(bytes)-i:])
+			err = c.addToChannel(channel, bytes[len(bytes)-i:], directly)
 			if err != nil {
 				return
 			}
 		}
 	} else {
-		err = c.writeToChannel(channel, bytes)
+		err = c.addToChannel(channel, bytes, directly)
 	}
 	return
 }
 
-func (c *UDPConn) writeToChannel(channel int, bytes []byte) (err error) {
-	m := msg.NewUDPWithoutSeq(msg.TYPE_NORMAL, bytes)
+func (c *UDPConn) addToChannel(channel int, bytes []byte, directly bool) (err error) {
+	m := msg.NewUDPWithoutSeq(msg.TYPE_NORMAL, bytes, directly)
 	c.addToPendingChannel(channel, m)
 	c.pacingChan <- struct{}{}
 	return
@@ -275,7 +280,7 @@ func (c *UDPConn) resendMsg(m *msg.UDPMessage) (err error) {
 	return
 }
 
-func (c *UDPConn) writePendingMsgs() error {
+func (c *UDPConn) writePendingMsgs() (err error) {
 	c.ca.nextPacingMutex.Lock()
 	defer c.ca.nextPacingMutex.Unlock()
 	for {
@@ -295,7 +300,12 @@ func (c *UDPConn) writePendingMsgs() error {
 			c.GetContextLogger().Debugf("resend msg seq %d", m.GetSeq())
 		}
 		pkgBytes := m.PkgBytes()
-		err := c.WriteBytes(pkgBytes)
+		if !m.Directly {
+			err = c.WriteBytes(pkgBytes)
+		} else {
+			c.AddDirectlyHistory(m.GetSeq())
+			err = c.writeDirectly(pkgBytes)
+		}
 		if err != nil {
 			return err
 		}
@@ -305,14 +315,13 @@ func (c *UDPConn) writePendingMsgs() error {
 		c.pacingTimerMutex.Unlock()
 		if tx {
 			c.transmitted(m)
-			ps, err := c.fecEncoder.encode(pkgBytes)
+			ps, err := c.fecEncoder.encode(pkgBytes[msg.PKG_HEADER_SIZE:])
 			if err != nil {
 				return err
 			}
 			if len(ps) > 0 {
 				for _, v := range ps {
-					markFEC(v, c.GetNextSeq())
-					err = c.WriteBytes(v)
+					err = c.WriteBytes(fec(v, c.GetNextSeq()))
 					if err != nil {
 						return err
 					}
@@ -324,24 +333,32 @@ func (c *UDPConn) writePendingMsgs() error {
 	}
 }
 
-func markFEC(b []byte, seq uint32) {
-	m := b[msg.PKG_HEADER_SIZE:]
+func fec(b []byte, seq uint32) (result []byte) {
+	hz := msg.PKG_HEADER_SIZE + msg.MSG_HEADER_SIZE
+	result = make([]byte, hz+len(b))
+	l := copy(result[hz:], b)
+	m := result[msg.PKG_HEADER_SIZE:]
 	m[0] = msg.TYPE_FEC
 	binary.BigEndian.PutUint32(m[msg.MSG_SEQ_BEGIN:msg.MSG_SEQ_END], seq)
+	binary.BigEndian.PutUint32(m[msg.MSG_LEN_BEGIN:msg.MSG_LEN_END], uint32(l))
 	checksum := crc32.ChecksumIEEE(m)
-	binary.BigEndian.PutUint32(b[msg.PKG_CRC32_BEGIN:], checksum)
+	binary.BigEndian.PutUint32(result[msg.PKG_CRC32_BEGIN:], checksum)
+	return
 }
 
 func (c *UDPConn) Process(t byte, m []byte) (err error) {
 	seq := binary.BigEndian.Uint32(m[msg.MSG_SEQ_BEGIN:msg.MSG_SEQ_END])
 	l := binary.BigEndian.Uint32(m[msg.MSG_LEN_BEGIN:msg.MSG_LEN_END])
 	c.GetContextLogger().Debugf("seq %d l %d, len %d \n%x", seq, l, len(m), m)
-	if t == msg.TYPE_NORMAL &&
+	if t != msg.TYPE_FEC &&
 		uint32(len(m)) >= msg.MSG_HEADER_END+l {
-		err = c.process(seq, m[msg.MSG_HEADER_END:msg.MSG_HEADER_END+l])
+		err = c.process(t, seq, m[msg.MSG_HEADER_END:msg.MSG_HEADER_END+l])
 		if err != nil {
 			return
 		}
+	}
+	if t == msg.TYPE_FEC {
+		m = m[msg.MSG_HEADER_END:]
 	}
 	g, err := c.decode(seq, m)
 	if err != nil {
@@ -350,15 +367,20 @@ func (c *UDPConn) Process(t byte, m []byte) (err error) {
 	if g != nil && g.recovered {
 		for i, b := range g.dataRecv {
 			if !b {
-				s := g.startSeq + uint32(i) + 1
 				m := g.datas[i]
-				c.GetContextLogger().Debugf("fec recovered seq %d len %d\n%x\n", s, len(m), m)
-				if len(m) <= msg.MSG_LEN_SIZE {
+				if len(m) <= msg.MSG_HEADER_SIZE {
+					c.GetContextLogger().Error("fec recovered len(m) <= msg.MSG_HEADER_SIZE")
 					continue
 				}
-				l := binary.BigEndian.Uint32(m[0:msg.MSG_LEN_SIZE])
-				if uint32(len(m)) >= msg.MSG_LEN_SIZE+l {
-					c.process(s, m[msg.MSG_LEN_SIZE:msg.MSG_LEN_SIZE+l])
+				t := m[msg.MSG_TYPE_BEGIN]
+				seq := binary.BigEndian.Uint32(m[msg.MSG_SEQ_BEGIN:msg.MSG_SEQ_END])
+				l := binary.BigEndian.Uint32(m[msg.MSG_LEN_BEGIN:msg.MSG_LEN_END])
+				c.GetContextLogger().Debugf("fec recovered seq %d l %d len %d\n%x\n", seq, l, len(m), m)
+				if uint32(len(m)) >= msg.MSG_HEADER_END+l {
+					err = c.process(t, seq, m[msg.MSG_HEADER_END:msg.MSG_HEADER_END+l])
+					if err != nil {
+						return
+					}
 				}
 			}
 		}
@@ -367,10 +389,22 @@ func (c *UDPConn) Process(t byte, m []byte) (err error) {
 	return
 }
 
-func (c *UDPConn) process(seq uint32, m []byte) (err error) {
-	err = c.Ack(seq)
-	if err != nil {
-		return
+func (c *UDPConn) process(t byte, seq uint32, m []byte) (err error) {
+	switch t {
+	case msg.TYPE_NORMAL:
+		err = c.Ack(seq)
+		if err != nil {
+			return
+		}
+	case msg.TYPE_DIR:
+		if c.DirectlyHistoryLen() > 0 {
+			seq := c.RemoveDirectlyHistory()
+			err = c.delMsg(seq, false)
+			if err != nil {
+				return
+			}
+		}
+
 	}
 	ok, ms := c.Push(seq, m)
 	if ok {
@@ -384,13 +418,12 @@ func (c *UDPConn) process(seq uint32, m []byte) (err error) {
 	return
 }
 
-func (c *UDPConn) WriteBytes(bytes []byte) (err error) {
-	if c.GetCrypto() != nil {
-		bytes, err = c.GetCrypto().Encrypt(bytes)
-		if err != nil {
-			return
-		}
-	}
+func (c *UDPConn) WriteDirectly(bytes []byte) (err error) {
+	err = c.writeToChannel(0, bytes, true)
+	return
+}
+
+func (c *UDPConn) writeDirectly(bytes []byte) (err error) {
 	l := len(bytes)
 	c.AddSentBytes(l)
 	n, err := c.UdpConn.WriteToUDP(bytes, c.addr)
@@ -398,6 +431,17 @@ func (c *UDPConn) WriteBytes(bytes []byte) (err error) {
 	if err == nil && n != l {
 		return errors.New("nothing was written")
 	}
+	return
+}
+
+func (c *UDPConn) WriteBytes(bytes []byte) (err error) {
+	if c.GetCrypto() != nil {
+		bytes, err = c.GetCrypto().Encrypt(bytes)
+		if err != nil {
+			return
+		}
+	}
+	err = c.writeDirectly(bytes)
 	return
 }
 

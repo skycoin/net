@@ -97,20 +97,15 @@ func (reg *regWithKey) Execute(f *MessengerFactory, conn *Connection) (r resp, e
 		}
 		conn.StoreContext(publicKey, reg.PublicKey)
 		pk, sec := cipher.GenerateKeyPair()
-		var data []byte
-		data, err = conn.genOPBytes(OP_REG_KEY|RESP_PREFIX,
-			&regWithKeyResp{
-				PublicKey: pk,
-				Version:   reg.Version,
-			})
-		if err != nil {
-			return
-		}
 		err = conn.SetCrypto(pk, sec, reg.PublicKey)
 		if err != nil {
 			return
 		}
-		err = conn.Write(data)
+		err = conn.writeOPDirectly(OP_REG_KEY|RESP_PREFIX,
+			&regWithKeyResp{
+				PublicKey: pk,
+				Version:   reg.Version,
+			})
 		return
 	}
 	for k, v := range reg.Context {
@@ -131,11 +126,22 @@ type regWithKeyResp struct {
 
 func (resp *regWithKeyResp) Run(conn *Connection) (err error) {
 	if resp.Version == RegWithKeyAndEncryptionVersion {
-		err = conn.SetCrypto(conn.GetKey(), conn.GetSecKey(), resp.PublicKey)
+		k, ok := conn.context.Load(publicKey)
+		if !ok {
+			err = errors.New("public key not found")
+			return
+		}
+		pk, ok := k.(cipher.PubKey)
+		if !ok {
+			err = errors.New("public key invalid")
+			return
+		}
+		err = conn.SetCrypto(pk, conn.GetSecKey(), resp.PublicKey)
 		if err != nil {
 			return
 		}
 		err = conn.writeOP(OP_REG_SIG, &regCheckSig{Version: resp.Version})
+		conn.SetKey(pk)
 		return
 	}
 	sk := conn.GetSecKey()

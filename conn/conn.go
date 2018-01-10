@@ -1,6 +1,7 @@
 package conn
 
 import (
+	"container/list"
 	"net"
 	"sync"
 	"sync/atomic"
@@ -42,8 +43,14 @@ type Connection interface {
 
 	WaitForDisconnected()
 
+	WriteDirectly(bytes []byte) (err error)
+
 	SetCrypto(crypto *Crypto)
 	GetCrypto() *Crypto
+
+	AddDirectlyHistory(seq uint32)
+	RemoveDirectlyHistory() (seq uint32)
+	DirectlyHistoryLen() (len int)
 }
 
 type ConnCommonFields struct {
@@ -70,15 +77,19 @@ type ConnCommonFields struct {
 	ctxLogger atomic.Value
 
 	crypto atomic.Value
+
+	directlyHistory      *list.List
+	directlyHistoryMutex sync.Mutex
 }
 
 func NewConnCommonFileds() ConnCommonFields {
 	entry := log.WithField("ctxId", atomic.AddUint32(&ctxId, 1))
 	fields := ConnCommonFields{
-		lastReadTime: time.Now().Unix(),
-		In:           make(chan []byte, 128),
-		Out:          make(chan []byte, 1),
-		disconnected: make(chan struct{}),
+		lastReadTime:    time.Now().Unix(),
+		In:              make(chan []byte, 128),
+		Out:             make(chan []byte, 1),
+		disconnected:    make(chan struct{}),
+		directlyHistory: list.New(),
 	}
 	fields.ctxLogger.Store(entry)
 	return fields
@@ -197,4 +208,24 @@ func (c *ConnCommonFields) GetCrypto() *Crypto {
 		return nil
 	}
 	return x.(*Crypto)
+}
+
+func (c *ConnCommonFields) AddDirectlyHistory(seq uint32) {
+	c.directlyHistoryMutex.Lock()
+	c.directlyHistory.PushBack(seq)
+	c.directlyHistoryMutex.Unlock()
+}
+
+func (c *ConnCommonFields) DirectlyHistoryLen() (len int) {
+	c.directlyHistoryMutex.Lock()
+	len = c.directlyHistory.Len()
+	c.directlyHistoryMutex.Unlock()
+	return
+}
+
+func (c *ConnCommonFields) RemoveDirectlyHistory() (seq uint32) {
+	c.directlyHistoryMutex.Lock()
+	seq = c.directlyHistory.Remove(c.directlyHistory.Front()).(uint32)
+	c.directlyHistoryMutex.Unlock()
+	return
 }

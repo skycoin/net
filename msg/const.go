@@ -35,6 +35,7 @@ const (
 const (
 	TYPE_NORMAL = 0x01
 	TYPE_FEC    = 0x02
+	TYPE_DIR    = 0x03
 	TYPE_ACK    = 0x80
 	TYPE_PING   = 0x81
 	TYPE_PONG   = 0x82

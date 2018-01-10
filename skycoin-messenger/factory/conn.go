@@ -197,8 +197,8 @@ func (c *Connection) Reg() error {
 }
 
 func (c *Connection) RegWithKey(key cipher.PubKey, context map[string]string) error {
-	c.SetKey(key)
-	return c.writeOP(OP_REG_KEY, &regWithKey{PublicKey: key, Context: context, Version: RegWithKeyAndEncryptionVersion})
+	c.StoreContext(publicKey, key)
+	return c.writeOPDirectly(OP_REG_KEY, &regWithKey{PublicKey: key, Context: context, Version: RegWithKeyAndEncryptionVersion})
 }
 
 // register services to discovery
@@ -387,15 +387,20 @@ func (c *Connection) writeOP(op byte, object interface{}) error {
 	return c.writeOPBytes(op, js)
 }
 
-func (c *Connection) genOPBytes(op byte, object interface{}) (data []byte, err error) {
+func (c *Connection) writeOPBytesDirectly(op byte, body []byte) error {
+	data := make([]byte, MSG_HEADER_END+len(body))
+	data[MSG_OP_BEGIN] = op
+	copy(data[MSG_HEADER_END:], body)
+	return c.WriteDirectly(data)
+}
+
+func (c *Connection) writeOPDirectly(op byte, object interface{}) error {
 	js, err := json.Marshal(object)
 	if err != nil {
-		return
+		return err
 	}
-	data = make([]byte, MSG_HEADER_END+len(js))
-	data[MSG_OP_BEGIN] = op
-	copy(data[MSG_HEADER_END:], js)
-	return
+	c.GetContextLogger().Debugf("writeOP %#v", object)
+	return c.writeOPBytesDirectly(op, js)
 }
 
 func (c *Connection) setTransport(to cipher.PubKey, tr *Transport) {

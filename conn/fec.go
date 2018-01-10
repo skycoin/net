@@ -9,7 +9,6 @@ type fecDecoder struct {
 	dataShards   int
 	parityShards int
 	shardSize    uint32
-	headerOffset int
 
 	lowestGroup uint32
 	groups      map[uint32]*group
@@ -27,12 +26,11 @@ type group struct {
 	maxSize   int
 }
 
-func newFECDecoder(dataShards, parityShards, offset int) *fecDecoder {
+func newFECDecoder(dataShards, parityShards int) *fecDecoder {
 	fec := &fecDecoder{
 		dataShards:   dataShards,
 		parityShards: parityShards,
 		shardSize:    uint32(dataShards + parityShards),
-		headerOffset: offset,
 
 		groups: make(map[uint32]*group),
 	}
@@ -47,7 +45,7 @@ func newFECDecoder(dataShards, parityShards, offset int) *fecDecoder {
 
 func (fec *fecDecoder) decode(seq uint32, data []byte) (g *group, err error) {
 	sz := len(data)
-	if sz <= fec.headerOffset {
+	if sz <= 0 {
 		err = errors.New("empty fec data")
 		return
 	}
@@ -72,8 +70,6 @@ func (fec *fecDecoder) decode(seq uint32, data []byte) (g *group, err error) {
 
 	index := seq % fec.shardSize
 	if g.datas[index] == nil {
-		sz -= fec.headerOffset
-		data = data[fec.headerOffset:]
 		if sz > g.maxSize {
 			g.maxSize = sz
 		}
@@ -133,7 +129,6 @@ type fecEncoder struct {
 	dataShards   int
 	parityShards int
 	shardSize    uint32
-	headerOffset int
 
 	count   int
 	maxSize int
@@ -144,12 +139,11 @@ type fecEncoder struct {
 	codec reedsolomon.Encoder
 }
 
-func newFECEncoder(dataShards, parityShards, offset int) *fecEncoder {
+func newFECEncoder(dataShards, parityShards int) *fecEncoder {
 	fec := &fecEncoder{
 		dataShards:   dataShards,
 		parityShards: parityShards,
 		shardSize:    uint32(dataShards + parityShards),
-		headerOffset: offset,
 	}
 
 	var err error
@@ -184,7 +178,7 @@ func (fec *fecEncoder) encode(data []byte) (datas [][]byte, err error) {
 
 		c := fec.tmpCache
 		for k, v := range fec.cache {
-			c[k] = v[fec.headerOffset:fec.maxSize]
+			c[k] = v[:fec.maxSize]
 		}
 
 		if err = fec.codec.Encode(c); err == nil {

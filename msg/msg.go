@@ -206,6 +206,8 @@ type UDPMessage struct {
 
 	channel    int64
 	channelSeq uint32
+
+	Directly bool
 }
 
 func NewUDP(t uint8, seq uint32, bytes []byte) *UDPMessage {
@@ -214,9 +216,10 @@ func NewUDP(t uint8, seq uint32, bytes []byte) *UDPMessage {
 	}
 }
 
-func NewUDPWithoutSeq(t uint8, bytes []byte) *UDPMessage {
+func NewUDPWithoutSeq(t uint8, bytes []byte, directly bool) *UDPMessage {
 	return &UDPMessage{
-		Message: NewWithoutSeq(t, bytes),
+		Message:  NewWithoutSeq(t, bytes),
+		Directly: directly,
 	}
 }
 
