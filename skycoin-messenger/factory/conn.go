@@ -52,6 +52,10 @@ type Connection struct {
 
 	// call after received response for BuildAppConnection
 	appConnectionInitCallback func(resp *AppConnResp) *AppFeedback
+
+	onConnected    func(connection *Connection)
+	onDisconnected func(connection *Connection)
+	reconnect      func()
 }
 
 // Used by factory to spawn connections for server side
@@ -131,6 +135,9 @@ func (c *Connection) SetKey(key cipher.PubKey) {
 	c.keySet = true
 	c.fieldsMutex.Unlock()
 	c.keySetCond.Broadcast()
+	if c.onConnected != nil {
+		c.onConnected(c)
+	}
 }
 
 func (c *Connection) IsKeySet() bool {
@@ -342,6 +349,12 @@ func (c *Connection) GetChanIn() <-chan []byte {
 }
 
 func (c *Connection) Close() {
+	if c.reconnect != nil {
+		go c.reconnect()
+	}
+	if c.onDisconnected != nil {
+		c.onDisconnected(c)
+	}
 	c.keySetCond.Broadcast()
 	c.fieldsMutex.Lock()
 	defer c.fieldsMutex.Unlock()

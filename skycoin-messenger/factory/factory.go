@@ -206,7 +206,7 @@ func (f *MessengerFactory) unregister(key cipher.PubKey, connection *Connection)
 	}
 }
 
-func (f *MessengerFactory) Connect(address string) (conn *Connection, err error) {
+func (f *MessengerFactory) Connect(address string) (err error) {
 	return f.ConnectWithConfig(address, nil)
 }
 
@@ -250,7 +250,8 @@ func (f *MessengerFactory) GetDefaultSeedConfig() (sc *SeedConfig) {
 	return
 }
 
-func (f *MessengerFactory) ConnectWithConfig(address string, config *ConnConfig) (conn *Connection, err error) {
+func (f *MessengerFactory) ConnectWithConfig(address string, config *ConnConfig) (err error) {
+	var conn *Connection
 	defer func() {
 		if err != nil && conn != nil {
 			conn.Close()
@@ -270,11 +271,22 @@ func (f *MessengerFactory) ConnectWithConfig(address string, config *ConnConfig)
 				f.ConnectWithConfig(address, config)
 			}()
 		}
-		return nil, err
+		return err
 	}
 	conn = newClientConnection(c, f)
 	conn.SetContextLogger(conn.GetContextLogger().WithField("app", "messenger"))
 	if config != nil {
+		conn.onConnected = config.OnConnected
+		conn.onDisconnected = config.OnDisconnected
+		conn.findServiceNodesByKeysCallback = config.FindServiceNodesByKeysCallback
+		conn.findServiceNodesByAttributesCallback = config.FindServiceNodesByAttributesCallback
+		conn.appConnectionInitCallback = config.AppConnectionInitCallback
+		if config.Reconnect {
+			conn.reconnect = func() {
+				time.Sleep(config.ReconnectWait)
+				f.ConnectWithConfig(address, config)
+			}
+		}
 		if len(config.Context) > 0 {
 			for k, v := range config.Context {
 				conn.StoreContext(k, v)
@@ -294,27 +306,6 @@ func (f *MessengerFactory) ConnectWithConfig(address string, config *ConnConfig)
 		err = conn.Reg()
 	}
 
-	if config != nil {
-		conn.findServiceNodesByKeysCallback = config.FindServiceNodesByKeysCallback
-		conn.findServiceNodesByAttributesCallback = config.FindServiceNodesByAttributesCallback
-		conn.appConnectionInitCallback = config.AppConnectionInitCallback
-		if config.OnConnected != nil {
-			config.OnConnected(conn)
-		}
-		if config.OnDisconnected != nil {
-			go func() {
-				conn.WaitForDisconnected()
-				config.OnDisconnected(conn)
-			}()
-		}
-		if config.Reconnect {
-			go func() {
-				conn.WaitForDisconnected()
-				time.Sleep(config.ReconnectWait)
-				f.ConnectWithConfig(address, config)
-			}()
-		}
-	}
 	return
 }
 
@@ -426,6 +417,9 @@ func (f *MessengerFactory) ForEachConn(fn func(connection *Connection)) {
 		}
 		c, ok := real.(*Connection)
 		if !ok {
+			return
+		}
+		if !c.IsKeySet() {
 			return
 		}
 		fn(c)
