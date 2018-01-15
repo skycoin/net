@@ -26,14 +26,15 @@ import { AppComponent } from './app.component';
 import { HttpClientModule } from '@angular/common/http';
 import { ApiService, UserService } from './service';
 import { TimeAgoPipe, ByteToPipe, EllipsisPipe, IterablePipe, SafePipe } from './pipe';
-import { LabelDirective, ShortcutInputDirective, DebugDirective } from './directives';
+import { LabelDirective, ShortcutInputDirective, DebugDirective, ClipboardDirective } from './directives';
 import { DashboardComponent, SubStatusComponent } from './page';
 import {
   UpdateCardComponent,
   AlertComponent,
   LoadingComponent,
   TerminalComponent,
-  SearchServiceComponent
+  SearchServiceComponent,
+  WalletComponent
 } from './components';
 import { AppRoutingModule } from './route/app-routing.module';
 
@@ -50,20 +51,23 @@ import { AppRoutingModule } from './route/app-routing.module';
     LabelDirective,
     ShortcutInputDirective,
     DebugDirective,
+    ClipboardDirective,
 
     SubStatusComponent,
     UpdateCardComponent,
     AlertComponent,
     LoadingComponent,
     TerminalComponent,
-    SearchServiceComponent
+    SearchServiceComponent,
+    WalletComponent
   ],
   entryComponents: [
     UpdateCardComponent,
     AlertComponent,
     LoadingComponent,
     TerminalComponent,
-    SearchServiceComponent
+    SearchServiceComponent,
+    WalletComponent
   ],
   imports: [
     BrowserModule,

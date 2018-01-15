@@ -106,16 +106,17 @@
           </button>
         </p>
       </mat-grid-tile>
-      <!-- <mat-grid-tile>
-            <p class="status-box-item-title">
-              <small>debug</small>
-            </p>
-            <p class="status-box-item-content">
-              <button mat-icon-button color="primary" (click)="openDebug($event,debugPage)">
-                <mat-icon aria-label="debug">warning</mat-icon>
-              </button>
-            </p>
-          </mat-grid-tile> -->
+      <mat-grid-tile>
+        <p class="status-box-item-title">
+          <small>wallet</small>
+          <!-- <mat-icon class="icon-pointer" (click)="discoveriesStatus($event,discoveryStatus)">info</mat-icon> -->
+        </p>
+        <p class="status-box-item-content">
+          <button mat-icon-button color="primary" (click)="openWallet($event)">
+            <mat-icon aria-label="wallet">account_balance_wallet</mat-icon>
+          </button>
+        </p>
+      </mat-grid-tile>
     </mat-grid-list>
   </mat-card-content>
 </mat-card>
@@ -571,19 +572,19 @@
       </section>
     </section>
     <section class="discovery-address-box">
-        <p class="title">Discovery Addresses Status</p>
-        <ul class="discovery-status-list">
-          <li *ngFor="let kv of discoveries | iterable">
-            <div class="content">
-              <div class="url">{{kv?.key}}</div>
-              <div class="status">
-                <mat-icon class="icon success" *ngIf="kv?.value">check</mat-icon>
-                <mat-icon class="icon error" *ngIf="!kv?.value">error</mat-icon>
-              </div>
+      <p class="title">Discovery Addresses Status</p>
+      <ul class="discovery-status-list">
+        <li *ngFor="let kv of discoveries | iterable">
+          <div class="content">
+            <div class="url">{{kv?.key}}</div>
+            <div class="status">
+              <mat-icon class="icon success" *ngIf="kv?.value">check</mat-icon>
+              <mat-icon class="icon error" *ngIf="!kv?.value">error</mat-icon>
             </div>
-          </li>
-        </ul>
-      </section>
+          </div>
+        </li>
+      </ul>
+    </section>
     <p class="text-right" style="margin-top: 3rem;">
       <button mat-raised-button color="primary" [disabled]="!configForm.valid" (click)="updateSettings($event)">Update</button>
     </p>

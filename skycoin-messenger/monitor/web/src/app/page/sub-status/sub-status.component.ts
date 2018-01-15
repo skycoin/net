@@ -20,7 +20,14 @@ import { Observable } from 'rxjs/Observable';
 import { Subscription } from 'rxjs/Subscription';
 import { Subject } from 'rxjs/Subject';
 import { FormControl, FormGroup, Validators } from '@angular/forms';
-import { UpdateCardComponent, AlertComponent, LoadingComponent, TerminalComponent, SearchServiceComponent } from '../../components';
+import {
+  UpdateCardComponent,
+  AlertComponent,
+  LoadingComponent,
+  TerminalComponent,
+  SearchServiceComponent,
+  WalletComponent
+} from '../../components';
 import 'rxjs/add/observable/of';
 import 'rxjs/add/observable/timer';
 import 'rxjs/add/operator/debounceTime';
@@ -125,6 +132,16 @@ export class SubStatusComponent implements OnInit, OnDestroy {
   }
   ngOnDestroy() {
     this.close();
+  }
+  openWallet(ev: Event) {
+    ev.stopImmediatePropagation();
+    ev.stopPropagation();
+    ev.preventDefault();
+    const ref = this.dialog.open(WalletComponent, {
+      minWidth: '90%',
+      height: '700px'
+    });
+    ref.componentInstance.key = this.key;
   }
   terminal(ev: Event) {
     ev.stopImmediatePropagation();
