@@ -106,16 +106,17 @@
           </button>
         </p>
       </mat-grid-tile>
-      <!-- <mat-grid-tile>
-            <p class="status-box-item-title">
-              <small>debug</small>
-            </p>
-            <p class="status-box-item-content">
-              <button mat-icon-button color="primary" (click)="openDebug($event,debugPage)">
-                <mat-icon aria-label="debug">warning</mat-icon>
-              </button>
-            </p>
-          </mat-grid-tile> -->
+      <mat-grid-tile *ngIf="!dev">
+        <p class="status-box-item-title">
+          <small>wallet</small>
+          <!-- <mat-icon class="icon-pointer" (click)="discoveriesStatus($event,discoveryStatus)">info</mat-icon> -->
+        </p>
+        <p class="status-box-item-content">
+          <button mat-icon-button color="primary" (click)="openWallet($event)">
+            <mat-icon aria-label="wallet">account_balance_wallet</mat-icon>
+          </button>
+        </p>
+      </mat-grid-tile>
     </mat-grid-list>
   </mat-card-content>
 </mat-card>
@@ -128,7 +129,7 @@
 
     <mat-grid-list cols="6" rowHeight="2:1">
       <mat-grid-tile>
-        <p class="status-box-item-title">
+        <p class="status-box-item-title status-item">
           <small>Shadowsocks</small>
           <button class="icon-pointer" mat-icon-button [matMenuTriggerFor]="socketServermenu" [class.unread]="isUnread('socks') > 0">
             <mat-icon aria-label="more">more_vert</mat-icon>
@@ -144,7 +145,7 @@
             </button>
           </mat-menu>
         </p>
-        <p class="status-box-item-content">
+        <p class="status-box-item-content status-item">
           <button mat-icon-button (click)="runSocketServer($event)" [ngClass]="socketColor">
             <mat-icon aria-label="Shadowsocks">near_me</mat-icon>
           </button>
@@ -152,7 +153,7 @@
         <p class="status-item"></p>
       </mat-grid-tile>
       <mat-grid-tile>
-        <p class="status-box-item-title">
+        <p class="status-box-item-title status-item">
           <small style="margin-left: 1.5rem;">SSH</small>
           <button class="icon-pointer" mat-icon-button [matMenuTriggerFor]="sshServermenu" [class.unread]="isUnread('sshs') > 0">
             <mat-icon aria-label="more">more_vert</mat-icon>
@@ -168,7 +169,7 @@
             </button>
           </mat-menu>
         </p>
-        <p class="status-box-item-content">
+        <p class="status-box-item-content status-item">
           <button mat-icon-button (click)="runSSHServer($event)" [ngClass]="sshColor">
             <mat-icon aria-label="SSH">computer</mat-icon>
           </button>
@@ -394,83 +395,12 @@
   </div>
 </ng-template>
 
-<ng-template #serviceSearchPage>
-  <div class="search-page">
-    <p class="text-center search-title">
-      <span class="text-center text">Search Result</span>
-      <mat-icon class="refresh">refresh</mat-icon>
-    </p>
-    <table class="search-table">
-      <thead>
-        <tr>
-          <th>Index</th>
-          <th>Node Key</th>
-          <th>App Key</th>
-          <th>Operation</th>
-        </tr>
-      </thead>
-
-      <tbody>
-        <tr>
-          <td>1</td>
-          <td class="key">038b558e91a343c0f449b536ceab640d4055dbced85f6f5969a58ee56f2280588c</td>
-          <td class="key">038b558e91a343c0f449b536ceab640d4055dbced85f6f5969a58ee56f2280588c</td>
-          <td>
-            <button mat-raised-button color="primary">select</button>
-          </td>
-        </tr>
-        <tr>
-          <td>2</td>
-          <td class="key">038b558e91a343c0f449b536ceab640d4055dbced85f6f5969a58ee56f2280588c</td>
-          <td class="key">038b558e91a343c0f449b536ceab640d4055dbced85f6f5969a58ee56f2280588c</td>
-          <td>
-            <button mat-raised-button color="primary">select</button>
-          </td>
-        </tr>
-        <tr>
-          <td>3</td>
-          <td class="key">038b558e91a343c0f449b536ceab640d4055dbced85f6f5969a58ee56f2280588c</td>
-          <td class="key">038b558e91a343c0f449b536ceab640d4055dbced85f6f5969a58ee56f2280588c</td>
-          <td>
-            <button mat-raised-button color="primary">select</button>
-          </td>
-        </tr>
-      </tbody>
-    </table>
-  </div>
-  <p class="search-foot text-right">
-    <mat-paginator [length]="10" [pageSize]="10" [pageSizeOptions]="[5, 10, 25, 100]">
-    </mat-paginator>
-  </p>
-</ng-template>
-
 <ng-template #sshClientDialog>
   <div mat-dialog-title class="dialog-title">
     <div class="title-text">SSH Service keys</div>
   </div>
-  <p class="dialog-sub-title" *ngIf="dialogMode !== ''">
-    <small>
-      <a href="javascript:void(0);" (click)="search(serviceSearchPage)">
-        <mat-icon>search</mat-icon>
-        <span>Search services</span>
-      </a>
-    </small>
-  </p>
-  <div *ngIf="!dialogMode" class="dialog-model-box">
-    <p class="text-center">
-      <a href="javascript:void(0);" (click)="search(serviceSearchPage)">
-        <mat-icon>search</mat-icon>
-        <span>Search services</span>
-      </a>
-    </p>
-    <p class="text-center">or</p>
-    <p class="text-center">
-      <a href="javascript:void(0);" (click)="dialogMode='enter'">
-        Enter the key for node and app
-      </a>
-    </p>
-  </div>
-  <div *ngIf="dialogMode" class="dialog-input-box">
+
+  <div class="dialog-input-box">
     <div mat-dialog-content class="setting-dialog">
       <form [formGroup]="sshClientForm">
         <mat-form-field>
@@ -532,30 +462,54 @@
     <span>Socket Service keys</span>
     <mat-icon>network_locked </mat-icon>
   </h1>
-  <div mat-dialog-content class="setting-dialog">
-    <form [formGroup]="socketClientForm">
-      <mat-form-field>
-        <input matInput placeholder="Input Node Key" formControlName="nodeKey" autocomplete="off">
-        <mat-error *ngIf="socketClientForm.get('nodeKey').hasError('required')">
-          Please enter a valid Node Key
-        </mat-error>
-        <mat-error *ngIf="socketClientForm.get('nodeKey').hasError('minlength') || socketClientForm.get('nodeKey').hasError('minlength')">
-          The Node Key must be 66 characters long.
-        </mat-error>
-      </mat-form-field>
-      <mat-form-field>
-        <input matInput placeholder="Input App Key" formControlName="appKey" autocomplete="off">
-        <mat-error *ngIf="socketClientForm.get('appKey').hasError('required')">
-          Please enter a valid App Key
-        </mat-error>
-        <mat-error *ngIf="socketClientForm.get('appKey').hasError('minlength') || socketClientForm.get('appKey').hasError('minlength')">
-          The Node Key must be 66 characters long.
-        </mat-error>
-      </mat-form-field>
-    </form>
-    <p class="text-right">
-      <button mat-raised-button color="primary" [disabled]="!socketClientForm.valid" (click)="connectSocket($event,'socket')">Connect</button>
+  <p class="dialog-sub-title" *ngIf="dialogMode !== ''">
+    <small>
+      <a href="javascript:void(0);" (click)="search($event,'sockss')">
+        <mat-icon>search</mat-icon>
+        <span>Search services</span>
+      </a>
+    </small>
+  </p>
+  <div *ngIf="!dialogMode" class="dialog-model-box">
+    <p class="text-center">
+      <a href="javascript:void(0);" (click)="search($event,'sockss')">
+        <mat-icon>search</mat-icon>
+        <span>Search services</span>
+      </a>
     </p>
+    <p class="text-center">or</p>
+    <p class="text-center">
+      <a href="javascript:void(0);" (click)="dialogMode='enter'">
+        Enter the key for node and app
+      </a>
+    </p>
+  </div>
+  <div *ngIf="dialogMode" class="dialog-input-box">
+    <div mat-dialog-content class="setting-dialog">
+      <form [formGroup]="socketClientForm">
+        <mat-form-field>
+          <input matInput placeholder="Input Node Key" formControlName="nodeKey" autocomplete="off">
+          <mat-error *ngIf="socketClientForm.get('nodeKey').hasError('required')">
+            Please enter a valid Node Key
+          </mat-error>
+          <mat-error *ngIf="socketClientForm.get('nodeKey').hasError('minlength') || socketClientForm.get('nodeKey').hasError('minlength')">
+            The Node Key must be 66 characters long.
+          </mat-error>
+        </mat-form-field>
+        <mat-form-field>
+          <input matInput placeholder="Input App Key" formControlName="appKey" autocomplete="off">
+          <mat-error *ngIf="socketClientForm.get('appKey').hasError('required')">
+            Please enter a valid App Key
+          </mat-error>
+          <mat-error *ngIf="socketClientForm.get('appKey').hasError('minlength') || socketClientForm.get('appKey').hasError('minlength')">
+            The Node Key must be 66 characters long.
+          </mat-error>
+        </mat-form-field>
+      </form>
+      <p class="text-right">
+        <button mat-raised-button color="primary" [disabled]="!socketClientForm.valid" (click)="connectSocket($event,'socket')">Connect</button>
+      </p>
+    </div>
   </div>
   <div class="quick-box" *ngIf="clientConnectionInfo?.length > 0">
     <h5>Records:</h5>
@@ -601,26 +555,41 @@
 </ng-template>
 
 <ng-template #config>
-  <form [formGroup]="configForm">
+  <form [formGroup]="configForm" class="setting-box">
     <mat-form-field style="width: 100%">
       <textarea matInput placeholder="Input discovery addresses" rows="5" formControlName="DiscoveryAddresses"></textarea>
       <mat-hint align="start" class="hint-text">Multiple public keys are separated by commas</mat-hint>
     </mat-form-field>
-    <p class="text-right">
+    <section class="auto-setting-box">
+      <p class="title item">Automatic startup</p>
+      <section class="item">
+        <span class="left">ShadowSocks Server</span>
+        <mat-slide-toggle class="right" formControlName="socksServer"></mat-slide-toggle>
+      </section>
+      <section class="item">
+        <span class="left">SSH Server</span>
+        <mat-slide-toggle class="right" formControlName="sshServer"></mat-slide-toggle>
+      </section>
+    </section>
+    <section class="discovery-address-box">
+      <p class="title">Discovery Addresses Status</p>
+      <ul class="discovery-status-list">
+        <li *ngFor="let kv of discoveries | iterable">
+          <div class="content">
+            <div class="url">{{kv?.key}}</div>
+            <div class="status">
+              <mat-icon class="icon success" *ngIf="kv?.value">check</mat-icon>
+              <mat-icon class="icon error" *ngIf="!kv?.value">error</mat-icon>
+            </div>
+          </div>
+        </li>
+      </ul>
+    </section>
+    <p class="text-right" style="margin-top: 3rem;">
       <button mat-raised-button color="primary" [disabled]="!configForm.valid" (click)="updateSettings($event)">Update</button>
     </p>
   </form>
-  <ul class="discovery-status-list">
-    <li *ngFor="let kv of discoveries | iterable">
-      <div class="content">
-        <div class="url">{{kv?.key}}</div>
-        <div class="status">
-          <mat-icon class="icon success" *ngIf="kv?.value">check</mat-icon>
-          <mat-icon class="icon error" *ngIf="!kv?.value">error</mat-icon>
-        </div>
-      </div>
-    </li>
-  </ul>
+
 </ng-template>
 
 <ng-template #debugPage>

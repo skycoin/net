@@ -33,7 +33,9 @@
     "@angular/platform-browser-dynamic": "^5.1.0",
     "@angular/router": "^5.1.0",
     "@types/xterm": "^2.0.3",
+    "clipboard": "^1.7.1",
     "core-js": "^2.5.3",
+    "font-awesome": "^4.7.0",
     "rxjs": "^5.5.5",
     "xterm": "2.8.1",
     "zone.js": "^0.8.18"

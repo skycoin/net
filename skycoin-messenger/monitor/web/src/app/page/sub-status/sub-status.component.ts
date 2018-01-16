@@ -11,7 +11,8 @@ import {
   FeedBackItem,
   UserService,
   ConnectServiceInfo,
-  MessageItem
+  MessageItem,
+  AutoStartConfig
 } from '../../service';
 import { MatSnackBar, MatDialog, MatDialogRef } from '@angular/material';
 import { DataSource } from '@angular/cdk/collections';
@@ -19,7 +20,14 @@ import { Observable } from 'rxjs/Observable';
 import { Subscription } from 'rxjs/Subscription';
 import { Subject } from 'rxjs/Subject';
 import { FormControl, FormGroup, Validators } from '@angular/forms';
-import { UpdateCardComponent, AlertComponent, LoadingComponent, TerminalComponent } from '../../components';
+import {
+  UpdateCardComponent,
+  AlertComponent,
+  LoadingComponent,
+  TerminalComponent,
+  SearchServiceComponent,
+  WalletComponent
+} from '../../components';
 import 'rxjs/add/observable/of';
 import 'rxjs/add/observable/timer';
 import 'rxjs/add/operator/debounceTime';
@@ -72,7 +80,9 @@ export class SubStatusComponent implements OnInit, OnDestroy {
     appKey: new FormControl('', this.formValidatorsSlice),
   });
   configForm = new FormGroup({
-    DiscoveryAddresses: new FormControl('', this.formValidatorsSlice),
+    DiscoveryAddresses: new FormControl(''),
+    socksServer: new FormControl(''),
+    sshServer: new FormControl('')
   });
   sshClientPort = 0;
   socketClientPort = 0;
@@ -90,6 +100,8 @@ export class SubStatusComponent implements OnInit, OnDestroy {
   messages: Array<Message> = [];
   showMsgs: Array<MessageItem> = [];
   dialogMode = '';
+  autoStart: AutoStartConfig = null;
+  dev = true;
   constructor(
     private router: Router,
     private route: ActivatedRoute,
@@ -117,20 +129,20 @@ export class SubStatusComponent implements OnInit, OnDestroy {
       this.power = 'warn';
       this.isManager = env.isManager;
     });
-    // setTimeout(() => {
-    //   this.api.runShell(this.status.addr).subscribe(result => {
-    //     if (result) {
-    //       const ref = this.dialog.open(TerminalComponent, {
-    //         panelClass: 'log-dialog',
-    //         width: '800px'
-    //       });
-    //       ref.componentInstance.addr = this.status.addr;
-    //     }
-    //   });
-    // }, 1000);
+
   }
   ngOnDestroy() {
     this.close();
+  }
+  openWallet(ev: Event) {
+    ev.stopImmediatePropagation();
+    ev.stopPropagation();
+    ev.preventDefault();
+    const ref = this.dialog.open(WalletComponent, {
+      minWidth: '90%',
+      height: '700px'
+    });
+    ref.componentInstance.key = this.key;
   }
   terminal(ev: Event) {
     ev.stopImmediatePropagation();
@@ -223,12 +235,17 @@ export class SubStatusComponent implements OnInit, OnDestroy {
     ev.stopPropagation();
     ev.preventDefault();
     const data = new FormData();
-    const jsonStr = {
-      label: '',
-      nodeKey: this.socketClientForm.get('nodeKey').value,
-      appKey: this.socketClientForm.get('appKey').value,
-      count: 1
-    };
+    let jsonStr = null;
+    if (info) {
+      jsonStr = info;
+    } else {
+      jsonStr = {
+        label: '',
+        nodeKey: this.socketClientForm.get('nodeKey').value,
+        appKey: this.socketClientForm.get('appKey').value,
+        count: 1
+      };
+    }
     data.append('client', action);
     data.append('data', JSON.stringify(jsonStr));
     this.api.saveClientConnection(data).subscribe(res => {
@@ -253,12 +270,17 @@ export class SubStatusComponent implements OnInit, OnDestroy {
     ev.stopPropagation();
     ev.preventDefault();
     const data = new FormData();
-    const jsonStr = {
-      label: '',
-      nodeKey: this.sshClientForm.get('nodeKey').value,
-      appKey: this.sshClientForm.get('appKey').value,
-      count: 1
-    };
+    let jsonStr = null;
+    if (info) {
+      jsonStr = info;
+    } else {
+      jsonStr = {
+        label: '',
+        nodeKey: this.sshClientForm.get('nodeKey').value,
+        appKey: this.sshClientForm.get('appKey').value,
+        count: 1
+      };
+    }
     data.append('client', action);
     data.append('data', JSON.stringify(jsonStr));
     this.api.saveClientConnection(data).subscribe(res => {
@@ -588,44 +610,7 @@ export class SubStatusComponent implements OnInit, OnDestroy {
         break;
     }
   }
-  // showMessage(msgs: Array<Array<Message>>) {
-  //   if (!msgs || msgs[0] == null) {
-  //     return;
-  //   } else if (msgs.length === 1) {
-  //     msgs[0].sort(this.compareMsg);
-  //   } else {
-  //     msgs.sort((m1, m2) => {
-  //       m1.sort(this.compareMsg);
-  //       m2.sort(this.compareMsg);
-  //       if (m1[0].priority < m2[0].priority) {
-  //         return 1;
-  //       }
-  //       if (m1[0].priority > m2[0].priority) {
-  //         return -1;
-  //       }
-  //       return 0;
-  //     });
-  //   }
-  //   this.alertMsg = msgs[0][0].msg;
-  //   setTimeout(() => {
-  //     this.dialog.open(AlertComponent, {
-  //       width: '45rem',
-  //       panelClass: 'alert',
-  //       data: {
-  //         msg: this.alertMsg
-  //       }
-  //     });
-  //   }, 500);
-  // }
-  // compareMsg(msg1: Message, msg2: Message) {
-  //   if (msg1.priority < msg2.priority) {
-  //     return 1;
-  //   }
-  //   if (msg1.priority > msg2.priority) {
-  //     return -1;
-  //   }
-  //   return 0;
-  // }
+
   fillApps() {
     if (env.isManager) {
       this.api.getApps(this.status.addr).subscribe((apps: Array<App>) => {
@@ -646,6 +631,11 @@ export class SubStatusComponent implements OnInit, OnDestroy {
   }
   openConfigSettings(ev: Event, content: any) {
     this.configForm.reset();
+    this.api.getAutoStart(this.status.addr).subscribe((config: AutoStartConfig) => {
+      this.autoStart = config;
+      this.configForm.patchValue({ 'socksServer': config.socks_server });
+      this.configForm.patchValue({ 'sshServer': config.ssh_server });
+    });
     this.dialog.open(content, {
       width: '400px'
     });
@@ -653,42 +643,62 @@ export class SubStatusComponent implements OnInit, OnDestroy {
   updateSettings(ev: Event) {
     this.dialog.closeAll();
     const jsonStr = {
-      DiscoveryAddresses: this.configForm.get('DiscoveryAddresses').value.split(',')
+      // DiscoveryAddresses: this.configForm.get('DiscoveryAddresses').value.split(','),
+      socks_server: this.configForm.get('socksServer').value,
+      ssh_server: this.configForm.get('sshServer').value
     };
+    const tmp = this.configForm.get('DiscoveryAddresses').value;
+    if (tmp) {
+      jsonStr['DiscoveryAddresses'] = tmp.split(',');
+    }
     const data = new FormData();
     data.append('key', this.key);
     data.append('data', JSON.stringify(jsonStr));
-    this.api.setNodeConfig(data).subscribe(result => {
-      if (result) {
-        this.dialog.open(AlertComponent, {
-          width: '45rem',
-          panelClass: 'alert',
-          data: {
-            msg: 'Do you restart node immediately?',
-            confirm: true
-          }
-        }).afterClosed().subscribe(isRestart => {
-          if (isRestart) {
-            this.api.updateNodeConfig(this.status.addr).subscribe(isSuccess => {
-              if (isSuccess) {
-                this.dialog.open(LoadingComponent, {
-                  panelClass: 'loading',
-                  disableClose: true,
-                  data: {
-                    taskTime: 30,
-                  }
-                });
-              }
-            });
-          }
-        });
-      }
+    this.api.setAutoStart(this.status.addr, data).subscribe(result => {
+      console.log('set auto config:', result);
     });
+    if (tmp) {
+      console.log('update discovery address');
+      this.api.setNodeConfig(data).subscribe(result => {
+        if (result) {
+          this.dialog.open(AlertComponent, {
+            width: '45rem',
+            panelClass: 'alert',
+            data: {
+              msg: 'Do you restart node immediately?',
+              confirm: true
+            }
+          }).afterClosed().subscribe(isRestart => {
+            if (isRestart) {
+              this.api.updateNodeConfig(this.status.addr).subscribe(isSuccess => {
+                if (isSuccess) {
+                  this.dialog.open(LoadingComponent, {
+                    panelClass: 'loading',
+                    disableClose: true,
+                    data: {
+                      taskTime: 30,
+                    }
+                  });
+                }
+              });
+            }
+          });
+        }
+      });
+    }
   }
-  search(content) {
-    this.dialog.open(content, {
-      width: '100%',
-      height: '95%'
+  search(ev: Event, searchStr: string) {
+    const ref = this.dialog.open(SearchServiceComponent, {
+      minWidth: '1200px',
+      height: '800px'
+    });
+    ref.componentInstance.nodeAddr = this.status.addr;
+    ref.componentInstance.searchStr = searchStr;
+    ref.afterClosed().subscribe(result => {
+      if (result) {
+        this.init();
+        this.dialog.closeAll();
+      }
     });
   }
   removeClientConnection(action: string, index: number) {

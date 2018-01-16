@@ -19,19 +19,22 @@ import {
   MatInputModule,
   MatProgressSpinnerModule,
   MatMenuModule,
-  MatPaginatorModule
+  MatPaginatorModule,
+  MatSlideToggleModule
 } from '@angular/material';
 import { AppComponent } from './app.component';
 import { HttpClientModule } from '@angular/common/http';
 import { ApiService, UserService } from './service';
 import { TimeAgoPipe, ByteToPipe, EllipsisPipe, IterablePipe, SafePipe } from './pipe';
-import { LabelDirective, ShortcutInputDirective, DebugDirective } from './directives';
-import { DashboardComponent, SubStatusComponent } from './page';
+import { LabelDirective, ShortcutInputDirective, DebugDirective, ClipboardDirective } from './directives';
+import { DashboardComponent, SubStatusComponent, LoginComponent, UpdatePassComponent } from './page';
 import {
   UpdateCardComponent,
   AlertComponent,
   LoadingComponent,
   TerminalComponent,
+  SearchServiceComponent,
+  WalletComponent
 } from './components';
 import { AppRoutingModule } from './route/app-routing.module';
 
@@ -39,6 +42,9 @@ import { AppRoutingModule } from './route/app-routing.module';
   declarations: [
     AppComponent,
     DashboardComponent,
+    LoginComponent,
+    UpdatePassComponent,
+
     TimeAgoPipe,
     ByteToPipe,
     EllipsisPipe,
@@ -48,18 +54,23 @@ import { AppRoutingModule } from './route/app-routing.module';
     LabelDirective,
     ShortcutInputDirective,
     DebugDirective,
+    ClipboardDirective,
 
     SubStatusComponent,
     UpdateCardComponent,
     AlertComponent,
     LoadingComponent,
     TerminalComponent,
+    SearchServiceComponent,
+    WalletComponent
   ],
   entryComponents: [
     UpdateCardComponent,
     AlertComponent,
     LoadingComponent,
     TerminalComponent,
+    SearchServiceComponent,
+    WalletComponent
   ],
   imports: [
     BrowserModule,
@@ -84,7 +95,8 @@ import { AppRoutingModule } from './route/app-routing.module';
     MatInputModule,
     MatProgressSpinnerModule,
     MatMenuModule,
-    MatPaginatorModule
+    MatPaginatorModule,
+    MatSlideToggleModule
   ],
   providers: [ApiService, UserService],
   bootstrap: [AppComponent]

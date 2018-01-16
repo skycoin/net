@@ -1,0 +1,36 @@
+<div class="search-page">
+  <p class="text-center search-title">
+    <span class="text-center text">Search {{searchStr}} Result</span>
+    <mat-icon class="refresh" [class.refresh-process]="status === 0" (click)="refresh($event)">refresh</mat-icon>
+  </p>
+  <table class="search-table">
+    <thead>
+      <tr>
+        <!-- <th>Index</th> -->
+        <th>Node Key</th>
+        <th>App Key</th>
+        <th>Operation</th>
+      </tr>
+    </thead>
+
+    <tbody>
+      <ng-container *ngFor="let result of results">
+        <tr *ngFor="let app of result?.result?.apps">
+          <!-- <td>1</td> -->
+          <td class="key">{{result?.result?.node_key}}</td>
+          <td class="key">{{app}}</td>
+          <td>
+            <button mat-raised-button color="primary" (click)="connectSocket(result?.result?.node_key,app)">connect</button>
+          </td>
+        </tr>
+      </ng-container>
+      <tr *ngIf="results?.length === 0">
+        <td colspan="3" class="no-found">No Found Any Services</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+<p class="search-foot text-right" *ngIf="results?.length > 10">
+  <mat-paginator [length]="10" [pageSize]="10" [pageSizeOptions]="[5, 10, 25, 100]">
+  </mat-paginator>
+</p>

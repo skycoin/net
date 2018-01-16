@@ -1,23 +1,34 @@
 import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { environment } from '../../../environments/environment';
 import { Observable } from 'rxjs/Observable';
 import 'rxjs/add/operator/catch';
 import 'rxjs/add/observable/throw';
+import 'rxjs/add/observable/empty';
+import { Router } from '@angular/router';
 
 @Injectable()
 export class ApiService {
   private connUrl = '/conn/';
   private nodeUrl = '/node';
+  private bankUrl = '127.0.0.1:8080/';
   private callbackParm = 'callback';
   private jsonHeader = { 'Content-Type': 'application/json' };
-  constructor(private httpClient: HttpClient) { }
+  constructor(private httpClient: HttpClient, private router: Router) { }
 
 
+  login(data: FormData) {
+    return this.handlePost('login', data);
+  }
+  updatePass(data: FormData) {
+    return this.handlePost('updatePass', data);
+  }
+  checkLogin() {
+    return this.handlePost('checkLogin');
+  }
   getAllNode() {
     return this.handleGet(this.connUrl + 'getAll');
   }
-
   getNodeStatus(data: FormData) {
     return this.handlePost(this.connUrl + 'getNode', data);
   }
@@ -40,11 +51,21 @@ export class ApiService {
   reboot(addr: string) {
     return this.handleNodePost(addr, '/node/reboot');
   }
-
+  getAutoStart(addr: string) {
+    return this.handleNodePost(addr, '/node/run/getAutoStartConfig');
+  }
+  setAutoStart(addr: string, data?: FormData) {
+    return this.handleNodePost(addr, '/node/run/setAutoStartConfig', data);
+  }
   checkAppMsg(addr: string, data?: FormData) {
     return this.handleNodePost(addr, '/node/getMsg', data);
   }
-
+  searchServices(addr: string, data?: FormData) {
+    return this.handleNodePost(addr, '/node/run/searchServices', data);
+  }
+  getServicesResult(addr: string, data?: FormData) {
+    return this.handleNodePost(addr, '/node/run/getSearchServicesResult', data);
+  }
   connectSSHClient(addr: string, data?: FormData) {
     return this.handleNodePost(addr, '/node/run/sshc', data);
   }
@@ -80,6 +101,13 @@ export class ApiService {
   getClientConnection(data: FormData) {
     return this.handlePost(this.connUrl + 'getClientConnection', data);
   }
+
+  getWalletNewAddress(data: FormData) {
+    return this.handleNodePost(this.bankUrl, 'skypay/tools/newAddress', data);
+  }
+  getWalletInfo(data: FormData) {
+    return this.handleNodePost(this.bankUrl, 'skypay/node/get', data);
+  }
   jsonp(url: string) {
     if (url === '') {
       return Observable.throw('Url is empty.');
@@ -90,7 +118,7 @@ export class ApiService {
     if (url === '') {
       return Observable.throw('Url is empty.');
     }
-    return this.httpClient.get(url).catch(err => Observable.throw(err));
+    return this.httpClient.get(url).catch(err => this.handleError(err));
   }
   handleNodePost(nodeAddr: string, api: string, data?: FormData, opts?: any) {
     if (nodeAddr === '' || api === '') {
@@ -103,11 +131,19 @@ export class ApiService {
     data.append('addr', nodeAddr);
     return this.handlePost(this.nodeUrl, data, opts);
   }
-  handlePost(url: string, data: FormData, opts?: any) {
+  handlePost(url: string, data?: FormData, opts?: any) {
     if (url === '') {
       return Observable.throw('Url is empty.');
     }
-    return this.httpClient.post(url, data, opts).catch(err => Observable.throw(err));
+    return this.httpClient.post(url, data, opts).catch(err => this.handleError(err));
+  }
+  handleError(err: HttpErrorResponse) {
+    if (err.status === 302) {
+      console.log('open url');
+      this.router.navigate([{ outlets: { user: ['login'] } }]);
+      return Observable.empty();
+    }
+    return Observable.throw(err);
   }
 }
 export interface ConnectServiceInfo {
@@ -183,4 +219,14 @@ export interface MessageItem {
   priority?: number;
   time?: number;
   type?: number;
+}
+
+export interface AutoStartConfig {
+  socks_server?: boolean;
+  ssh_server?: boolean;
+}
+
+export interface WalletAddress {
+  code?: number;
+  address?: string;
 }
