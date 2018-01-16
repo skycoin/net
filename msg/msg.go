@@ -4,7 +4,6 @@ import (
 	"encoding/binary"
 	"fmt"
 	"github.com/google/btree"
-	"hash/crc32"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -102,9 +101,6 @@ func (msg *Message) Bytes() (result []byte) {
 }
 
 func (msg *Message) PkgBytes() (result []byte) {
-	msg.RLock()
-	result = msg.cache
-	msg.RUnlock()
 	if len(result) > 0 {
 		return
 	}
@@ -115,11 +111,23 @@ func (msg *Message) PkgBytes() (result []byte) {
 	binary.BigEndian.PutUint32(m[MSG_SEQ_BEGIN:MSG_SEQ_END], msg.GetSeq())
 	binary.BigEndian.PutUint32(m[MSG_LEN_BEGIN:MSG_LEN_END], msg.Len)
 	copy(m[MSG_HEADER_END:], msg.Body)
-	checksum := crc32.ChecksumIEEE(m)
-	binary.BigEndian.PutUint32(result[PKG_CRC32_BEGIN:], checksum)
+
 	msg.Lock()
 	msg.cache = result
 	msg.Unlock()
+	return
+}
+
+func (msg *Message) SetCache(result []byte) {
+	msg.Lock()
+	msg.cache = result
+	msg.Unlock()
+}
+
+func (msg *Message) GetCache() (result []byte) {
+	msg.RLock()
+	result = msg.cache
+	msg.RUnlock()
 	return
 }
 
@@ -206,8 +214,6 @@ type UDPMessage struct {
 
 	channel    int64
 	channelSeq uint32
-
-	Directly bool
 }
 
 func NewUDP(t uint8, seq uint32, bytes []byte) *UDPMessage {
@@ -216,10 +222,9 @@ func NewUDP(t uint8, seq uint32, bytes []byte) *UDPMessage {
 	}
 }
 
-func NewUDPWithoutSeq(t uint8, bytes []byte, directly bool) *UDPMessage {
+func NewUDPWithoutSeq(t uint8, bytes []byte) *UDPMessage {
 	return &UDPMessage{
-		Message:  NewWithoutSeq(t, bytes),
-		Directly: directly,
+		Message: NewWithoutSeq(t, bytes),
 	}
 }
 

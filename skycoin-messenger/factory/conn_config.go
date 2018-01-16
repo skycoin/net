@@ -28,6 +28,8 @@ type ConnConfig struct {
 
 	UseCrypto RegVersion
 
+	TargetKey cipher.PubKey
+
 	// callbacks
 
 	FindServiceNodesByKeysCallback func(resp *QueryResp)

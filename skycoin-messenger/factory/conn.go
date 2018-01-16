@@ -1,7 +1,9 @@
 package factory
 
 import (
+	"crypto/aes"
 	"encoding/json"
+	"errors"
 	"github.com/skycoin/net/conn"
 	"github.com/skycoin/net/factory"
 	"github.com/skycoin/skycoin/src/cipher"
@@ -19,6 +21,7 @@ type Connection struct {
 	keySetCond *sync.Cond
 	keySet     bool
 	secKey     cipher.SecKey
+	targetKey  cipher.PubKey
 
 	context sync.Map
 
@@ -140,10 +143,11 @@ func (c *Connection) SetKey(key cipher.PubKey) {
 	}
 }
 
-func (c *Connection) IsKeySet() bool {
-	c.fieldsMutex.Lock()
-	defer c.fieldsMutex.Unlock()
-	return c.keySet
+func (c *Connection) IsKeySet() (b bool) {
+	c.fieldsMutex.RLock()
+	b = c.keySet
+	c.fieldsMutex.RUnlock()
+	return
 }
 
 func (c *Connection) GetKey() cipher.PubKey {
@@ -164,6 +168,19 @@ func (c *Connection) SetSecKey(key cipher.SecKey) {
 func (c *Connection) GetSecKey() (key cipher.SecKey) {
 	c.fieldsMutex.RLock()
 	key = c.secKey
+	c.fieldsMutex.RUnlock()
+	return
+}
+
+func (c *Connection) SetTargetKey(key cipher.PubKey) {
+	c.fieldsMutex.Lock()
+	c.targetKey = key
+	c.fieldsMutex.Unlock()
+}
+
+func (c *Connection) GetTargetKey() (key cipher.PubKey) {
+	c.fieldsMutex.RLock()
+	key = c.targetKey
 	c.fieldsMutex.RUnlock()
 	return
 }
@@ -205,7 +222,13 @@ func (c *Connection) Reg() error {
 
 func (c *Connection) RegWithKey(key cipher.PubKey, context map[string]string) error {
 	c.StoreContext(publicKey, key)
-	return c.writeOPDirectly(OP_REG_KEY, &regWithKey{PublicKey: key, Context: context, Version: RegWithKeyAndEncryptionVersion})
+	return c.writeOPReq(OP_REG_KEY, &regWithKey{PublicKey: key, Context: context, Version: RegWithKeyAndEncryptionVersion})
+}
+
+func (c *Connection) RegWithKeys(key, target cipher.PubKey, context map[string]string) error {
+	c.StoreContext(publicKey, key)
+	c.SetTargetKey(target)
+	return c.writeOPReq(OP_REG_KEY, &regWithKey{PublicKey: key, Context: context, Version: RegWithKeyAndEncryptionVersion})
 }
 
 // register services to discovery
@@ -384,6 +407,21 @@ func (c *Connection) Close() {
 	c.Connection.Close()
 }
 
+func (c *Connection) WaitForKey() (err error) {
+	ok := make(chan struct{})
+	go func() {
+		c.GetKey()
+		close(ok)
+	}()
+	select {
+	case <-time.After(15 * time.Second):
+		c.Close()
+		err = errors.New("reg timeout")
+	case <-ok:
+	}
+	return err
+}
+
 func (c *Connection) writeOPBytes(op byte, body []byte) error {
 	data := make([]byte, MSG_HEADER_END+len(body))
 	data[MSG_OP_BEGIN] = op
@@ -400,20 +438,28 @@ func (c *Connection) writeOP(op byte, object interface{}) error {
 	return c.writeOPBytes(op, js)
 }
 
-func (c *Connection) writeOPBytesDirectly(op byte, body []byte) error {
-	data := make([]byte, MSG_HEADER_END+len(body))
-	data[MSG_OP_BEGIN] = op
-	copy(data[MSG_HEADER_END:], body)
-	return c.WriteDirectly(data)
-}
-
-func (c *Connection) writeOPDirectly(op byte, object interface{}) error {
-	js, err := json.Marshal(object)
+func (c *Connection) writeOPReq(op byte, object interface{}) error {
+	body, err := json.Marshal(object)
 	if err != nil {
 		return err
 	}
 	c.GetContextLogger().Debugf("writeOP %#v", object)
-	return c.writeOPBytesDirectly(op, js)
+	data := make([]byte, MSG_HEADER_END+len(body))
+	data[MSG_OP_BEGIN] = op
+	copy(data[MSG_HEADER_END:], body)
+	return c.WriteReq(data)
+}
+
+func (c *Connection) writeOPResp(op byte, object interface{}) error {
+	body, err := json.Marshal(object)
+	if err != nil {
+		return err
+	}
+	c.GetContextLogger().Debugf("writeOP %#v", object)
+	data := make([]byte, MSG_HEADER_END+len(body))
+	data[MSG_OP_BEGIN] = op
+	copy(data[MSG_HEADER_END:], body)
+	return c.WriteResp(data)
 }
 
 func (c *Connection) setTransport(to cipher.PubKey, tr *Transport) {
@@ -512,11 +558,17 @@ func (c *Connection) GetAppFeedback() *AppFeedback {
 	return v
 }
 
-func (c *Connection) SetCrypto(pk cipher.PubKey, sk cipher.SecKey, target cipher.PubKey) (err error) {
+func (c *Connection) SetCrypto(pk cipher.PubKey, sk cipher.SecKey, target cipher.PubKey, iv []byte) (err error) {
 	crypto := conn.NewCrypto(pk, sk)
 	err = crypto.SetTargetKey(target)
 	if err != nil {
 		return
+	}
+	if len(iv) == aes.BlockSize {
+		err = crypto.Init(iv)
+		if err != nil {
+			return
+		}
 	}
 	c.Connection.SetCrypto(crypto)
 	return

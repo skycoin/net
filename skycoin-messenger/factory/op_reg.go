@@ -1,7 +1,10 @@
 package factory
 
 import (
+	"crypto/aes"
+	"crypto/rand"
 	"errors"
+	"io"
 	"sync"
 
 	"github.com/skycoin/skycoin/src/cipher"
@@ -71,6 +74,7 @@ func (resp *regResp) Run(conn *Connection) (err error) {
 const (
 	publicKey = iota
 	randomBytes
+	targetPublicKey
 )
 
 type RegVersion int
@@ -91,27 +95,37 @@ func (reg *regWithKey) Execute(f *MessengerFactory, conn *Connection) (r resp, e
 		conn.GetContextLogger().Infof("reg %s already", conn.key.Hex())
 		return
 	}
-	if reg.Version == RegWithKeyAndEncryptionVersion {
-		for k, v := range reg.Context {
-			conn.StoreContext(k, v)
-		}
-		conn.StoreContext(publicKey, reg.PublicKey)
-		pk, sec := cipher.GenerateKeyPair()
-		err = conn.SetCrypto(pk, sec, reg.PublicKey)
-		if err != nil {
-			return
-		}
-		err = conn.writeOPDirectly(OP_REG_KEY|RESP_PREFIX,
-			&regWithKeyResp{
-				PublicKey: pk,
-				Version:   reg.Version,
-			})
-		return
-	}
 	for k, v := range reg.Context {
 		conn.StoreContext(k, v)
 	}
 	conn.StoreContext(publicKey, reg.PublicKey)
+	if reg.Version == RegWithKeyAndEncryptionVersion {
+		sc := f.GetDefaultSeedConfig()
+		if sc == nil {
+			err = errors.New("GetDefaultSeedConfig is nil")
+			return
+		}
+		n := cipher.RandByte(64)
+		hash := cipher.SumSHA256(n)
+		conn.StoreContext(randomBytes, hash)
+		resp := &regWithKeyResp{
+			Num:       make([]byte, aes.BlockSize),
+			PublicKey: sc.publicKey,
+			Version:   reg.Version,
+			Hash:      hash,
+		}
+		if _, err = io.ReadFull(rand.Reader, resp.Num); err != nil {
+			return
+		}
+		err = conn.SetCrypto(sc.publicKey, sc.secKey, reg.PublicKey, resp.Num)
+		if err != nil {
+			return
+		}
+
+		err = conn.writeOPReq(OP_REG_KEY|RESP_PREFIX,
+			resp)
+		return
+	}
 	n := cipher.RandByte(64)
 	conn.StoreContext(randomBytes, n)
 	r = &regWithKeyResp{Num: n}
@@ -120,6 +134,7 @@ func (reg *regWithKey) Execute(f *MessengerFactory, conn *Connection) (r resp, e
 
 type regWithKeyResp struct {
 	Num       []byte
+	Hash      cipher.SHA256
 	PublicKey cipher.PubKey
 	Version   RegVersion
 }
@@ -136,11 +151,20 @@ func (resp *regWithKeyResp) Run(conn *Connection) (err error) {
 			err = errors.New("public key invalid")
 			return
 		}
-		err = conn.SetCrypto(pk, conn.GetSecKey(), resp.PublicKey)
+		tpk := resp.PublicKey
+		t := conn.GetTargetKey()
+		if k != EMPATY_PUBLIC_KEY {
+			tpk = t
+		}
+		err = conn.SetCrypto(pk, conn.GetSecKey(), tpk, resp.Num)
 		if err != nil {
 			return
 		}
-		err = conn.writeOP(OP_REG_SIG, &regCheckSig{Version: resp.Version})
+		sig := cipher.SignHash(resp.Hash, conn.GetSecKey())
+		err = conn.writeOPResp(OP_REG_SIG, &regCheckSig{
+			Sig:     sig,
+			Version: resp.Version,
+		})
 		conn.SetKey(pk)
 		return
 	}
@@ -172,6 +196,20 @@ func (reg *regCheckSig) Execute(f *MessengerFactory, conn *Connection) (r resp, 
 		return
 	}
 	if reg.Version == RegWithKeyAndEncryptionVersion && conn.GetCrypto() != nil {
+		n, ok := conn.context.Load(randomBytes)
+		if !ok {
+			err = errors.New("hash not found")
+			return
+		}
+		hash, ok := n.(cipher.SHA256)
+		if !ok {
+			err = errors.New("hash is invalid")
+			return
+		}
+		err = cipher.VerifySignature(pk, reg.Sig, hash)
+		if err != nil {
+			return
+		}
 		goto OK
 	} else {
 		n, ok := conn.context.Load(randomBytes)
@@ -189,6 +227,8 @@ func (reg *regCheckSig) Execute(f *MessengerFactory, conn *Connection) (r resp, 
 OK:
 	conn.SetKey(pk)
 	conn.SetContextLogger(conn.GetContextLogger().WithField("pubkey", pk.Hex()))
-	f.register(pk, conn)
+	if conn.IsTCP() {
+		f.register(pk, conn)
+	}
 	return
 }

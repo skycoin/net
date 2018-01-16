@@ -19,7 +19,7 @@ const (
 )
 
 type UDPConn struct {
-	ConnCommonFields
+	*ConnCommonFields
 	*UDPPendingMap
 	streamQueue
 	UdpConn *net.UDPConn
@@ -217,33 +217,33 @@ func (c *UDPConn) Write(bytes []byte) (err error) {
 }
 
 func (c *UDPConn) WriteToChannel(channel int, bytes []byte) (err error) {
-	err = c.writeToChannel(channel, bytes, false)
+	err = c.writeToChannel(channel, bytes, msg.TYPE_NORMAL)
 	return
 }
 
-func (c *UDPConn) writeToChannel(channel int, bytes []byte, directly bool) (err error) {
+func (c *UDPConn) writeToChannel(channel int, bytes []byte, msgt byte) (err error) {
 	if len(bytes) > MAX_UDP_PACKAGE_SIZE {
 		for i := 0; i < len(bytes)/MAX_UDP_PACKAGE_SIZE; i++ {
-			err = c.addToChannel(channel, bytes[i*MAX_UDP_PACKAGE_SIZE:(i+1)*MAX_UDP_PACKAGE_SIZE], directly)
+			err = c.addToChannel(channel, bytes[i*MAX_UDP_PACKAGE_SIZE:(i+1)*MAX_UDP_PACKAGE_SIZE], msgt)
 			if err != nil {
 				return
 			}
 		}
 		i := len(bytes) % MAX_UDP_PACKAGE_SIZE
 		if i > 0 {
-			err = c.addToChannel(channel, bytes[len(bytes)-i:], directly)
+			err = c.addToChannel(channel, bytes[len(bytes)-i:], msgt)
 			if err != nil {
 				return
 			}
 		}
 	} else {
-		err = c.addToChannel(channel, bytes, directly)
+		err = c.addToChannel(channel, bytes, msgt)
 	}
 	return
 }
 
-func (c *UDPConn) addToChannel(channel int, bytes []byte, directly bool) (err error) {
-	m := msg.NewUDPWithoutSeq(msg.TYPE_NORMAL, bytes, directly)
+func (c *UDPConn) addToChannel(channel int, bytes []byte, msgt byte) (err error) {
+	m := msg.NewUDPWithoutSeq(msgt, bytes)
 	c.addToPendingChannel(channel, m)
 	c.pacingChan <- struct{}{}
 	return
@@ -299,12 +299,26 @@ func (c *UDPConn) writePendingMsgs() (err error) {
 		} else {
 			c.GetContextLogger().Debugf("resend msg seq %d", m.GetSeq())
 		}
-		pkgBytes := m.PkgBytes()
-		if !m.Directly {
+		var pkgBytes []byte
+		switch m.Type {
+		case msg.TYPE_NORMAL, msg.TYPE_RESP:
+			pkgBytes = m.GetCache()
+			if len(pkgBytes) == 0 {
+				pkgBytes = m.PkgBytes()
+				crypto := c.GetCrypto()
+				if crypto != nil {
+					err = crypto.Encrypt(pkgBytes[msg.PKG_HEADER_SIZE+msg.MSG_HEADER_END:])
+					if err != nil {
+						return
+					}
+				}
+				m.SetCache(pkgBytes)
+			}
 			err = c.WriteBytes(pkgBytes)
-		} else {
+		case msg.TYPE_REQ:
 			c.AddDirectlyHistory(m.GetSeq())
-			err = c.writeDirectly(pkgBytes)
+			pkgBytes = m.PkgBytes()
+			err = c.WriteBytes(pkgBytes)
 		}
 		if err != nil {
 			return err
@@ -391,12 +405,7 @@ func (c *UDPConn) Process(t byte, m []byte) (err error) {
 
 func (c *UDPConn) process(t byte, seq uint32, m []byte) (err error) {
 	switch t {
-	case msg.TYPE_NORMAL:
-		err = c.Ack(seq)
-		if err != nil {
-			return
-		}
-	case msg.TYPE_DIR:
+	case msg.TYPE_REQ:
 		if c.DirectlyHistoryLen() > 0 {
 			seq := c.RemoveDirectlyHistory()
 			err = c.delMsg(seq, false)
@@ -404,26 +413,55 @@ func (c *UDPConn) process(t byte, seq uint32, m []byte) (err error) {
 				return
 			}
 		}
-
+	case msg.TYPE_RESP:
+		if c.DirectlyHistoryLen() > 0 {
+			seq := c.RemoveDirectlyHistory()
+			err = c.delMsg(seq, false)
+			if err != nil {
+				return
+			}
+		}
+		fallthrough
+	case msg.TYPE_NORMAL:
+		err = c.Ack(seq)
+		if err != nil {
+			return
+		}
 	}
-	ok, ms := c.Push(seq, m)
+	ok, ms := c.Push(seq, msg.NewUDP(t, seq, m))
 	if ok {
 		if len(ms) < 1 {
 			return
 		}
 		for _, m := range ms {
-			c.In <- m
+			if m.Type != msg.TYPE_REQ {
+				c.GetContextLogger().Debugf("MustGetCrypto t %d seq %d \n%x", t, seq, m)
+				crypto := c.MustGetCrypto()
+				c.GetContextLogger().Debugf("MustGetCrypto out t %d seq %d", t, seq, m)
+				err = crypto.Decrypt(m.Body)
+				if err != nil {
+					return
+				}
+			}
+			c.In <- m.Body
 		}
 	}
 	return
 }
 
-func (c *UDPConn) WriteDirectly(bytes []byte) (err error) {
-	err = c.writeToChannel(0, bytes, true)
+func (c *UDPConn) WriteReq(bytes []byte) (err error) {
+	err = c.writeToChannel(0, bytes, msg.TYPE_REQ)
 	return
 }
 
-func (c *UDPConn) writeDirectly(bytes []byte) (err error) {
+func (c *UDPConn) WriteResp(bytes []byte) (err error) {
+	err = c.writeToChannel(0, bytes, msg.TYPE_RESP)
+	return
+}
+
+func (c *UDPConn) WriteBytes(bytes []byte) (err error) {
+	checksum := crc32.ChecksumIEEE(bytes[msg.PKG_CRC32_END:])
+	binary.BigEndian.PutUint32(bytes[msg.PKG_CRC32_BEGIN:], checksum)
 	l := len(bytes)
 	c.AddSentBytes(l)
 	n, err := c.UdpConn.WriteToUDP(bytes, c.addr)
@@ -434,14 +472,8 @@ func (c *UDPConn) writeDirectly(bytes []byte) (err error) {
 	return
 }
 
-func (c *UDPConn) WriteBytes(bytes []byte) (err error) {
-	if c.GetCrypto() != nil {
-		bytes, err = c.GetCrypto().Encrypt(bytes)
-		if err != nil {
-			return
-		}
-	}
-	err = c.writeDirectly(bytes)
+func (c *UDPConn) WriteExt(bytes []byte) (err error) {
+	err = c.WriteBytes(bytes)
 	return
 }
 
@@ -474,7 +506,7 @@ func (c *UDPConn) ack(seq uint32) error {
 
 	checksum := crc32.ChecksumIEEE(m)
 	binary.BigEndian.PutUint32(p[msg.PKG_CRC32_BEGIN:], checksum)
-	return c.WriteBytes(p)
+	return c.WriteExt(p)
 }
 
 func (c *UDPConn) RecvAck(m []byte) (err error) {
@@ -528,7 +560,7 @@ func (c *UDPConn) Ping() error {
 	binary.BigEndian.PutUint64(m[msg.PING_MSG_TIME_BEGIN:], msg.UnixMillisecond())
 	checksum := crc32.ChecksumIEEE(m)
 	binary.BigEndian.PutUint32(p[msg.PKG_CRC32_BEGIN:], checksum)
-	return c.WriteBytes(p)
+	return c.WriteExt(p)
 }
 
 func (c *UDPConn) GetNextSeq() uint32 {

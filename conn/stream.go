@@ -3,11 +3,12 @@ package conn
 import (
 	"github.com/google/btree"
 	"github.com/sirupsen/logrus"
+	"github.com/skycoin/net/msg"
 	"sync"
 )
 
 type streamQueue interface {
-	Push(k uint32, m []byte) (ok bool, msgs [][]byte)
+	Push(k uint32, m *msg.UDPMessage) (ok bool, msgs []*msg.UDPMessage)
 	Len() (s int)
 	GetNextAckSeq() (s uint32)
 	GetMissingSeqs(start, end uint32) (seqs []uint32)
@@ -27,14 +28,14 @@ func newStreamQueue() *defaultStreamQueue {
 
 type packet struct {
 	seq  uint32
-	data []byte
+	data *msg.UDPMessage
 }
 
 func (a packet) Less(b btree.Item) bool {
 	return a.seq < b.(packet).seq
 }
 
-func (q *defaultStreamQueue) Push(k uint32, m []byte) (ok bool, msgs [][]byte) {
+func (q *defaultStreamQueue) Push(k uint32, m *msg.UDPMessage) (ok bool, msgs []*msg.UDPMessage) {
 	defer func() {
 		logrus.Debugf("streamQueue push k %d return %t, len %d", k, ok, len(msgs))
 	}()
@@ -46,7 +47,7 @@ func (q *defaultStreamQueue) Push(k uint32, m []byte) (ok bool, msgs [][]byte) {
 	if k == q.ackedSeq+1 {
 		ok = true
 		if q.msgs.Len() < 1 {
-			msgs = [][]byte{m}
+			msgs = []*msg.UDPMessage{m}
 			q.ackedSeq = k
 			return
 		}
@@ -58,7 +59,7 @@ func (q *defaultStreamQueue) Push(k uint32, m []byte) (ok bool, msgs [][]byte) {
 	return
 }
 
-func (q *defaultStreamQueue) pop() (msgs [][]byte) {
+func (q *defaultStreamQueue) pop() (msgs []*msg.UDPMessage) {
 	for i := q.ackedSeq + 1; ; i++ {
 		min, ok := q.msgs.Min().(packet)
 		if !ok {
@@ -78,7 +79,7 @@ func (q *defaultStreamQueue) pop() (msgs [][]byte) {
 	return
 }
 
-func (q *defaultStreamQueue) push(k uint32, m []byte) {
+func (q *defaultStreamQueue) push(k uint32, m *msg.UDPMessage) {
 	q.msgs.ReplaceOrInsert(packet{
 		seq:  k,
 		data: m,
@@ -155,7 +156,7 @@ func (q *fecStreamQueue) _getNextAckSeq() (s uint32) {
 	return q._getDataShardSeq(q.ackedSeq + 1)
 }
 
-func (q *fecStreamQueue) Push(k uint32, m []byte) (ok bool, msgs [][]byte) {
+func (q *fecStreamQueue) Push(k uint32, m *msg.UDPMessage) (ok bool, msgs []*msg.UDPMessage) {
 	if (k-1)%q.shardSize >= q.dataShards {
 		return
 	}
@@ -170,7 +171,7 @@ func (q *fecStreamQueue) Push(k uint32, m []byte) (ok bool, msgs [][]byte) {
 	ok = true
 	if k == q._getNextAckSeq() {
 		if q.msgs.Len() < 1 {
-			msgs = [][]byte{m}
+			msgs = []*msg.UDPMessage{m}
 			q.ackedSeq = k
 			return
 		}
@@ -182,7 +183,7 @@ func (q *fecStreamQueue) Push(k uint32, m []byte) (ok bool, msgs [][]byte) {
 	return
 }
 
-func (q *fecStreamQueue) pop() (msgs [][]byte) {
+func (q *fecStreamQueue) pop() (msgs []*msg.UDPMessage) {
 	for i := q._getNextAckSeq(); ; i = q._getNextAckSeq() {
 		min, ok := q.msgs.Min().(packet)
 		if !ok {
@@ -202,7 +203,7 @@ func (q *fecStreamQueue) pop() (msgs [][]byte) {
 	return
 }
 
-func (q *fecStreamQueue) push(k uint32, m []byte) {
+func (q *fecStreamQueue) push(k uint32, m *msg.UDPMessage) {
 	q.msgs.ReplaceOrInsert(packet{
 		seq:  k,
 		data: m,

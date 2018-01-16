@@ -1,8 +1,11 @@
 package factory
 
 import (
+	"crypto/aes"
+	"crypto/rand"
 	"fmt"
 	"github.com/skycoin/skycoin/src/cipher"
+	"io"
 	"net"
 	"sync"
 )
@@ -79,14 +82,37 @@ func (req *appConn) Execute(f *MessengerFactory, conn *Connection) (r resp, err 
 	f.ForEachConn(func(connection *Connection) {
 		fromNode := connection.GetKey()
 		fromApp := conn.GetKey()
+		iv := make([]byte, aes.BlockSize)
+		if _, err = io.ReadFull(rand.Reader, iv); err != nil {
+			conn.GetContextLogger().Debugf("transport err %v", err)
+			return
+		}
 		tr := NewTransport(f, conn, fromNode, req.Node, fromApp, req.App)
+		tr.SetOnAcceptedUDPCallback(func(connection *Connection) {
+			sc := f.GetDefaultSeedConfig()
+			connection.GetContextLogger().Debugf("set crypto sc %v", sc)
+			if sc == nil {
+				connection.GetContextLogger().Debugf("tr sc is nil")
+			}
+			err := connection.SetCrypto(sc.publicKey, sc.secKey, req.Node, iv)
+			if err != nil {
+				connection.GetContextLogger().Debugf("set crypto err %v", err)
+			}
+		})
 		conn.GetContextLogger().Debugf("app conn create transport to %s", connection.GetRemoteAddr().String())
-		c, err := tr.ListenAndConnect(connection.GetRemoteAddr().String())
+		c, err := tr.ListenAndConnect(connection.GetRemoteAddr().String(), connection.GetTargetKey())
 		if err != nil {
 			conn.GetContextLogger().Debugf("transport err %v", err)
 			return
 		}
-		c.writeOP(OP_FORWARD_NODE_CONN, &forwardNodeConn{Node: req.Node, App: req.App, FromApp: fromApp, FromNode: fromNode})
+		nodeConn := &forwardNodeConn{
+			Node:     req.Node,
+			App:      req.App,
+			FromApp:  fromApp,
+			FromNode: fromNode,
+			Num:      iv,
+		}
+		c.writeOP(OP_FORWARD_NODE_CONN, nodeConn)
 		conn.setTransport(req.App, tr)
 		tr.SetupTimeout()
 	})
@@ -168,7 +194,7 @@ type buildConnResp buildConn
 // run on node A, conn is udp from node B
 func (req *buildConnResp) Execute(f *MessengerFactory, conn *Connection) (r resp, err error) {
 	conn.GetContextLogger().Debugf("buildConnResp %#v", req)
-	appConn, ok := f.GetConnection(req.FromApp)
+	appConn, ok := f.Parent.GetConnection(req.FromApp)
 	if !ok {
 		conn.GetContextLogger().Debugf("buildConnResp app %x not found", req.FromApp)
 		return
@@ -224,6 +250,7 @@ type forwardNodeConn struct {
 	App      cipher.PubKey
 	FromApp  cipher.PubKey
 	FromNode cipher.PubKey
+	Num      []byte
 }
 
 // run on manager, conn is udp conn from node A
@@ -239,6 +266,7 @@ func (req *forwardNodeConn) Execute(f *MessengerFactory, conn *Connection) (r re
 			FromNode: req.FromNode,
 			Failed:   true,
 			Msg:      PriorityMsg{Priority: NotFound, Msg: cause, Type: Failed},
+			Num:      req.Num,
 		})
 		return
 	}
@@ -251,6 +279,7 @@ func (req *forwardNodeConn) Execute(f *MessengerFactory, conn *Connection) (r re
 			App:      req.App,
 			FromApp:  req.FromApp,
 			FromNode: req.FromNode,
+			Num:      req.Num,
 		})
 	return
 }
@@ -263,6 +292,7 @@ type forwardNodeConnResp struct {
 	Failed   bool
 	Msg      PriorityMsg
 	Address  string
+	Num      []byte
 }
 
 // run on manager, conn is tcp/udp from node B
@@ -307,7 +337,7 @@ func (req *forwardNodeConnResp) Run(conn *Connection) (err error) {
 		return
 	}
 	if len(req.Address) > 0 {
-		err = tr.clientSideConnect(req.Address, conn.factory.GetDefaultSeedConfig())
+		err = tr.clientSideConnect(req.Address, conn.factory.GetDefaultSeedConfig(), req.Num)
 	}
 	return
 }
@@ -318,6 +348,7 @@ type buildConn struct {
 	App      cipher.PubKey
 	FromApp  cipher.PubKey
 	FromNode cipher.PubKey
+	Num      []byte
 }
 
 func (req *buildConn) Run(conn *Connection) (err error) {
@@ -351,13 +382,14 @@ func (req *buildConn) Run(conn *Connection) (err error) {
 				FromNode: req.FromNode,
 				Failed:   true,
 				Msg:      PriorityMsg{Priority: NotAllowed, Msg: cause, Type: Failed},
+				Num:      req.Num,
 			})
 			return
 		}
 	}
 
 	tr := NewTransport(conn.factory, appConn, req.FromNode, req.Node, req.FromApp, req.App)
-	connection, err := tr.ListenAndConnect(conn.GetRemoteAddr().String())
+	connection, err := tr.ListenAndConnect(conn.GetRemoteAddr().String(), conn.GetTargetKey())
 	if err != nil {
 		return
 	}
@@ -367,11 +399,12 @@ func (req *buildConn) Run(conn *Connection) (err error) {
 		FromApp:  req.FromApp,
 		FromNode: req.FromNode,
 		Msg:      PriorityMsg{Priority: Building, Msg: "building udp connection"},
+		Num:      req.Num,
 	})
 	if err != nil {
 		return
 	}
-	err = tr.serverSiceConnect(req.Address, s.Address, conn.factory.GetDefaultSeedConfig())
+	err = tr.serverSiceConnect(req.Address, s.Address, conn.factory.GetDefaultSeedConfig(), req.Num)
 	appConn.setTransport(req.FromApp, tr)
 	tr.SetupTimeout()
 	return

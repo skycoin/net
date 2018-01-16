@@ -17,7 +17,7 @@ const (
 )
 
 type TCPConn struct {
-	ConnCommonFields
+	*ConnCommonFields
 	*PendingMap
 	TcpConn net.Conn
 }
@@ -55,7 +55,7 @@ func (c *TCPConn) ReadLoop() (err error) {
 			n := msg.PING_MSG_HEADER_END
 			reader.Discard(n)
 			c.AddReceivedBytes(n)
-		case msg.TYPE_DIR:
+		case msg.TYPE_REQ, msg.TYPE_RESP:
 			err = c.ReadBytes(reader, header, msg.MSG_HEADER_SIZE)
 			if err != nil {
 				return err
@@ -140,12 +140,19 @@ func (c *TCPConn) Write(bytes []byte) error {
 	return c.WriteBytes(m.Bytes())
 }
 
-func (c *TCPConn) WriteDirectly(bytes []byte) error {
+func (c *TCPConn) WriteReq(bytes []byte) error {
 	s := atomic.AddUint32(&c.seq, 1)
-	m := msg.New(msg.TYPE_DIR, s, bytes)
+	m := msg.New(msg.TYPE_REQ, s, bytes)
 	c.AddMsg(s, m)
 	c.AddDirectlyHistory(s)
 	return c.writeDirectly(m.Bytes())
+}
+
+func (c *TCPConn) WriteResp(bytes []byte) error {
+	s := atomic.AddUint32(&c.seq, 1)
+	m := msg.New(msg.TYPE_RESP, s, bytes)
+	c.AddMsg(s, m)
+	return c.WriteBytes(m.Bytes())
 }
 
 func (c *TCPConn) writeDirectly(bytes []byte) (err error) {
@@ -163,8 +170,9 @@ func (c *TCPConn) writeDirectly(bytes []byte) (err error) {
 }
 
 func (c *TCPConn) WriteBytes(bytes []byte) (err error) {
-	if c.GetCrypto() != nil {
-		bytes, err = c.GetCrypto().Encrypt(bytes)
+	crypto := c.GetCrypto()
+	if crypto != nil {
+		err = crypto.Encrypt(bytes)
 		if err != nil {
 			return
 		}

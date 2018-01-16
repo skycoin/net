@@ -39,13 +39,6 @@ func (c *ClientUDPConn) ReadLoop() (err error) {
 		}
 		c.AddReceivedBytes(n)
 		maxBuf = maxBuf[:n]
-		crypto := c.GetCrypto()
-		if crypto != nil {
-			maxBuf, err = crypto.Decrypt(maxBuf)
-			if err != nil {
-				return err
-			}
-		}
 		m := maxBuf[msg.PKG_HEADER_SIZE:]
 		checksum := binary.BigEndian.Uint32(maxBuf[msg.PKG_CRC32_BEGIN:])
 		if checksum != crc32.ChecksumIEEE(m) {
@@ -61,7 +54,7 @@ func (c *ClientUDPConn) ReadLoop() (err error) {
 			if err != nil {
 				return err
 			}
-		case msg.TYPE_NORMAL, msg.TYPE_FEC, msg.TYPE_DIR:
+		case msg.TYPE_NORMAL, msg.TYPE_FEC, msg.TYPE_REQ, msg.TYPE_RESP:
 			err = c.Process(t, m)
 			if err != nil {
 				return err

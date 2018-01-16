@@ -64,7 +64,19 @@ func (c *ServerTCPConn) ReadLoop() (err error) {
 			if err != nil {
 				return err
 			}
-		case msg.TYPE_DIR:
+		case msg.TYPE_REQ:
+			err = c.ReadBytes(reader, header, msg.MSG_HEADER_SIZE)
+			if err != nil {
+				return err
+			}
+
+			m := msg.NewByHeader(header)
+			err = c.ReadBytes(reader, m.Body, int(m.Len))
+			if err != nil {
+				return err
+			}
+			c.In <- m.Body
+		case msg.TYPE_RESP:
 			err = c.ReadBytes(reader, header, msg.MSG_HEADER_SIZE)
 			if err != nil {
 				return err

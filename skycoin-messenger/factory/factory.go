@@ -28,6 +28,10 @@ type MessengerFactory struct {
 
 	defaultSeedConfig *SeedConfig
 
+	Parent *MessengerFactory
+	// on accepted callback
+	OnAcceptedUDPCallback func(connection *Connection)
+
 	fieldsMutex sync.RWMutex
 }
 
@@ -63,15 +67,18 @@ func (f *MessengerFactory) acceptedUDPCallback(connection *factory.Connection) {
 		conn = newUDPServerConnection(connection, f)
 	}
 	conn.SetContextLogger(conn.GetContextLogger().WithField("app", "messenger"))
-	defer func() {
-		if e := recover(); e != nil {
-			conn.GetContextLogger().Errorf("acceptedUDPCallback recover err %v", e)
-		}
-		if err != nil {
-			conn.GetContextLogger().Errorf("acceptedUDPCallback err %v", err)
-		}
-		conn.Close()
-	}()
+	//defer func() {
+	//	if e := recover(); e != nil {
+	//		conn.GetContextLogger().Errorf("acceptedUDPCallback recover err %v", e)
+	//	}
+	//	if err != nil {
+	//		conn.GetContextLogger().Errorf("acceptedUDPCallback err %v", err)
+	//	}
+	//	conn.Close()
+	//}()
+	if f.OnAcceptedUDPCallback != nil {
+		f.OnAcceptedUDPCallback(conn)
+	}
 	err = f.callbackLoop(conn)
 	if err == ErrDetach {
 		err = nil
@@ -226,17 +233,25 @@ func (f *MessengerFactory) loadSeedConfig(config *ConnConfig) (key cipher.PubKey
 	}
 	if sc == nil {
 		err = fmt.Errorf("failed to load seed config %#v", config)
+		return
 	}
 	key = sc.publicKey
 	secKey = sc.secKey
 	return
 }
 
-func (f *MessengerFactory) SetDefaultSeedConfig(path string) error {
+func (f *MessengerFactory) SetDefaultSeedConfigPath(path string) error {
 	sc, err := ReadOrCreateSeedConfig(path)
 	if err != nil {
 		return err
 	}
+	f.fieldsMutex.Lock()
+	f.defaultSeedConfig = sc
+	f.fieldsMutex.Unlock()
+	return nil
+}
+
+func (f *MessengerFactory) SetDefaultSeedConfig(sc *SeedConfig) error {
 	f.fieldsMutex.Lock()
 	f.defaultSeedConfig = sc
 	f.fieldsMutex.Unlock()
@@ -297,7 +312,11 @@ func (f *MessengerFactory) ConnectWithConfig(address string, config *ConnConfig)
 		key, secKey, err = f.loadSeedConfig(config)
 		if err == nil {
 			conn.SetSecKey(secKey)
-			err = conn.RegWithKey(key, config.Context)
+			if config.TargetKey != EMPATY_PUBLIC_KEY {
+				err = conn.RegWithKeys(key, config.TargetKey, config.Context)
+			} else {
+				err = conn.RegWithKey(key, config.Context)
+			}
 		} else {
 			conn.GetContextLogger().Error(err)
 			err = conn.Reg()
@@ -306,22 +325,34 @@ func (f *MessengerFactory) ConnectWithConfig(address string, config *ConnConfig)
 		err = conn.Reg()
 	}
 
+	if err != nil {
+		return
+	}
+	err = conn.WaitForKey()
 	return
 }
 
-func (f *MessengerFactory) connectUDPWithConfig(address string, config *ConnConfig) (connection *Connection, err error) {
+func (f *MessengerFactory) listenForUDP() (err error) {
 	f.fieldsMutex.Lock()
 	if f.udp == nil {
 		ff := factory.NewUDPFactory()
-		if config != nil && config.Creator != nil {
-			ff.AcceptedCallback = config.Creator.acceptedUDPCallback
-		}
+		ff.AcceptedCallback = f.acceptedUDPCallback
 		err = ff.Listen(":0")
 		if err != nil {
 			f.fieldsMutex.Unlock()
 			return
 		}
 		f.udp = ff
+	}
+	f.fieldsMutex.Unlock()
+	return
+}
+
+func (f *MessengerFactory) connectUDPWithConfig(address string, config *ConnConfig) (connection *Connection, err error) {
+	f.fieldsMutex.Lock()
+	if f.udp == nil {
+		err = errors.New("udp is nil")
+		return
 	}
 	f.fieldsMutex.Unlock()
 	c, err := f.udp.ConnectAfterListen(address)
@@ -332,6 +363,7 @@ func (f *MessengerFactory) connectUDPWithConfig(address string, config *ConnConf
 		panic("c == nil")
 	}
 	connection = newUDPClientConnection(c, f)
+	connection.SetContextLogger(connection.GetContextLogger().WithField("app", "transport"))
 	if config != nil {
 		if config.Creator != nil {
 			connection.factory = config.Creator
@@ -342,19 +374,13 @@ func (f *MessengerFactory) connectUDPWithConfig(address string, config *ConnConf
 			key, secKey, err = f.loadSeedConfig(config)
 			if err == nil {
 				connection.SetSecKey(secKey)
-				err = connection.RegWithKey(key, config.Context)
-				if err != nil {
-					return
+				if config.TargetKey != EMPATY_PUBLIC_KEY {
+					err = connection.RegWithKeys(key, config.TargetKey, config.Context)
+				} else {
+					err = connection.RegWithKey(key, config.Context)
 				}
-			} else {
-				return
+				err = connection.WaitForKey()
 			}
-		}
-	}
-	connection.SetContextLogger(connection.GetContextLogger().WithField("app", "transport"))
-	if config != nil {
-		if config.OnConnected != nil {
-			config.OnConnected(connection)
 		}
 	}
 	return
@@ -363,16 +389,8 @@ func (f *MessengerFactory) connectUDPWithConfig(address string, config *ConnConf
 func (f *MessengerFactory) acceptUDPWithConfig(address string, config *ConnConfig) (connection *Connection, err error) {
 	f.fieldsMutex.Lock()
 	if f.udp == nil {
-		ff := factory.NewUDPFactory()
-		if config != nil && config.Creator != nil {
-			ff.AcceptedCallback = config.Creator.acceptedUDPCallback
-		}
-		err = ff.Listen(":0")
-		if err != nil {
-			f.fieldsMutex.Unlock()
-			return
-		}
-		f.udp = ff
+		err = errors.New("udp is nil")
+		return
 	}
 	f.fieldsMutex.Unlock()
 	c, err := f.udp.ConnectAfterListen(address)
@@ -385,11 +403,6 @@ func (f *MessengerFactory) acceptUDPWithConfig(address string, config *ConnConfi
 	connection = newUDPServerConnection(c, f)
 	go f.udp.AcceptedCallback(c)
 	connection.SetContextLogger(connection.GetContextLogger().WithField("app", "transport"))
-	if config != nil {
-		if config.OnConnected != nil {
-			config.OnConnected(connection)
-		}
-	}
 	return
 }
 
@@ -420,7 +433,7 @@ func (f *MessengerFactory) ForEachConn(fn func(connection *Connection)) {
 			return
 		}
 		if !c.IsKeySet() {
-			return
+			c.GetKey()
 		}
 		fn(c)
 	})

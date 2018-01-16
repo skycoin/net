@@ -25,10 +25,10 @@ func NewServerUDPConn(c *net.UDPConn) *ServerUDPConn {
 
 func (c *ServerUDPConn) ReadLoop(fn func(c *net.UDPConn, addr *net.UDPAddr) *conn.UDPConn) (err error) {
 	defer func() {
-		if e := recover(); e != nil {
-			c.GetContextLogger().Debug(e)
-			err = fmt.Errorf("readloop panic err:%v", e)
-		}
+		//if e := recover(); e != nil {
+		//	c.GetContextLogger().Debug(e)
+		//	err = fmt.Errorf("readloop panic err:%v", e)
+		//}
 		if err != nil {
 			c.SetStatusToError(err)
 		}
@@ -61,13 +61,6 @@ func (c *ServerUDPConn) ReadLoop(fn func(c *net.UDPConn, addr *net.UDPAddr) *con
 		c.AddReceivedBytes(n)
 		maxBuf = maxBuf[:n]
 		cc := fn(c.UdpConn, addr)
-		crypto := cc.GetCrypto()
-		if crypto != nil {
-			maxBuf, err = crypto.Decrypt(maxBuf)
-			if err != nil {
-				return err
-			}
-		}
 		m := maxBuf[msg.PKG_HEADER_SIZE:]
 		checksum := binary.BigEndian.Uint32(maxBuf[msg.PKG_CRC32_BEGIN:])
 		if checksum != crc32.ChecksumIEEE(m) {
@@ -111,26 +104,26 @@ func (c *ServerUDPConn) ReadLoop(fn func(c *net.UDPConn, addr *net.UDPAddr) *con
 				m[msg.PING_MSG_TYPE_BEGIN] = msg.TYPE_PONG
 				checksum := crc32.ChecksumIEEE(m)
 				binary.BigEndian.PutUint32(maxBuf[msg.PKG_CRC32_BEGIN:], checksum)
-				err = cc.WriteBytes(maxBuf)
+				err = cc.WriteExt(maxBuf)
 				if err != nil {
 					return
 				}
 				cc.GetContextLogger().Debugf("pong")
 			}()
-		case msg.TYPE_NORMAL, msg.TYPE_FEC, msg.TYPE_DIR:
+		case msg.TYPE_NORMAL, msg.TYPE_FEC, msg.TYPE_REQ, msg.TYPE_RESP:
 			nt = time.Now()
 			func() {
 				var err error
-				defer func() {
-					if e := recover(); e != nil {
-						cc.GetContextLogger().Debug(e)
-						err = fmt.Errorf("readloop panic err:%v", e)
-					}
-					if err != nil {
-						cc.SetStatusToError(err)
-						cc.Close()
-					}
-				}()
+				//defer func() {
+				//	if e := recover(); e != nil {
+				//		cc.GetContextLogger().Debug(e)
+				//		err = fmt.Errorf("readloop panic err:%v", e)
+				//	}
+				//	if err != nil {
+				//		cc.SetStatusToError(err)
+				//		cc.Close()
+				//	}
+				//}()
 				err = cc.Process(t, m)
 				if err != nil {
 					return
