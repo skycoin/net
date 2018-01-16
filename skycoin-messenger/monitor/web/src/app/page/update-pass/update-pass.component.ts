@@ -15,12 +15,15 @@ export class UpdatePassComponent implements OnInit {
     oldpass: new FormControl('', [Validators.required, Validators.minLength(4), Validators.maxLength(20)]),
     newpass: new FormControl('', [Validators.required, Validators.minLength(4), Validators.maxLength(20)]),
   });
+  status = 0;
   constructor(private api: ApiService, private router: Router) { }
 
   ngOnInit() {
     this.api.checkLogin().subscribe(result => {
-      console.log('update password status: ', result);
     });
+  }
+  init() {
+    this.status = 0;
   }
   update(ev: Event) {
     ev.stopImmediatePropagation();
@@ -33,6 +36,8 @@ export class UpdatePassComponent implements OnInit {
       if (result) {
         this.router.navigate([{ outlets: { user: ['login'] } }]);
       }
+    }, err => {
+      this.status = 1;
     });
   }
 }
