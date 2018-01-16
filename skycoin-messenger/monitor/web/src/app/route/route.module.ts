@@ -2,25 +2,27 @@ import { NgModule } from '@angular/core';
 import { Routes, RouterModule } from '@angular/router';
 import { DashboardComponent, SubStatusComponent, LoginComponent, UpdatePassComponent } from '../page';
 
+
+const home = {
+  path: '',
+  component: DashboardComponent,
+  pathMatch: 'full'
+};
+const node = {
+  path: 'node',
+  component: SubStatusComponent
+};
+const login = {
+  path: 'login',
+  component: LoginComponent,
+  outlet: 'user'
+};
+const update = {
+  path: 'updatePass',
+  component: UpdatePassComponent,
+};
 const routes: Routes = [
-  {
-    path: '',
-    component: DashboardComponent,
-    pathMatch: 'full'
-  },
-  {
-    path: 'node',
-    component: SubStatusComponent
-  },
-  {
-    path: 'login',
-    component: LoginComponent,
-    outlet: 'user'
-  },
-  {
-    path: 'updatePass',
-    component: UpdatePassComponent,
-  },
+  home, node, login, update,
   { path: '**', redirectTo: '' },
 ];
 

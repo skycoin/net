@@ -14,9 +14,13 @@ export class LoginComponent implements OnInit {
   loginForm = new FormGroup({
     pass: new FormControl('', [Validators.required, Validators.minLength(4), Validators.maxLength(20)]),
   });
+  status = 0;
   constructor(private api: ApiService, private router: Router) { }
 
   ngOnInit() {
+  }
+  init() {
+    this.status = 0;
   }
   login(ev: Event) {
     ev.stopImmediatePropagation();
@@ -28,6 +32,8 @@ export class LoginComponent implements OnInit {
       if (result) {
         this.router.navigate(['']);
       }
+    }, err => {
+      this.status = 1;
     });
   }
 }
