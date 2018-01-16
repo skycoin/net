@@ -1,6 +1,6 @@
 import { NgModule } from '@angular/core';
 import { Routes, RouterModule } from '@angular/router';
-import { DashboardComponent, SubStatusComponent } from '../page';
+import { DashboardComponent, SubStatusComponent, LoginComponent, UpdatePassComponent } from '../page';
 
 const routes: Routes = [
   {
@@ -11,6 +11,15 @@ const routes: Routes = [
   {
     path: 'node',
     component: SubStatusComponent
+  },
+  {
+    path: 'login',
+    component: LoginComponent,
+    outlet: 'user'
+  },
+  {
+    path: 'updatePass',
+    component: UpdatePassComponent,
   },
   { path: '**', redirectTo: '' },
 ];

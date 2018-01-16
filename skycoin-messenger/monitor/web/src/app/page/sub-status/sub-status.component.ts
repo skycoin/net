@@ -101,6 +101,7 @@ export class SubStatusComponent implements OnInit, OnDestroy {
   showMsgs: Array<MessageItem> = [];
   dialogMode = '';
   autoStart: AutoStartConfig = null;
+  dev = true;
   constructor(
     private router: Router,
     private route: ActivatedRoute,

@@ -18,7 +18,7 @@
     <div class="item" style="margin:1.5rem 0;">
       <div class="item-content text-center">
         <strong>Recharge Address:</strong>
-        <span class="address">2JkY7RnTT14A3n6ZAt68526b4331a8GPX72</span>
+        <span class="address">{{address}}</span>
         <!--  matTooltip="Get New Address!" -->
         <mat-icon>refresh</mat-icon>
         <mat-icon aria-label="content_copy" clipboard clipboardText="2JkY7RnTT14A3n6ZAt68526b4331a8GPX72" matTooltipDisabled matTooltip="Copy"
@@ -49,7 +49,7 @@
             </td>
           </tr> -->
           <tr *ngIf="records?.length === 0" style="border-bottom:0;">
-            <td colspan="5" class="text-center">No Found Any Recharge Records</td>
+            <td colspan="5" class="text-center">Nop Recharge Records</td>
           </tr>
         </tbody>
       </table>

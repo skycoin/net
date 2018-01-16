@@ -18,7 +18,24 @@ import (
 	"strconv"
 	"sync"
 	"time"
+	"github.com/astaxie/beego/session"
 )
+
+var globalSessions *session.Manager
+
+func init() {
+	sessionConfig := &session.ManagerConfig{
+		CookieName:      "SWSId",
+		EnableSetCookie: true,
+		Gclifetime:      3600,
+		Maxlifetime:     3600,
+		Secure:          false,
+		CookieLifeTime:  3600,
+		ProviderConfig:  "./tmp",
+	}
+	globalSessions, _ = session.NewManager("memory", sessionConfig)
+	go globalSessions.GC()
+}
 
 type Conn struct {
 	Key         string `json:"key"`
@@ -87,6 +104,9 @@ func (m *Monitor) Start(webDir string) {
 	http.HandleFunc("/conn/removeClientConnection", bundle(m.RemoveClientConnection))
 	http.HandleFunc("/conn/editClientConnection", bundle(m.EditClientConnection))
 	http.HandleFunc("/conn/getClientConnection", bundle(m.GetClientConnection))
+	http.HandleFunc("/login", bundle(m.Login))
+	http.HandleFunc("/checkLogin", bundle(m.checkLogin))
+	http.HandleFunc("/updatePass", bundle(m.UpdatePass))
 	http.HandleFunc("/node", bundle(requestNode))
 	http.HandleFunc("/term", m.handleNodeTerm)
 	go func() {
@@ -136,6 +156,9 @@ func requestNode(w http.ResponseWriter, r *http.Request) (result []byte, err err
 }
 
 func (m *Monitor) getAllNode(w http.ResponseWriter, r *http.Request) (result []byte, err error, code int) {
+	if !verifyLogin(w, r) {
+		return
+	}
 	cs := make([]Conn, 0)
 	m.factory.ForEachAcceptedConnection(func(key cipher.PubKey, conn *factory.Connection) {
 		now := time.Now().Unix()
@@ -161,6 +184,9 @@ func (m *Monitor) getAllNode(w http.ResponseWriter, r *http.Request) (result []b
 }
 
 func (m *Monitor) getNode(w http.ResponseWriter, r *http.Request) (result []byte, err error, code int) {
+	if !verifyLogin(w, r) {
+		return
+	}
 	if r.Method != "POST" {
 		code = BAD_REQUEST
 		err = errors.New("please use post method")
@@ -219,6 +245,9 @@ type Config struct {
 }
 
 func (m *Monitor) setNodeConfig(w http.ResponseWriter, r *http.Request) (result []byte, err error, code int) {
+	if !verifyLogin(w, r) {
+		return
+	}
 	if r.Method != "POST" {
 		code = BAD_REQUEST
 		err = errors.New("please use post method")
@@ -239,6 +268,9 @@ func (m *Monitor) setNodeConfig(w http.ResponseWriter, r *http.Request) (result 
 }
 
 func (m *Monitor) getNodeConfig(w http.ResponseWriter, r *http.Request) (result []byte, err error, code int) {
+	if !verifyLogin(w, r) {
+		return
+	}
 	if r.Method != "POST" {
 		code = BAD_REQUEST
 		err = errors.New("please use post method")
@@ -277,6 +309,9 @@ var socketClient = filepath.Join(file.UserHome(), ".skywire", "manager", "socket
 var clientLimit = 5
 
 func (m *Monitor) SaveClientConnection(w http.ResponseWriter, r *http.Request) (result []byte, err error, code int) {
+	if !verifyLogin(w, r) {
+		return
+	}
 	data := r.FormValue("data")
 	path := r.FormValue("client")
 	config := ClientConnection{}
@@ -320,6 +355,9 @@ func (m *Monitor) SaveClientConnection(w http.ResponseWriter, r *http.Request) (
 }
 
 func (m *Monitor) GetClientConnection(w http.ResponseWriter, r *http.Request) (result []byte, err error, code int) {
+	if !verifyLogin(w, r) {
+		return
+	}
 	client := r.FormValue("client")
 	switch client {
 	case "ssh":
@@ -334,6 +372,9 @@ func (m *Monitor) GetClientConnection(w http.ResponseWriter, r *http.Request) (r
 }
 
 func (m *Monitor) RemoveClientConnection(w http.ResponseWriter, r *http.Request) (result []byte, err error, code int) {
+	if !verifyLogin(w, r) {
+		return
+	}
 	path := r.FormValue("client")
 	index, err := strconv.Atoi(r.FormValue("index"))
 	if err != nil {
@@ -354,6 +395,9 @@ func (m *Monitor) RemoveClientConnection(w http.ResponseWriter, r *http.Request)
 }
 
 func (m *Monitor) EditClientConnection(w http.ResponseWriter, r *http.Request) (result []byte, err error, code int) {
+	if !verifyLogin(w, r) {
+		return
+	}
 	path := r.FormValue("client")
 	label := r.FormValue("label")
 	index, err := strconv.Atoi(r.FormValue("index"))
@@ -417,6 +461,9 @@ var upgrader = websocket.Upgrader{
 }
 
 func (m *Monitor) handleNodeTerm(w http.ResponseWriter, r *http.Request) {
+	if !verifyLogin(w, r) {
+		return
+	}
 	url := r.URL.Query()["url"][0]
 	if len(url) <= 0 {
 		log.Errorf("url is: %s", url)
@@ -463,4 +510,95 @@ func (m *Monitor) handleNodeTerm(w http.ResponseWriter, r *http.Request) {
 			c.WriteMessage(messageType, p)
 		}
 	}()
+}
+
+var userPath = filepath.Join(file.UserHome(), ".skywire", "manager", "user.json")
+
+func (m *Monitor) checkLogin(w http.ResponseWriter, r *http.Request) (result []byte, err error, code int) {
+	if !verifyLogin(w, r) {
+		return
+	}
+	result = []byte("true")
+	return
+}
+
+func (m *Monitor) Login(w http.ResponseWriter, r *http.Request) (result []byte, err error, code int) {
+	sess, _ := globalSessions.SessionStart(w, r)
+	defer sess.SessionRelease(w)
+	pass := r.FormValue("pass")
+	if len(pass) < 4 || len(pass) > 20 {
+		result = []byte("false")
+		return
+	}
+	err = checkPass(pass)
+	if err != nil {
+		result = []byte("false")
+		return
+	}
+	err = sess.Set("user", sess.SessionID())
+	if err != nil {
+		return
+	}
+	err = sess.Set("pass", getBcrypt(sess.SessionID()))
+	if err != nil {
+		return
+	}
+	result = []byte("true")
+	return
+}
+func (m *Monitor) UpdatePass(w http.ResponseWriter, r *http.Request) (result []byte, err error, code int) {
+	if !verifyLogin(w, r) {
+		return
+	}
+	oldPass := r.FormValue("oldPass")
+	newPass := r.FormValue("newPass")
+	if len(oldPass) < 4 || len(oldPass) > 20 {
+		result = []byte("false")
+		return
+	}
+	if len(newPass) < 4 || len(newPass) > 20 {
+		result = []byte("false")
+		return
+	}
+	err = checkPass(oldPass)
+	if err != nil {
+		return
+	}
+	data, err := json.Marshal(&User{Pass: getBcrypt(newPass)})
+	if err != nil {
+		return
+	}
+	err = WriteConfig(data, userPath)
+	if err != nil {
+		return
+	}
+	globalSessions.SessionDestroy(w, r)
+	result = []byte("true")
+	return
+}
+
+func verifyLogin(w http.ResponseWriter, r *http.Request) bool {
+	sess, _ := globalSessions.SessionStart(w, r)
+	defer sess.SessionRelease(w)
+	pass := sess.Get("user")
+	if pass == nil {
+		http.Error(w, "Unauthorized", http.StatusFound)
+		return false
+	}
+	hash := sess.Get("pass")
+	if pass == nil {
+		http.Error(w, "Unauthorized", http.StatusFound)
+		return false
+	}
+	hashStr, ok := hash.(string)
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusFound)
+		return false
+	}
+	passStr, ok := pass.(string)
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusFound)
+		return false
+	}
+	return matchPassword(hashStr, passStr)
 }

@@ -106,7 +106,7 @@
           </button>
         </p>
       </mat-grid-tile>
-      <mat-grid-tile>
+      <mat-grid-tile *ngIf="!dev">
         <p class="status-box-item-title">
           <small>wallet</small>
           <!-- <mat-icon class="icon-pointer" (click)="discoveriesStatus($event,discoveryStatus)">info</mat-icon> -->

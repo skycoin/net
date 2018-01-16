@@ -1,5 +1,6 @@
 import { Component, OnInit, ViewChild } from '@angular/core';
 import { MatIconRegistry, MatTooltip } from '@angular/material';
+import { ApiService, WalletAddress } from '../../service';
 
 @Component({
   selector: 'app-wallet',
@@ -9,14 +10,43 @@ import { MatIconRegistry, MatTooltip } from '@angular/material';
 
 export class WalletComponent implements OnInit {
   @ViewChild('copyTooltip') tooltip: MatTooltip;
-  key = 'Unknown';
+  key = '';
   balance = '0.00000';
+  address = '**********************************';
   records = [];
-  constructor(private icon: MatIconRegistry) {
+  constructor(private icon: MatIconRegistry, private api: ApiService) {
   }
 
   ngOnInit() {
     this.icon.registerFontClassAlias('fa');
+    this.getWalletAddress();
+  }
+  getWalletAddress() {
+    if (this.key) {
+      const data = new FormData();
+      data.append('pk', this.key);
+      this.api.getWalletNewAddress(data).subscribe((info: WalletAddress) => {
+        console.log('new address:', info);
+        if (info) {
+          // TODO Code 0 or 1
+          this.address = info.address;
+          this.getWalletInfo();
+        }
+      });
+    }
+  }
+  getWalletInfo() {
+    if (this.key) {
+      const data = new FormData();
+      data.append('pk', this.key);
+      this.api.getWalletInfo(data).subscribe((info) => {
+        console.log('get info:', info);
+        if (info) {
+          // TODO Code 0 or 1
+          this.balance = info.count;
+        }
+      });
+    }
   }
   copy(result: boolean) {
     if (result) {
