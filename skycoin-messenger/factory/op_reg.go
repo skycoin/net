@@ -74,7 +74,6 @@ func (resp *regResp) Run(conn *Connection) (err error) {
 const (
 	publicKey = iota
 	randomBytes
-	targetPublicKey
 )
 
 type RegVersion int
@@ -153,7 +152,7 @@ func (resp *regWithKeyResp) Run(conn *Connection) (err error) {
 		}
 		tpk := resp.PublicKey
 		t := conn.GetTargetKey()
-		if k != EMPATY_PUBLIC_KEY {
+		if t != EMPATY_PUBLIC_KEY && t != tpk {
 			tpk = t
 		}
 		err = conn.SetCrypto(pk, conn.GetSecKey(), tpk, resp.Num)
