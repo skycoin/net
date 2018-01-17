@@ -559,6 +559,11 @@ func (c *Connection) GetAppFeedback() *AppFeedback {
 }
 
 func (c *Connection) SetCrypto(pk cipher.PubKey, sk cipher.SecKey, target cipher.PubKey, iv []byte) (err error) {
+	c.fieldsMutex.Lock()
+	defer c.fieldsMutex.Unlock()
+	if c.Connection.GetCrypto() != nil {
+		return
+	}
 	crypto := conn.NewCrypto(pk, sk)
 	err = crypto.SetTargetKey(target)
 	if err != nil {

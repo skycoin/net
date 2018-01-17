@@ -435,10 +435,10 @@ func (c *UDPConn) process(t byte, seq uint32, m []byte) (err error) {
 		}
 		for _, m := range ms {
 			if m.Type != msg.TYPE_REQ {
-				c.GetContextLogger().Debugf("MustGetCrypto t %d seq %d \n%x", t, seq, m)
+				c.GetContextLogger().Debugf("MustGetCrypto t %d seq %d \n%x", t, seq, m.Body)
 				crypto := c.MustGetCrypto()
-				c.GetContextLogger().Debugf("MustGetCrypto out t %d seq %d", t, seq, m)
 				err = crypto.Decrypt(m.Body)
+				c.GetContextLogger().Debugf("MustGetCrypto out t %d seq %d \n%x", t, seq, m.Body)
 				if err != nil {
 					return
 				}
@@ -473,7 +473,13 @@ func (c *UDPConn) WriteBytes(bytes []byte) (err error) {
 }
 
 func (c *UDPConn) WriteExt(bytes []byte) (err error) {
-	err = c.WriteBytes(bytes)
+	l := len(bytes)
+	c.AddSentBytes(l)
+	n, err := c.UdpConn.WriteToUDP(bytes, c.addr)
+	c.GetContextLogger().Debugf("write out %x", bytes)
+	if err == nil && n != l {
+		return errors.New("nothing was written")
+	}
 	return
 }
 
