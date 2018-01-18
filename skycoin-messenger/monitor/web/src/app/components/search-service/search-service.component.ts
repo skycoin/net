@@ -20,7 +20,7 @@ export class SearchServiceComponent implements OnInit {
   searchStr = '';
   nodeAddr = '';
   seqs = [];
-  timeOut = 15;
+  timeOut = 10;
   resultTask: Subscription = null;
   totalResults: Array<Search> = [];
   results: Array<Search> = [];
@@ -101,6 +101,9 @@ export class SearchServiceComponent implements OnInit {
         });
     }
   }
+  trackByKey(index, app) {
+    return app ? app.key : undefined;
+  }
   sort() {
     this.totalResults.sort((v1, v2) => {
       if (v1.seq < v2.seq) {
@@ -130,7 +133,6 @@ export class SearchServiceComponent implements OnInit {
     }
     if (this.totalResults.length === 0) {
       this.totalResults = this.totalResults.concat(results);
-      console.log('total:', this.totalResults);
       return;
     }
   }

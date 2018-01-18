@@ -290,7 +290,7 @@
     <ng-container matColumnDef="action">
       <mat-header-cell *matHeaderCellDef></mat-header-cell>
       <mat-cell *matCellDef="let data">
-        <mat-icon class="icon-btn" (click)="closeApp($event,data?.key)">clear</mat-icon>
+        <mat-icon class="icon-btn" (click)="closeApp($event,data?.attributes[0])">clear</mat-icon>
       </mat-cell>
     </ng-container>
     <mat-header-row *matHeaderRowDef="displayedColumns"></mat-header-row>

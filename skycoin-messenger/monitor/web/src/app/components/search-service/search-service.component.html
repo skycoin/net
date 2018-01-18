@@ -15,11 +15,11 @@
     <tbody>
       <ng-container *ngFor="let result of results">
         <ng-container *ngFor="let item of result?.result | iterable">
-          <tr *ngFor="let app of item?.value">
+          <tr *ngFor="let app of item?.value;trackBy: trackByKey">
             <td class="key">{{item?.key}}</td>
             <td class="key">{{app}}</td>
             <td>
-              <button mat-raised-button color="primary" (click)="connectSocket(result?.result?.node_key,app)">connect</button>
+              <button mat-raised-button color="primary" (click)="connectSocket(item?.key,app)">connect</button>
             </td>
           </tr>
         </ng-container>
