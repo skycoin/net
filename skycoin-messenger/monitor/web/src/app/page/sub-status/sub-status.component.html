@@ -276,15 +276,21 @@
       <mat-cell *matCellDef="let i = index" [style.flex]="'0 0 3rem'"> {{i + 1}} </mat-cell>
     </ng-container>
     <ng-container matColumnDef="key">
-      <mat-header-cell *matHeaderCellDef [style.flex]="'0 0 35rem'"> Key </mat-header-cell>
+      <mat-header-cell *matHeaderCellDef [style.flex]="'0 0 35rem'"> key </mat-header-cell>
       <mat-cell *matCellDef="let data" [style.flex]="'0 0 35rem'"> {{data.key}} </mat-cell>
     </ng-container>
     <ng-container matColumnDef="app">
-      <mat-header-cell *matHeaderCellDef> Apps </mat-header-cell>
+      <mat-header-cell *matHeaderCellDef> app </mat-header-cell>
       <mat-cell *matCellDef="let data">
         <mat-chip-list>
           <mat-chip class="chip-success" *ngFor="let app of data?.attributes">{{app}}</mat-chip>
         </mat-chip-list>
+      </mat-cell>
+    </ng-container>
+    <ng-container matColumnDef="action">
+      <mat-header-cell *matHeaderCellDef></mat-header-cell>
+      <mat-cell *matCellDef="let data">
+        <mat-icon class="icon-btn" (click)="closeApp($event,data?.key)">clear</mat-icon>
       </mat-cell>
     </ng-container>
     <mat-header-row *matHeaderRowDef="displayedColumns"></mat-header-row>
@@ -558,7 +564,11 @@
   <form [formGroup]="configForm" class="setting-box">
     <mat-form-field style="width: 100%">
       <textarea matInput placeholder="Input discovery addresses" rows="5" formControlName="DiscoveryAddresses"></textarea>
-      <mat-hint align="start" class="hint-text">Multiple public keys are separated by commas</mat-hint>
+      <mat-hint align="start" class="hint-text">
+        <span> (Format for: www.xxx.xx:xxxx</span>
+        <strong>-</strong>
+        <span>xxxxxxxxx).Multiple public keys are separated by commas</span>
+      </mat-hint>
     </mat-form-field>
     <section class="auto-setting-box">
       <p class="title item">Automatic startup</p>

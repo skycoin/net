@@ -1,4 +1,4 @@
-import { Component, OnInit, ViewEncapsulation, OnDestroy } from '@angular/core';
+import { Component, OnInit, ViewEncapsulation, OnDestroy, ViewChild } from '@angular/core';
 import { ApiService, Conn, ConnData, ConnsResponse, UserService } from '../../service';
 import { DataSource } from '@angular/cdk/collections';
 import { Observable } from 'rxjs/Observable';
@@ -19,18 +19,16 @@ import { Subject } from 'rxjs/Subject';
 export class DashboardComponent implements OnInit, OnDestroy {
   displayedColumns = ['index', 'label', 'status', 'key', 'seen'];
   dataSource: ConnDataSource | null;
-  _database = new ConnDatabase(this.api);
+  _database: ConnDatabase | null;
   labelObj = null;
+  discoveryPubKey = '';
   constructor(private api: ApiService, private snackBar: MatSnackBar, private router: Router, private user: UserService) { }
   ngOnInit() {
+    this._database = new ConnDatabase(this.api);
     this.dataSource = new ConnDataSource(this._database);
     this.labelObj = this.user.get(this.user.HOMENODELABLE);
-    // const data = new FormData();
-    // data.append('client', 'ssh');
-    // this.api.getClientConnection(data).subscribe(res => {
-    //   console.log('get connection:', res);
-    // });
   }
+
   ngOnDestroy() {
     this.close();
   }
@@ -80,7 +78,9 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.router.navigate(['node'], { queryParams: { key: conn.key } });
   }
   close() {
-    this._database.close();
+    if (this._database) {
+      this._database.close();
+    }
   }
 }
 

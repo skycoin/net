@@ -2,6 +2,7 @@ import { Component, OnInit, ViewEncapsulation } from '@angular/core';
 import { FormControl, FormGroup, Validators } from '@angular/forms';
 import { ApiService } from '../../service';
 import { Router } from '@angular/router';
+import swal from 'sweetalert2';
 
 @Component({
   selector: 'app-updatepass-page',
@@ -34,7 +35,15 @@ export class UpdatePassComponent implements OnInit {
     data.append('newPass', this.updateForm.get('newpass').value);
     this.api.updatePass(data).subscribe(result => {
       if (result) {
-        this.router.navigate([{ outlets: { user: ['login'] } }]);
+        swal({
+          title: 'Warning',
+          text: 'The password has been changed. Click the button to jump to the login page.',
+          type: 'warning',
+          allowOutsideClick: false,
+          allowEscapeKey: false
+        }).then(() => {
+          this.router.navigate([{ outlets: { user: ['login'] } }]);
+        });
       }
     }, err => {
       this.status = 1;

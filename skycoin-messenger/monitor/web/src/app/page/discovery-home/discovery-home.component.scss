@@ -1,0 +1,28 @@
+app-discovery-home {
+  width: 100%;
+  height: 100%;
+  .banner {
+    width: 100%;
+    height: 300px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: 5rem;
+    background-color: #fbfbfb;
+    img {
+      width: 200px;
+      vertical-align: middle;
+    }
+    .text {
+      font-size: 4rem;
+    }
+  }
+  .content {
+    text-align: center;
+    font-size: 1.2rem;
+    .label {
+      color: #999;
+      user-select: none;
+    }
+  }
+}

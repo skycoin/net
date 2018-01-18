@@ -69,9 +69,10 @@ var (
 )
 
 type Monitor struct {
-	factory *factory.MessengerFactory
-	address string
-	srv     *http.Server
+	factory       *factory.MessengerFactory
+	serverAddress string
+	address       string
+	srv           *http.Server
 
 	code    string
 	version string
@@ -80,14 +81,15 @@ type Monitor struct {
 	configsMutex sync.RWMutex
 }
 
-func New(f *factory.MessengerFactory, addr, code, version string) *Monitor {
+func New(f *factory.MessengerFactory, serverAddress, webAddr, code, version string) *Monitor {
 	return &Monitor{
-		factory: f,
-		address: addr,
-		srv:     &http.Server{Addr: addr},
-		code:    code,
-		version: version,
-		configs: make(map[string]*Config),
+		factory:       f,
+		serverAddress: serverAddress,
+		address:       webAddr,
+		srv:           &http.Server{Addr: webAddr},
+		code:          code,
+		version:       version,
+		configs:       make(map[string]*Config),
 	}
 }
 
@@ -97,6 +99,7 @@ func (m *Monitor) Close() error {
 func (m *Monitor) Start(webDir string) {
 	http.Handle("/", http.FileServer(http.Dir(webDir)))
 	http.HandleFunc("/conn/getAll", bundle(m.getAllNode))
+	http.HandleFunc("/conn/getServerInfo", bundle(m.getServerInfo))
 	http.HandleFunc("/conn/getNode", bundle(m.getNode))
 	http.HandleFunc("/conn/setNodeConfig", bundle(m.setNodeConfig))
 	http.HandleFunc("/conn/getNodeConfig", bundle(m.getNodeConfig))
@@ -461,7 +464,11 @@ var upgrader = websocket.Upgrader{
 }
 
 func (m *Monitor) handleNodeTerm(w http.ResponseWriter, r *http.Request) {
-	if !verifyLogin(w, r) {
+	token := r.URL.Query()["token"][0]
+	if len(token) == 0 {
+		return
+	}
+	if !verifyWs(w, r, token) {
 		return
 	}
 	url := r.URL.Query()["url"][0]
@@ -516,9 +523,12 @@ var userPath = filepath.Join(file.UserHome(), ".skywire", "manager", "user.json"
 
 func (m *Monitor) checkLogin(w http.ResponseWriter, r *http.Request) (result []byte, err error, code int) {
 	if !verifyLogin(w, r) {
+		result = []byte("false")
 		return
 	}
-	result = []byte("true")
+	sess, _ := globalSessions.SessionStart(w, r)
+	defer sess.SessionRelease(w)
+	result = []byte(sess.SessionID())
 	return
 }
 
@@ -577,6 +587,32 @@ func (m *Monitor) UpdatePass(w http.ResponseWriter, r *http.Request) (result []b
 	return
 }
 
+func verifyWs(w http.ResponseWriter, r *http.Request, token string) bool {
+	sess, _ := globalSessions.GetSessionStore(token)
+	defer sess.SessionRelease(w)
+	pass := sess.Get("user")
+	if pass == nil {
+		http.Error(w, "Unauthorized", http.StatusFound)
+		return false
+	}
+	hash := sess.Get("pass")
+	if pass == nil {
+		http.Error(w, "Unauthorized", http.StatusFound)
+		return false
+	}
+	hashStr, ok := hash.(string)
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusFound)
+		return false
+	}
+	passStr, ok := pass.(string)
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusFound)
+		return false
+	}
+	return matchPassword(hashStr, passStr)
+}
+
 func verifyLogin(w http.ResponseWriter, r *http.Request) bool {
 	sess, _ := globalSessions.SessionStart(w, r)
 	defer sess.SessionRelease(w)
@@ -601,4 +637,21 @@ func verifyLogin(w http.ResponseWriter, r *http.Request) bool {
 		return false
 	}
 	return matchPassword(hashStr, passStr)
+}
+
+func (m *Monitor) getServerInfo(w http.ResponseWriter, r *http.Request) (result []byte, err error, code int) {
+	sc := m.factory.GetDefaultSeedConfig()
+	if sc == nil {
+		return
+	}
+	host, _, err := net.SplitHostPort(r.Host)
+	if err != nil {
+		return
+	}
+	_, port, err := net.SplitHostPort(m.serverAddress)
+	if err != nil {
+		return
+	}
+	result = []byte(fmt.Sprintf("%s:%s-%s", host, port, sc.PublicKey))
+	return
 }

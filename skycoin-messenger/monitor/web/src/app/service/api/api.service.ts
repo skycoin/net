@@ -6,6 +6,7 @@ import 'rxjs/add/operator/catch';
 import 'rxjs/add/observable/throw';
 import 'rxjs/add/observable/empty';
 import { Router } from '@angular/router';
+import { MatDialog } from '@angular/material';
 
 @Injectable()
 export class ApiService {
@@ -14,9 +15,14 @@ export class ApiService {
   private bankUrl = '127.0.0.1:8080/';
   private callbackParm = 'callback';
   private jsonHeader = { 'Content-Type': 'application/json' };
-  constructor(private httpClient: HttpClient, private router: Router) { }
+  constructor(private httpClient: HttpClient, private router: Router, private dialog: MatDialog) { }
 
-
+  getServerInfo() {
+    return this.handleGet(this.connUrl + 'getServerInfo', { responseType: 'text' });
+  }
+  closeApp(addr: string, data: FormData) {
+    return this.handleNodePost(addr, '/node/run/closeApp', data);
+  }
   login(data: FormData) {
     return this.handlePost('login', data);
   }
@@ -24,7 +30,7 @@ export class ApiService {
     return this.handlePost('updatePass', data);
   }
   checkLogin() {
-    return this.handlePost('checkLogin');
+    return this.handlePost('checkLogin', null, { responseType: 'text' });
   }
   getAllNode() {
     return this.handleGet(this.connUrl + 'getAll');
@@ -114,11 +120,11 @@ export class ApiService {
     }
     return this.httpClient.jsonp(url, this.callbackParm).catch(err => Observable.throw(err));
   }
-  handleGet(url: string) {
+  handleGet(url: string, opts?: any) {
     if (url === '') {
       return Observable.throw('Url is empty.');
     }
-    return this.httpClient.get(url).catch(err => this.handleError(err));
+    return this.httpClient.get(url, opts).catch(err => this.handleError(err));
   }
   handleNodePost(nodeAddr: string, api: string, data?: FormData, opts?: any) {
     if (nodeAddr === '' || api === '') {
@@ -140,6 +146,7 @@ export class ApiService {
   handleError(err: HttpErrorResponse) {
     if (err.status === 302) {
       console.log('open url');
+      this.dialog.closeAll();
       this.router.navigate([{ outlets: { user: ['login'] } }]);
       return Observable.empty();
     }

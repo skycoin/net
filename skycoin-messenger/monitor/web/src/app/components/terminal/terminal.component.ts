@@ -40,21 +40,27 @@ export class TerminalComponent implements OnInit, OnDestroy {
     private el: ElementRef,
     private render: Renderer
   ) { }
-
   ngOnInit() {
-    this.ws = new WebSocket(`${this.url}?url=ws://${this.addr}/node/run/term`);
-    this.ws.binaryType = 'arraybuffer';
-    this.ws.onopen = (ev) => {
-      this.start();
-    };
-    this.ws.onclose = (ev: CloseEvent) => {
-      this.isWrite = false;
-      this.xterm.writeln('Connection interrupted...');
-    };
-    this.ws.onerror = (ev: Event) => {
-      this.isWrite = false;
-      this.xterm.writeln('Connection interrupted...');
-    };
+    this.api.checkLogin().subscribe(id => {
+      this.ws = new WebSocket(`${this.url}?url=ws://${this.addr}/node/run/term&token=${id}`);
+      this.ws.binaryType = 'arraybuffer';
+      this.ws.onopen = (ev) => {
+        this.start();
+      };
+      this.ws.onclose = (ev: CloseEvent) => {
+        this.isWrite = false;
+        // console.log('test:', ev);
+        if (this.xterm) {
+          this.xterm.writeln('Connection interrupted...');
+        }
+      };
+      this.ws.onerror = (ev: Event) => {
+        this.isWrite = false;
+        if (this.xterm) {
+          this.xterm.writeln('Connection interrupted...');
+        }
+      };
+    });
   }
   ngOnDestroy() {
     this.ws.close();
@@ -78,9 +84,7 @@ export class TerminalComponent implements OnInit, OnDestroy {
     // Terminal.loadAddon('fullscreen');
     Terminal.loadAddon('fit');
     this.xterm = new Terminal({
-      cursorBlink: true,
-      // rows: 20,
-      // cols: 90
+      cursorBlink: true
     });
     this.xterm.open(this.conainer.nativeElement, true);
     // this.xterm.fit();

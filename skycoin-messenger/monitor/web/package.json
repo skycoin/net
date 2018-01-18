@@ -37,6 +37,7 @@
     "core-js": "^2.5.3",
     "font-awesome": "^4.7.0",
     "rxjs": "^5.5.5",
+    "sweetalert2": "^7.4.0",
     "xterm": "2.8.1",
     "zone.js": "^0.8.18"
   },

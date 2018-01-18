@@ -176,7 +176,6 @@ snack-bar-container {
 //     padding-left: .5em;
 //   }
 // }
-
 .terminal-dialog {
   height: 100%;
   max-width: 100% !important;
@@ -187,4 +186,17 @@ snack-bar-container {
     background-color: transparent !important;
     box-shadow: none !important;
   }
+}
+
+.copy-btn {
+  cursor: pointer;
+  user-select: none;
+  &:hover {
+    color: #712a2a;
+  }
+}
+
+.icon-btn {
+  cursor: pointer;
+  user-select: none;
 }

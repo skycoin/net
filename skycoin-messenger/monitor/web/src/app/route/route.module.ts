@@ -1,11 +1,11 @@
 import { NgModule } from '@angular/core';
 import { Routes, RouterModule } from '@angular/router';
-import { DashboardComponent, SubStatusComponent, LoginComponent, UpdatePassComponent } from '../page';
-
+import { DashboardComponent, SubStatusComponent, LoginComponent, UpdatePassComponent, DiscoveryHomeComponent } from '../page';
+import { environment as env } from '../../environments/environment';
 
 const home = {
   path: '',
-  component: DashboardComponent,
+  component: env.isManager ? DashboardComponent : DiscoveryHomeComponent,
   pathMatch: 'full'
 };
 const node = {
@@ -30,4 +30,6 @@ const routes: Routes = [
   imports: [RouterModule.forRoot(routes, { useHash: true })],
   exports: [RouterModule],
 })
-export class AppRouteModule { }
+export class AppRouteModule {
+
+}

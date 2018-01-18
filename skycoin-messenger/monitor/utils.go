@@ -10,7 +10,6 @@ import (
 )
 
 type User struct {
-	Name string
 	Pass string
 }
 
@@ -38,7 +37,7 @@ func checkPass(pass string) (err error) {
 	user, err := readUserConfig(userPath)
 	if err != nil {
 		if os.IsNotExist(err) {
-			user = &User{Name: "root", Pass: getBcrypt("1234")}
+			user = &User{Pass: getBcrypt("1234")}
 			data := []byte("")
 			data, err = json.Marshal(user)
 			if err != nil {

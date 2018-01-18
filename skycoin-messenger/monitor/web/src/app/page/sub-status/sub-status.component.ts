@@ -43,7 +43,7 @@ export class SubStatusComponent implements OnInit, OnDestroy {
   task = new Subject();
   alertMsg = '';
   sshColumns = ['index', 'key', 'del'];
-  displayedColumns = ['index', 'key', 'app'];
+  displayedColumns = ['index', 'key', 'app', 'action'];
   transportColumns = ['index', 'upload', 'download', 'fromApp', 'fromNode', 'toNode', 'toApp'];
   appSource: SubStatusDataSource = null;
   sshSource: SubStatusDataSource = null;
@@ -129,10 +129,25 @@ export class SubStatusComponent implements OnInit, OnDestroy {
       this.power = 'warn';
       this.isManager = env.isManager;
     });
-
   }
   ngOnDestroy() {
     this.close();
+  }
+  closeApp(ev: Event, key: string) {
+    ev.stopImmediatePropagation();
+    ev.stopPropagation();
+    ev.preventDefault();
+    if (!key) {
+      console.error('key is empty!');
+      return;
+    }
+    const data = new FormData();
+    data.append('key', key);
+    this.api.closeApp(this.status.addr, data).subscribe(result => {
+      if (result) {
+        this.init();
+      }
+    });
   }
   openWallet(ev: Event) {
     ev.stopImmediatePropagation();
@@ -512,7 +527,7 @@ export class SubStatusComponent implements OnInit, OnDestroy {
   }
   startTask() {
     this.init();
-    this.task.debounceTime(1000).subscribe(() => {
+    this.task.subscribe(() => {
       this.init();
     });
     this.timer = Observable.timer(0, this.taskTime).subscribe(() => {
@@ -637,7 +652,7 @@ export class SubStatusComponent implements OnInit, OnDestroy {
       this.configForm.patchValue({ 'sshServer': config.ssh_server });
     });
     this.dialog.open(content, {
-      width: '400px'
+      width: '800px'
     });
   }
   updateSettings(ev: Event) {
@@ -715,18 +730,17 @@ export class SubStatusComponent implements OnInit, OnDestroy {
   }
   init() {
     this.startRequest = true;
-    const data = new FormData();
-    data.append('key', this.key);
-    this.api.getNodeStatus(data).subscribe((nodeServices: NodeServices) => {
-      if (nodeServices) {
-        this.status = nodeServices;
-        this.fillTransport();
-        this.fillApps();
-      }
-    });
-    // if (!this.startRequest) {
-
-    // }
+    if (this.key) {
+      const data = new FormData();
+      data.append('key', this.key);
+      this.api.getNodeStatus(data).subscribe((nodeServices: NodeServices) => {
+        if (nodeServices) {
+          this.status = nodeServices;
+          this.fillTransport();
+          this.fillApps();
+        }
+      });
+    }
   }
 }
 

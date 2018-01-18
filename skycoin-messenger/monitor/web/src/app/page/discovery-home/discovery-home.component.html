@@ -1,0 +1,11 @@
+<div class="banner">
+  <img src="../../../assets/login-logo.png" alt="SkyCoin">
+  <span class="text">Skywire Discovery</span>
+</div>
+<div class="content">
+  <span class="label">Discovery PubKey:</span>
+  <strong>{{discoveryPubKey}}</strong>
+  <!-- <mat-icon class="icon-btn" (click)="refresh($event)">refresh</mat-icon> -->
+  <mat-icon aria-label="content_copy" clipboard [clipboardText]="discoveryPubKey" matTooltipDisabled matTooltip="Copy" (copySuccess)="copy($event)"
+    #copyTooltip="matTooltip">content_copy</mat-icon>
+</div>

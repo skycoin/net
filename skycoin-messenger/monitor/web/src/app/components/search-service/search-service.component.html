@@ -6,7 +6,6 @@
   <table class="search-table">
     <thead>
       <tr>
-        <!-- <th>Index</th> -->
         <th>Node Key</th>
         <th>App Key</th>
         <th>Operation</th>
@@ -15,14 +14,15 @@
 
     <tbody>
       <ng-container *ngFor="let result of results">
-        <tr *ngFor="let app of result?.result?.apps">
-          <!-- <td>1</td> -->
-          <td class="key">{{result?.result?.node_key}}</td>
-          <td class="key">{{app}}</td>
-          <td>
-            <button mat-raised-button color="primary" (click)="connectSocket(result?.result?.node_key,app)">connect</button>
-          </td>
-        </tr>
+        <ng-container *ngFor="let item of result?.result | iterable">
+          <tr *ngFor="let app of item?.value">
+            <td class="key">{{item?.key}}</td>
+            <td class="key">{{app}}</td>
+            <td>
+              <button mat-raised-button color="primary" (click)="connectSocket(result?.result?.node_key,app)">connect</button>
+            </td>
+          </tr>
+        </ng-container>
       </ng-container>
       <tr *ngIf="results?.length === 0">
         <td colspan="3" class="no-found">No Found Any Services</td>

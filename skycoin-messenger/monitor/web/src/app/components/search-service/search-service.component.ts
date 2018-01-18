@@ -20,7 +20,7 @@ export class SearchServiceComponent implements OnInit {
   searchStr = '';
   nodeAddr = '';
   seqs = [];
-  timeOut = 3;
+  timeOut = 15;
   resultTask: Subscription = null;
   totalResults: Array<Search> = [];
   results: Array<Search> = [];
@@ -29,36 +29,6 @@ export class SearchServiceComponent implements OnInit {
   constructor(private api: ApiService, private dialogRef: MatDialogRef<SearchServiceComponent>) { }
   ngOnInit() {
     this.handle();
-    // for (let index = 1; index <= 10; index++) {
-    //   setTimeout(() => {
-    //     this.result.next([{ seq: index, result: { node_key: `${index}`, apps: [`${index}-123456`] } }]);
-    //   }, index * 1000);
-    // }
-
-    // setTimeout(() => {
-    //   this.result.next([{ seq: 2, result: { node_key: 'b', apps: ['b123456'] } }]);
-    // }, 1000);
-    // setTimeout(() => {
-    //   this.result.next([{ seq: 3, result: { node_key: 'a', apps: ['a123456'] } }]);
-    // }, 2000);
-    // setTimeout(() => {
-    //   this.result.next([{ seq: 4, result: { node_key: 'b', apps: ['b123456'] } }]);
-    // }, 3000);
-    // setTimeout(() => {
-    //   this.result.next([{ seq: 5, result: { node_key: 'a', apps: ['a123456', 'c654321'] } }]);
-    // }, 4000);
-    // setTimeout(() => {
-    //   this.result.next([{ seq: 6, result: { node_key: 'c', apps: ['c123456'] } }]);
-    // }, 5000);
-    // setTimeout(() => {
-    //   this.result.next([{ seq: 2, result: { node_key: 'b', apps: ['b123456', 'e123456'] } }]);
-    // }, 6000);
-    // setTimeout(() => {
-    //   this.result.next([{ seq: 3, result: { node_key: 'a', apps: ['a123456', 'a654321'] } }]);
-    // }, 7000);
-    // setTimeout(() => {
-    //   this.result.next([{ seq: 4, result: { node_key: 'b', apps: ['b123456', 'f123456', 'ff123456', 'xx123456'] } }]);
-    // }, 8000);
     this.refresh();
   }
   connectSocket(nodeKey: string, appKey: string) {
@@ -109,7 +79,7 @@ export class SearchServiceComponent implements OnInit {
   }
 
   getResult() {
-    Observable.interval(1000).take(this.timeOut + 5).subscribe(() => {
+    Observable.interval(1000).take(this.timeOut + 3).subscribe(() => {
       this.api.getServicesResult(this.nodeAddr).subscribe(result => {
         this.result.next(result);
       });
@@ -119,9 +89,17 @@ export class SearchServiceComponent implements OnInit {
     this.result.subscribe((results: Array<Search>) => {
       const tmp = this.filterSeq(results);
       this.unique(tmp);
-      this.sort();
+      this.sortByKey();
       this.results = this.totalResults;
     });
+  }
+  sortByKey() {
+    for (let index = 0; index < this.totalResults.length; index++) {
+      Object.keys(this.totalResults[index].result).sort(
+        function (a, b) {
+          return a.localeCompare(b);
+        });
+    }
   }
   sort() {
     this.totalResults.sort((v1, v2) => {
@@ -152,52 +130,14 @@ export class SearchServiceComponent implements OnInit {
     }
     if (this.totalResults.length === 0) {
       this.totalResults = this.totalResults.concat(results);
+      console.log('total:', this.totalResults);
       return;
-    }
-    for (let index = 0; index < results.length; index++) {
-      for (let key = 0; key < this.totalResults.length; key++) {
-        if (results[index].result.node_key === this.totalResults[key].result.node_key
-          && results[index].result.apps.length === this.totalResults[key].result.apps.length) {
-          results[index].result.apps.forEach(app => {
-            if (this.totalResults[key].result.apps.indexOf(app) === -1) {
-              this.totalResults[key].result.apps.push(app);
-            }
-          });
-          break;
-        }
-        if (results[index].result.node_key !== this.totalResults[key].result.node_key) {
-          let isExist = 0;
-          isExist = this.totalResults.findIndex((el) => {
-            if (el.result.node_key === results[index].result.node_key) {
-              return true;
-            }
-            if (el.result.node_key !== results[index].result.node_key) {
-              return false;
-            }
-            return true;
-          });
-          if (isExist < 0) {
-            this.totalResults.push(results[index]);
-          } else {
-            this.totalResults.forEach((el, subIndex) => {
-              if (results[index].result.node_key === el.result.node_key) {
-                results[index].result.apps.forEach(app => {
-                  if (el.result.apps.indexOf(app) === -1) {
-                    this.totalResults[subIndex].result.apps.push(app);
-                  }
-                });
-              }
-            });
-          }
-          break;
-        }
-      }
     }
   }
 }
 
 export interface Search {
-  result?: SearchResult;
+  result?: Map<string, Array<string>>;
   seq?: number;
 }
 

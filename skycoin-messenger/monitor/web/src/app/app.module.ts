@@ -27,7 +27,7 @@ import { HttpClientModule } from '@angular/common/http';
 import { ApiService, UserService } from './service';
 import { TimeAgoPipe, ByteToPipe, EllipsisPipe, IterablePipe, SafePipe } from './pipe';
 import { LabelDirective, ShortcutInputDirective, DebugDirective, ClipboardDirective } from './directives';
-import { DashboardComponent, SubStatusComponent, LoginComponent, UpdatePassComponent } from './page';
+import { DashboardComponent, SubStatusComponent, LoginComponent, UpdatePassComponent, DiscoveryHomeComponent } from './page';
 import {
   UpdateCardComponent,
   AlertComponent,
@@ -44,6 +44,7 @@ import { AppRoutingModule } from './route/app-routing.module';
     DashboardComponent,
     LoginComponent,
     UpdatePassComponent,
+    DiscoveryHomeComponent,
 
     TimeAgoPipe,
     ByteToPipe,

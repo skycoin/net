@@ -286,6 +286,8 @@ app-sub-status {
         }
         .url {
           width: 70%;
+          word-break: break-all;
+          text-align: left;
         }
         .status {
           width: 30%;
