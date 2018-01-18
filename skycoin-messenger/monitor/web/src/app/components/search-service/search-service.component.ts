@@ -20,7 +20,7 @@ export class SearchServiceComponent implements OnInit {
   searchStr = '';
   nodeAddr = '';
   seqs = [];
-  timeOut = 10;
+  timeOut = 1;
   resultTask: Subscription = null;
   totalResults: Array<Search> = [];
   results: Array<Search> = [];
@@ -66,7 +66,7 @@ export class SearchServiceComponent implements OnInit {
     this.getResult();
     setTimeout(() => {
       this.status = 1;
-    }, (this.timeOut + 6) * 1000);
+    }, (this.timeOut + 2) * 1000);
   }
   search() {
     const data = new FormData();
@@ -79,8 +79,9 @@ export class SearchServiceComponent implements OnInit {
   }
 
   getResult() {
-    Observable.interval(1000).take(this.timeOut + 3).subscribe(() => {
+    Observable.interval(1000).take(this.timeOut + 2).subscribe(() => {
       this.api.getServicesResult(this.nodeAddr).subscribe(result => {
+        console.log('result:', result);
         this.result.next(result);
       });
     });
@@ -90,6 +91,7 @@ export class SearchServiceComponent implements OnInit {
       const tmp = this.filterSeq(results);
       this.unique(tmp);
       this.sortByKey();
+      console.log('total:', this.totalResults);
       this.results = this.totalResults;
     });
   }
@@ -131,10 +133,8 @@ export class SearchServiceComponent implements OnInit {
     if (!results) {
       return;
     }
-    if (this.totalResults.length === 0) {
-      this.totalResults = this.totalResults.concat(results);
-      return;
-    }
+    this.totalResults = results;
+    return;
   }
 }
 
