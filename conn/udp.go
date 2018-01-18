@@ -355,8 +355,6 @@ func fec(b []byte, seq uint32) (result []byte) {
 	m[0] = msg.TYPE_FEC
 	binary.BigEndian.PutUint32(m[msg.MSG_SEQ_BEGIN:msg.MSG_SEQ_END], seq)
 	binary.BigEndian.PutUint32(m[msg.MSG_LEN_BEGIN:msg.MSG_LEN_END], uint32(l))
-	checksum := crc32.ChecksumIEEE(m)
-	binary.BigEndian.PutUint32(result[msg.PKG_CRC32_BEGIN:], checksum)
 	return
 }
 
@@ -364,13 +362,6 @@ func (c *UDPConn) Process(t byte, m []byte) (err error) {
 	seq := binary.BigEndian.Uint32(m[msg.MSG_SEQ_BEGIN:msg.MSG_SEQ_END])
 	l := binary.BigEndian.Uint32(m[msg.MSG_LEN_BEGIN:msg.MSG_LEN_END])
 	c.GetContextLogger().Debugf("seq %d l %d, len %d \n%x", seq, l, len(m), m)
-	if t != msg.TYPE_FEC &&
-		uint32(len(m)) >= msg.MSG_HEADER_END+l {
-		err = c.process(t, seq, m[msg.MSG_HEADER_END:msg.MSG_HEADER_END+l])
-		if err != nil {
-			return
-		}
-	}
 	if t == msg.TYPE_FEC {
 		m = m[msg.MSG_HEADER_END:]
 	}
@@ -397,6 +388,13 @@ func (c *UDPConn) Process(t byte, m []byte) (err error) {
 					}
 				}
 			}
+		}
+	}
+	if t != msg.TYPE_FEC &&
+		uint32(len(m)) >= msg.MSG_HEADER_END+l {
+		err = c.process(t, seq, m[msg.MSG_HEADER_END:msg.MSG_HEADER_END+l])
+		if err != nil {
+			return
 		}
 	}
 
@@ -430,15 +428,12 @@ func (c *UDPConn) process(t byte, seq uint32, m []byte) (err error) {
 	}
 	ok, ms := c.Push(seq, msg.NewUDP(t, seq, m))
 	if ok {
-		if len(ms) < 1 {
-			return
-		}
 		for _, m := range ms {
 			if m.Type != msg.TYPE_REQ {
-				c.GetContextLogger().Debugf("MustGetCrypto t %d seq %d \n%x", t, seq, m.Body)
+				c.GetContextLogger().Debugf("MustGetCrypto t %d seq %d \n%x", m.Type, m.GetSeq(), m.Body)
 				crypto := c.MustGetCrypto()
 				err = crypto.Decrypt(m.Body)
-				c.GetContextLogger().Debugf("MustGetCrypto out t %d seq %d \n%x", t, seq, m.Body)
+				c.GetContextLogger().Debugf("MustGetCrypto out t %d seq %d \n%x", m.Type, m.GetSeq(), m.Body)
 				if err != nil {
 					return
 				}
@@ -850,14 +845,14 @@ func (c *UDPConn) setCwnd(acked, bw, rtt uint64, gain int) {
 }
 
 type ca struct {
-	delivered     uint64
-	deliveredTime time.Time
-	sentTime      time.Time
-	rttSamples    *rttSampler
-	bwFilter      *maxBandwidthFilter
-	cwnd          uint32
-	usedCwnd      uint32
-	cwndMtx       sync.Mutex
+	delivered       uint64
+	deliveredTime   time.Time
+	sentTime        time.Time
+	rttSamples      *rttSampler
+	bwFilter        *maxBandwidthFilter
+	cwnd            uint32
+	usedCwnd        uint32
+	cwndMtx         sync.Mutex
 	mode
 	pacingGain      int
 	pacingRate      uint64
@@ -894,6 +889,7 @@ type pdChan struct {
 	mtx   sync.Mutex
 	cond  *sync.Cond
 	maxPd int
+	end   bool
 }
 
 func newPdChan(max int) *pdChan {
@@ -964,10 +960,16 @@ func (ca *ca) newPendingChannel() (channel int) {
 }
 
 func (ca *ca) deletePendingChannel(channel int) {
-	ca.bifMtx.Lock()
-	defer ca.bifMtx.Unlock()
+	ca.bifMtx.RLock()
+	ch, ok := ca.bifPdChans[channel]
+	ca.bifMtx.RUnlock()
+	if !ok {
+		return
+	}
 
-	delete(ca.bifPdChans, channel)
+	ch.mtx.Lock()
+	ch.end = true
+	ch.mtx.Unlock()
 }
 
 func (c *UDPConn) DeletePendingChannel(channel int) {
@@ -1034,6 +1036,7 @@ func (ca *ca) popMessage() (m *msg.UDPMessage) {
 
 	ca.bifMtx.Lock()
 	defer ca.bifMtx.Unlock()
+	defer ca.gcChannel()
 OUT:
 	for _, v := range ca.bifPdChans {
 		v.mtx.Lock()
@@ -1065,7 +1068,23 @@ OUT:
 		ca.bif += m.PkgBytesLen()
 		return
 	}
+
 	return
+}
+
+func (ca *ca) gcChannel() {
+	var ids []int
+	for id, v := range ca.bifPdChans {
+		v.mtx.Lock()
+		pd := v.pd
+		if pd.Len() == 0 && v.end {
+			ids = append(ids, id)
+		}
+		v.mtx.Unlock()
+	}
+	for _, id := range ids {
+		delete(ca.bifPdChans, id)
+	}
 }
 
 func (ca *ca) getBytesInFlight() (r int) {
