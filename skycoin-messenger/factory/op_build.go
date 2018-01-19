@@ -330,13 +330,8 @@ func (req *forwardNodeConnResp) Run(conn *Connection) (err error) {
 			Failed: req.Failed,
 			Msg:    req.Msg,
 		})
-		appConn.setTransport(req.App, nil)
-		tr, ok := appConn.getTransport(req.App)
-		if !ok {
-			conn.GetContextLogger().Debugf("forwardNodeConnResp tr %x not found", req.App)
-			return
-		}
 		tr.Close()
+		appConn.setTransport(req.App, nil)
 		return
 	}
 	if len(req.Address) > 0 {
@@ -357,13 +352,33 @@ type buildConn struct {
 func (req *buildConn) Run(conn *Connection) (err error) {
 	appConn, ok := conn.factory.GetConnection(req.App)
 	if !ok {
-		conn.GetContextLogger().Debugf("node %x app %x not exists", req.Node, req.App)
+		cause := fmt.Sprintf("node %x app %x not exists", req.Node, req.App)
+		conn.GetContextLogger().Debugf(cause)
+		err = conn.writeOP(OP_FORWARD_NODE_CONN_RESP, &forwardNodeConnResp{
+			Node:     req.Node,
+			App:      req.App,
+			FromApp:  req.FromApp,
+			FromNode: req.FromNode,
+			Failed:   true,
+			Msg:      PriorityMsg{Priority: NotFound, Msg: cause, Type: Failed},
+			Num:      req.Num,
+		})
 		return
 	}
 
 	s, ok := appConn.getService(req.App)
 	if !ok {
-		conn.GetContextLogger().Debugf("node %x app %x not exists", req.Node, req.App)
+		cause := fmt.Sprintf("node %x app %x not exists", req.Node, req.App)
+		conn.GetContextLogger().Debugf(cause)
+		err = conn.writeOP(OP_FORWARD_NODE_CONN_RESP, &forwardNodeConnResp{
+			Node:     req.Node,
+			App:      req.App,
+			FromApp:  req.FromApp,
+			FromNode: req.FromNode,
+			Failed:   true,
+			Msg:      PriorityMsg{Priority: NotFound, Msg: cause, Type: Failed},
+			Num:      req.Num,
+		})
 		return
 	}
 
