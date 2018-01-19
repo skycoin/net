@@ -366,6 +366,9 @@ func (t *Transport) Close() {
 		return
 	}
 
+	if t.timeoutTimer != nil {
+		t.timeoutTimer.Stop()
+	}
 	t.connsMutex.RLock()
 	for _, v := range t.conns {
 		if v == nil {
@@ -425,9 +428,7 @@ func (t *Transport) GetServingPort() int {
 func (t *Transport) SetupTimeout() {
 	t.fieldsMutex.Lock()
 	if t.timeoutTimer != nil {
-		if !t.timeoutTimer.Stop() {
-			<-t.timeoutTimer.C
-		}
+		t.timeoutTimer.Stop()
 	}
 	t.timeoutTimer = time.AfterFunc(30*time.Second, func() {
 		t.appConnHolder.PutMessage(PriorityMsg{
@@ -443,9 +444,7 @@ func (t *Transport) SetupTimeout() {
 func (t *Transport) StopTimeout() {
 	t.fieldsMutex.Lock()
 	if t.timeoutTimer != nil {
-		if !t.timeoutTimer.Stop() {
-			<-t.timeoutTimer.C
-		}
+		t.timeoutTimer.Stop()
 	}
 	t.timeoutTimer = nil
 	t.fieldsMutex.Unlock()
