@@ -142,6 +142,10 @@ func requestNode(w http.ResponseWriter, r *http.Request) (result []byte, err err
 		return
 	}
 	addr := r.FormValue("addr")
+	if len(addr) == 0 {
+		err = errors.New("Node Address is Empty")
+		return
+	}
 	res, err := http.PostForm(addr, r.PostForm)
 	if err != nil {
 		if res != nil {
@@ -254,7 +258,11 @@ func (m *Monitor) setNodeConfig(w http.ResponseWriter, r *http.Request) (result 
 		return
 	}
 	key := r.FormValue("key")
-	data := []byte(r.FormValue("data"))
+	if len(key) != 66 {
+		err = errors.New("Key at least 66 characters")
+		return
+	}
+ 	data := []byte(r.FormValue("data"))
 	var config *Config
 	err = json.Unmarshal(data, &config)
 	if err != nil {
@@ -277,6 +285,10 @@ func (m *Monitor) getNodeConfig(w http.ResponseWriter, r *http.Request) (result 
 		return
 	}
 	key := r.FormValue("key")
+	if len(key) != 66 {
+		err = errors.New("Key at least 66 characters")
+		return
+	}
 	m.configsMutex.Lock()
 	defer m.configsMutex.Unlock()
 	result, err = json.Marshal(m.configs[key])
@@ -325,6 +337,12 @@ func (m *Monitor) SaveClientConnection(w http.ResponseWriter, r *http.Request) (
 		break
 	case "socket":
 		path = socketClient
+	default:
+		path = ""
+	}
+	if len(path) == 0 {
+		err = errors.New("The correct type cannot be found")
+		return
 	}
 	cfs, err := readConfig(path)
 	if err != nil && !os.IsNotExist(err) {
@@ -365,6 +383,12 @@ func (m *Monitor) GetClientConnection(w http.ResponseWriter, r *http.Request) (r
 		break
 	case "socket":
 		client = socketClient
+	default:
+		client = ""
+	}
+	if len(client) == 0 {
+		err = errors.New("No connection found")
+		return
 	}
 	cf, err := readConfig(client)
 	result, err = json.Marshal(cf)
@@ -381,6 +405,10 @@ func (m *Monitor) RemoveClientConnection(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	path = getFilePath(path)
+	if len(path) == 0 {
+		err = errors.New("There is no path to this type")
+		return
+	}
 	cfs, err := readConfig(path)
 	if err != nil && !os.IsNotExist(err) {
 		return
@@ -405,6 +433,10 @@ func (m *Monitor) EditClientConnection(w http.ResponseWriter, r *http.Request) (
 		return
 	}
 	path = getFilePath(path)
+	if len(path) == 0 {
+		err = errors.New("There is no path to this type")
+		return
+	}
 	cfs, err := readConfig(path)
 	if err != nil && !os.IsNotExist(err) {
 		return
@@ -451,7 +483,10 @@ func getFilePath(client string) string {
 		break
 	case "socket":
 		client = socketClient
+	default:
+		client = ""
 	}
+
 	return client
 }
 
@@ -463,14 +498,15 @@ var upgrader = websocket.Upgrader{
 func (m *Monitor) handleNodeTerm(w http.ResponseWriter, r *http.Request) {
 	token := r.URL.Query()["token"][0]
 	if len(token) == 0 {
+		http.Error(w, "Token is Empty", http.StatusBadRequest)
 		return
 	}
 	if !verifyWs(w, r, token) {
 		return
 	}
 	url := r.URL.Query()["url"][0]
-	if len(url) <= 0 {
-		log.Errorf("url is: %s", url)
+	if len(url) == 0 {
+		http.Error(w, "Url is Empty", http.StatusBadRequest)
 		return
 	}
 	upgrader.CheckOrigin = func(r *http.Request) bool {

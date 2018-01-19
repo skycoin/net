@@ -13,7 +13,7 @@ import { Title } from '@angular/platform-browser';
 export class DiscoveryHomeComponent implements OnInit {
   discoveryPubKey = '';
   nodes: Array<Conn> = [];
-  showNodes: false;
+  showNodes = false;
   @ViewChild('copyTooltip') tooltip: MatTooltip;
 
   constructor(private api: ApiService, private titleService: Title) { }
