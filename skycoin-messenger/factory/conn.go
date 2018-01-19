@@ -2,18 +2,18 @@ package factory
 
 import (
 	"crypto/aes"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"github.com/skycoin/net/conn"
 	"github.com/skycoin/net/factory"
 	"github.com/skycoin/skycoin/src/cipher"
+	"net"
+	"strconv"
 	"sync"
 	"sync/atomic"
 	"time"
-	"fmt"
-	"net"
-	"strconv"
-	"encoding/hex"
 )
 
 type Connection struct {
@@ -269,7 +269,7 @@ func checkAddress(addr string) (valid bool) {
 	if err != nil {
 		return
 	}
-	if net.ParseIP(host) == nil {
+	if len(host) != 0 && net.ParseIP(host) == nil {
 		return
 	}
 	port, err := strconv.Atoi(p)
