@@ -440,7 +440,7 @@ func (f *MessengerFactory) ForEachConn(fn func(connection *Connection)) {
 }
 
 func (f *MessengerFactory) discoveryRegister(conn *Connection, ns *NodeServices) (err error) {
-	if !checkNodeServices(ns) {
+	if ns != nil && !checkNodeServices(ns) {
 		err = fmt.Errorf("invalid NodeServices %#v", ns)
 		return
 	}

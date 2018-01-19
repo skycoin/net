@@ -237,7 +237,7 @@ func (c *Connection) RegWithKeys(key, target cipher.PubKey, context map[string]s
 
 // register services to discovery
 func (c *Connection) UpdateServices(ns *NodeServices) (err error) {
-	if !checkNodeServices(ns) {
+	if ns != nil && !checkNodeServices(ns) {
 		err = fmt.Errorf("invalid NodeServices %#v", ns)
 		return
 	}
@@ -296,18 +296,25 @@ func checkPubKeyHex(key string) (valid bool) {
 }
 
 func checkNodeServices(ns *NodeServices) (valid bool) {
-	valid = checkAddress(ns.ServiceAddress)
-	if !valid {
+	if ns == nil {
 		return
+	}
+	if len(ns.ServiceAddress) > 0 {
+		valid = checkAddress(ns.ServiceAddress)
+		if !valid {
+			return
+		}
 	}
 	for _, s := range ns.Services {
 		valid = checkAttrs(s.Attributes)
 		if !valid {
 			return
 		}
-		valid = checkAddress(s.Address)
-		if !valid {
-			return
+		if len(s.Address) > 0 {
+			valid = checkAddress(s.Address)
+			if !valid {
+				return
+			}
 		}
 		if s.Key == EMPATY_PUBLIC_KEY {
 			return false
