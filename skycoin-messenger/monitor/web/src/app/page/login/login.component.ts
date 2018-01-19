@@ -26,14 +26,16 @@ export class LoginComponent implements OnInit {
     ev.stopImmediatePropagation();
     ev.stopPropagation();
     ev.preventDefault();
-    const data = new FormData();
-    data.append('pass', this.loginForm.get('pass').value);
-    this.api.login(data).subscribe(result => {
-      if (result) {
-        this.router.navigate(['']);
-      }
-    }, err => {
-      this.status = 1;
-    });
+    if (this.loginForm.valid) {
+      const data = new FormData();
+      data.append('pass', this.loginForm.get('pass').value);
+      this.api.login(data).subscribe(result => {
+        if (result) {
+          this.router.navigate(['']);
+        }
+      }, err => {
+        this.status = 1;
+      });
+    }
   }
 }

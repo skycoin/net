@@ -102,6 +102,10 @@ export class SubStatusComponent implements OnInit, OnDestroy {
   dialogMode = '';
   autoStart: AutoStartConfig = null;
   dev = true;
+  SshClient = 'sshc';
+  SshServer = 'sshs';
+  SocketClient = 'socksc';
+  SocketServer = 'sockss';
   constructor(
     private router: Router,
     private route: ActivatedRoute,
@@ -141,6 +145,7 @@ export class SubStatusComponent implements OnInit, OnDestroy {
       console.error('key is empty!');
       return;
     }
+    console.log('close App key:', key);
     const data = new FormData();
     data.append('key', key);
     this.api.closeApp(this.status.addr, data).subscribe(result => {
@@ -174,7 +179,6 @@ export class SubStatusComponent implements OnInit, OnDestroy {
   openDebug(ev: Event, content: any) {
     this.api.getDebugPage('192.168.0.2:6001').subscribe((res) => {
       this.debugData = res;
-      console.log('test res:', this.debugData);
     }, err => {
       this.debugData = err.error.text;
     });
@@ -208,11 +212,10 @@ export class SubStatusComponent implements OnInit, OnDestroy {
   openLog(service: string, content: any) {
     this.showMsgs = [];
     const app = this.findService(service);
-    if (app) {
+    if (app && app.key) {
       const data = new FormData();
       data.append('key', app.key);
       this.api.checkAppMsg(this.status.addr, data).subscribe((res) => {
-        console.log('check msg:', res);
         this.showMsgs = res;
         this.task.next();
       });
@@ -234,11 +237,8 @@ export class SubStatusComponent implements OnInit, OnDestroy {
       return result.unread;
     }
     return 0;
-    // return result.read ? result.read : false;
   }
-  // discoveriesStatus(ev: Event, conent: any) {
-  //   this.dialog.open(conent);
-  // }
+
   transportsTrackBy(index, transport) {
     return transport ? transport.from_node : undefined;
   }
@@ -261,6 +261,10 @@ export class SubStatusComponent implements OnInit, OnDestroy {
         count: 1
       };
     }
+    if (!action || !jsonStr) {
+      console.error('action or params is empty!');
+      return;
+    }
     data.append('client', action);
     data.append('data', JSON.stringify(jsonStr));
     this.api.saveClientConnection(data).subscribe(res => {
@@ -273,6 +277,10 @@ export class SubStatusComponent implements OnInit, OnDestroy {
     } else if (this.socketClientForm.valid) {
       data.append('toNode', this.socketClientForm.get('nodeKey').value);
       data.append('toApp', this.socketClientForm.get('appKey').value);
+    }
+    if (!data.get('toNode') || !data.get('toApp')) {
+      console.error('params failed');
+      return;
     }
     this.api.connectSocketClicent(this.status.addr, data).subscribe(result => {
       console.log('conect socket client');
@@ -296,6 +304,10 @@ export class SubStatusComponent implements OnInit, OnDestroy {
         count: 1
       };
     }
+    if (!action || !jsonStr) {
+      console.error('action or params is empty!');
+      return;
+    }
     data.append('client', action);
     data.append('data', JSON.stringify(jsonStr));
     this.api.saveClientConnection(data).subscribe(res => {
@@ -309,6 +321,10 @@ export class SubStatusComponent implements OnInit, OnDestroy {
       data.append('toNode', this.sshClientForm.get('nodeKey').value);
       data.append('toApp', this.sshClientForm.get('appKey').value);
     }
+    if (!data.get('toNode') || !data.get('toApp')) {
+      console.error('params failed');
+      return;
+    }
     this.api.connectSSHClient(this.status.addr, data).subscribe(result => {
       console.log('conect ssh client');
       this.task.next();
@@ -319,6 +335,10 @@ export class SubStatusComponent implements OnInit, OnDestroy {
     ev.stopImmediatePropagation();
     ev.stopPropagation();
     ev.preventDefault();
+    if (index < 0) {
+      console.error('index is faild');
+      return;
+    }
     this.sshAllowNodes.splice(index, 1);
     const data = new FormData();
     data.append('data', this.sshAllowNodes.toString());
@@ -334,6 +354,10 @@ export class SubStatusComponent implements OnInit, OnDestroy {
     ev.stopImmediatePropagation();
     ev.stopPropagation();
     ev.preventDefault();
+    if (index < 0) {
+      console.error('index is faild');
+      return;
+    }
     this.sockAllowNodes.splice(index, 1);
     const data = new FormData();
     data.append('data', this.sockAllowNodes.toString());
@@ -488,9 +512,9 @@ export class SubStatusComponent implements OnInit, OnDestroy {
       return;
     }
     let nodes = [];
-    if (this.status.apps && this.findService('sshs')) {
+    if (this.status.apps && this.findService(this.SshServer)) {
       console.log('get sshs nodes');
-      nodes = this.findService('sshs').allow_nodes;
+      nodes = this.findService(this.SshServer).allow_nodes;
       this._sshServerData.push(nodes);
     }
     this.dialogTitle = title;
@@ -503,9 +527,9 @@ export class SubStatusComponent implements OnInit, OnDestroy {
       return;
     }
     let nodes = [];
-    if (this.status.apps && this.findService('sshs')) {
+    if (this.status.apps && this.findService(this.SocketServer)) {
       console.log('get socks nodes');
-      nodes = this.findService('sockss').allow_nodes;
+      nodes = this.findService(this.SocketServer).allow_nodes;
       this._socketServerData.push(nodes);
     }
     this.dialogTitle = title;
@@ -552,24 +576,24 @@ export class SubStatusComponent implements OnInit, OnDestroy {
     this.socketColor = 'close-status';
     this.socketClientColor = 'close-status';
     if (this.status.apps) {
-      if (this.findService('sshs')) {
-        this.sshAllowNodes = this.findService('sshs').allow_nodes;
+      if (this.findService(this.SshServer)) {
+        this.sshAllowNodes = this.findService(this.SshServer).allow_nodes;
       }
-      if (this.findService('socks')) {
-        this.sockAllowNodes = this.findService('socks').allow_nodes;
+      if (this.findService(this.SocketServer)) {
+        this.sockAllowNodes = this.findService(this.SocketServer).allow_nodes;
       }
       this._sshServerData.push(this.sshAllowNodes);
       this._socketServerData.push(this.sockAllowNodes);
-      if (this.isExist('sshs')) {
+      if (this.isExist(this.SshServer)) {
         this.sshColor = this.statrStatusCss;
       }
-      if (this.isExist('sshc')) {
+      if (this.isExist(this.SshClient)) {
         this.sshClientColor = this.statrStatusCss;
       }
-      if (this.isExist('sockss')) {
+      if (this.isExist(this.SocketServer)) {
         this.socketColor = this.statrStatusCss;
       }
-      if (this.isExist('socksc')) {
+      if (this.isExist(this.SocketClient)) {
         this.socketClientColor = this.statrStatusCss;
       }
     }
@@ -590,10 +614,6 @@ export class SubStatusComponent implements OnInit, OnDestroy {
           this._transportData.push(this.transports);
           this.feedBacks = info.app_feedbacks;
           this.discoveries = info.discoveries;
-          // if (info.messages.length !== this.messages.length) {
-          //   this.messages = info.messages;
-          // }
-          // this.showMessage(info.messages);
         }
       }, err => {
         this._transportData.push(null);
@@ -613,12 +633,12 @@ export class SubStatusComponent implements OnInit, OnDestroy {
       port = result.port ? result.port : 0;
     }
     switch (client) {
-      case 'sshc':
+      case this.SshClient:
         if (this.sshClientPort !== port) {
           this.sshClientPort = port;
         }
         break;
-      case 'socksc':
+      case this.SocketClient:
         if (this.socketClientPort !== port) {
           this.socketClientPort = port;
         }
@@ -631,8 +651,8 @@ export class SubStatusComponent implements OnInit, OnDestroy {
       this.api.getApps(this.status.addr).subscribe((apps: Array<App>) => {
         this.status.apps = apps;
         this.setServiceStatus();
-        this.setClientPort('sshc');
-        this.setClientPort('socksc');
+        this.setClientPort(this.SshClient);
+        this.setClientPort(this.SocketClient);
         if (this.status.apps) {
           this.status.apps.sort((a1: App, a2: App) => {
             return a1.key.localeCompare(a2.key);
@@ -655,6 +675,46 @@ export class SubStatusComponent implements OnInit, OnDestroy {
       width: '800px'
     });
   }
+
+  checkDiscoveryAddress(addresses: Array<string>) {
+    let isok = false;
+    for (let index = 0; index < addresses.length; index++) {
+      const address = addresses[index].split('-');
+      if (address.length !== 2) {
+        return isok;
+      }
+      if (!address[0]) {
+        return isok;
+      }
+      const afterStr = address[0].split(':');
+      if (afterStr.length !== 2) {
+        return isok;
+      }
+      const port = parseInt(afterStr[1], 10);
+      if (port <= 0 || port > 65535) {
+        return isok;
+      }
+      if (!address[1]) {
+        return isok;
+      }
+      if (this.hexStringToByte(address[1]).length !== 33) {
+        return isok;
+      }
+    }
+    isok = true;
+    return isok;
+  }
+  hexStringToByte(str) {
+    if (!str) {
+      return null;
+    }
+    const a = [];
+    for (let i = 0, len = str.length; i < len; i += 2) {
+      a.push(parseInt(str.substr(i, 2), 16));
+    }
+    return new Uint8Array(a);
+  }
+
   updateSettings(ev: Event) {
     this.dialog.closeAll();
     const jsonStr = {
@@ -664,7 +724,17 @@ export class SubStatusComponent implements OnInit, OnDestroy {
     };
     const tmp = this.configForm.get('DiscoveryAddresses').value;
     if (tmp) {
-      jsonStr['DiscoveryAddresses'] = tmp.split(',');
+      // TODO check discovery address
+      const addresses = tmp.split(',');
+      if (!this.checkDiscoveryAddress(addresses)) {
+        console.error('addresses is faild');
+        return;
+      }
+      jsonStr['DiscoveryAddresses'] = addresses;
+    }
+    if (!this.key) {
+      console.error('node key is empty!');
+      return;
     }
     const data = new FormData();
     data.append('key', this.key);
@@ -718,6 +788,14 @@ export class SubStatusComponent implements OnInit, OnDestroy {
   }
   removeClientConnection(action: string, index: number) {
     const data = new FormData();
+    if (!action) {
+      console.error('client label is empty!');
+      return;
+    }
+    if (index < 0) {
+      console.error('index is faild!');
+      return;
+    }
     data.append('client', action);
     data.append('index', String(index));
     this.api.removeClientConnection(data).subscribe((result) => {
@@ -740,6 +818,7 @@ export class SubStatusComponent implements OnInit, OnDestroy {
           this.fillApps();
         }
       });
+    } else {
     }
   }
 }
