@@ -24,6 +24,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   discoveryPubKey = '';
   constructor(private api: ApiService, private snackBar: MatSnackBar, private router: Router, private user: UserService) { }
   ngOnInit() {
+    this.api.checkLogin().subscribe(() => { });
     this._database = new ConnDatabase(this.api);
     this.dataSource = new ConnDataSource(this._database);
     this.labelObj = this.user.get(this.user.HOMENODELABLE);

@@ -18,11 +18,41 @@ app-discovery-home {
     }
   }
   .content {
-    text-align: center;
     font-size: 1.2rem;
     .label {
       color: #999;
       user-select: none;
+    }
+    .address {
+      margin-bottom: 2rem;
+      padding-left: 20%;
+    }
+    .table {
+      width: 60%;
+      margin: 0 auto;
+      border-collapse: collapse;
+      .no-found {
+        text-align: center !important;
+      }
+      td,
+      th {
+        padding: 15px 5px;
+        display: table-cell;
+        text-align: left;
+        vertical-align: middle;
+        border-radius: 2px;
+      }
+      thead {
+        border-bottom: 1px solid #d0d0d0;
+      }
+      tbody {
+        tr {
+          border-bottom: 1px solid #d0d0d0;
+        }
+        .key {
+          font-size: xx-small;
+        }
+      }
     }
   }
 }

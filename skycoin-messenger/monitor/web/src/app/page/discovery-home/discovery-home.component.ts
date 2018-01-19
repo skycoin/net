@@ -1,6 +1,7 @@
 import { Component, OnInit, ViewEncapsulation, ViewChild } from '@angular/core';
 import { MatTooltip } from '@angular/material';
-import { ApiService } from '../../service';
+import { ApiService, Conn } from '../../service';
+import { Title } from '@angular/platform-browser';
 
 @Component({
   selector: 'app-discovery-home',
@@ -11,9 +12,11 @@ import { ApiService } from '../../service';
 
 export class DiscoveryHomeComponent implements OnInit {
   discoveryPubKey = '';
+  nodes: Array<Conn> = [];
+  showNodes: false;
   @ViewChild('copyTooltip') tooltip: MatTooltip;
 
-  constructor(private api: ApiService) { }
+  constructor(private api: ApiService, private titleService: Title) { }
   copy(result: boolean) {
     if (result) {
       this.tooltip.disabled = false;
@@ -29,8 +32,8 @@ export class DiscoveryHomeComponent implements OnInit {
     this.init();
   }
   init() {
+    this.titleService.setTitle('Skywire Discovery');
     this.api.getServerInfo().subscribe(key => {
-      console.log('resp:', key);
       if (key) {
         this.discoveryPubKey = key;
       }
@@ -38,5 +41,8 @@ export class DiscoveryHomeComponent implements OnInit {
   }
   ngOnInit() {
     this.init();
+    this.api.getAllNode().subscribe((resp: Array<Conn>) => {
+      this.nodes = resp;
+    });
   }
 }

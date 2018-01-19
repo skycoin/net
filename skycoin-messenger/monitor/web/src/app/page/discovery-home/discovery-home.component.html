@@ -1,11 +1,44 @@
 <div class="banner">
-  <img src="../../../assets/login-logo.png" alt="SkyCoin">
-  <span class="text">Skywire Discovery</span>
+  <div>
+    <img src="../../../assets/login-logo.png" alt="SkyCoin">
+    <span class="text">Skywire Discovery</span>
+  </div>
 </div>
 <div class="content">
-  <span class="label">Discovery PubKey:</span>
-  <strong>{{discoveryPubKey}}</strong>
-  <!-- <mat-icon class="icon-btn" (click)="refresh($event)">refresh</mat-icon> -->
-  <mat-icon aria-label="content_copy" clipboard [clipboardText]="discoveryPubKey" matTooltipDisabled matTooltip="Copy" (copySuccess)="copy($event)"
-    #copyTooltip="matTooltip">content_copy</mat-icon>
+  <div class="address">
+    <span class="label">Nodes Count:</span>
+    <strong>{{nodes?.length}}</strong>
+    <small>
+      <a href="javascript:void(0);" (click)="showNodes = !showNodes" style="font-size: xx-small">Show Nodes</a>
+    </small>
+    <!-- <button mat-raised-button (click)="showNodes = !showNodes">Show Nodes</button> -->
+  </div>
+  <div class="address">
+    <span>
+      <span class="label">Discovery PubKey:</span>
+      <strong>{{discoveryPubKey}}</strong>
+      <mat-icon aria-label="content_copy" clipboard [clipboardText]="discoveryPubKey" matTooltipDisabled matTooltip="Copy" (copySuccess)="copy($event)"
+        #copyTooltip="matTooltip">content_copy</mat-icon>
+    </span>
+  </div>
+  <div *ngIf="showNodes">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Index</th>
+          <th>Node Key</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let node of nodes;let i = index;trackBy: trackByKey">
+          <td class="key">{{i + 1}}</td>
+          <td class="key">{{node?.key}}</td>
+        </tr>
+        <tr *ngIf="nodes?.length === 0" style="border-bottom:0;">
+          <td colspan="2" class="text-center">No Node</td>
+        </tr>
+      </tbody>
+    </table>
+
+  </div>
 </div>
