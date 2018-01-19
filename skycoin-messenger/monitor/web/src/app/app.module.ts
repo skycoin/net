@@ -24,7 +24,7 @@ import {
 } from '@angular/material';
 import { AppComponent } from './app.component';
 import { HttpClientModule } from '@angular/common/http';
-import { ApiService, UserService } from './service';
+import { ApiService, UserService, AlertService } from './service';
 import { TimeAgoPipe, ByteToPipe, EllipsisPipe, IterablePipe, SafePipe } from './pipe';
 import { LabelDirective, ShortcutInputDirective, DebugDirective, ClipboardDirective } from './directives';
 import { DashboardComponent, SubStatusComponent, LoginComponent, UpdatePassComponent, DiscoveryHomeComponent } from './page';
@@ -99,7 +99,7 @@ import { AppRoutingModule } from './route/app-routing.module';
     MatPaginatorModule,
     MatSlideToggleModule
   ],
-  providers: [ApiService, UserService],
+  providers: [ApiService, UserService, AlertService],
   bootstrap: [AppComponent]
 })
 export class AppModule { }

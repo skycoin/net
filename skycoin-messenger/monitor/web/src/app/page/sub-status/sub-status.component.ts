@@ -12,7 +12,8 @@ import {
   UserService,
   ConnectServiceInfo,
   MessageItem,
-  AutoStartConfig
+  AutoStartConfig,
+  AlertService
 } from '../../service';
 import { MatSnackBar, MatDialog, MatDialogRef } from '@angular/material';
 import { DataSource } from '@angular/cdk/collections';
@@ -84,8 +85,8 @@ export class SubStatusComponent implements OnInit, OnDestroy {
     socksServer: new FormControl(''),
     sshServer: new FormControl('')
   });
-  sshClientPort = 0;
-  socketClientPort = 0;
+  sshClientPort = '0';
+  socketClientPort = '0';
   nodeVersion = '0.0.1';
   nodeTag = 'dev';
   _appData = new SubDatabase();
@@ -112,7 +113,8 @@ export class SubStatusComponent implements OnInit, OnDestroy {
     private api: ApiService,
     public user: UserService,
     private snackBar: MatSnackBar,
-    private dialog: MatDialog) {
+    private dialog: MatDialog,
+    private alert: AlertService) {
   }
 
   ngOnInit() {
@@ -133,6 +135,7 @@ export class SubStatusComponent implements OnInit, OnDestroy {
       this.power = 'warn';
       this.isManager = env.isManager;
     });
+    // this.alert.error('this is error message!');
   }
   ngOnDestroy() {
     this.close();
@@ -142,10 +145,9 @@ export class SubStatusComponent implements OnInit, OnDestroy {
     ev.stopPropagation();
     ev.preventDefault();
     if (!key) {
-      console.error('key is empty!');
+      this.alert.error('key is empty!');
       return;
     }
-    console.log('close App key:', key);
     const data = new FormData();
     data.append('key', key);
     this.api.closeApp(this.status.addr, data).subscribe(result => {
@@ -262,7 +264,7 @@ export class SubStatusComponent implements OnInit, OnDestroy {
       };
     }
     if (!action || !jsonStr) {
-      console.error('action or params is empty!');
+      this.alert.error('action or params is empty!');
       return;
     }
     data.append('client', action);
@@ -279,7 +281,7 @@ export class SubStatusComponent implements OnInit, OnDestroy {
       data.append('toApp', this.socketClientForm.get('appKey').value);
     }
     if (!data.get('toNode') || !data.get('toApp')) {
-      console.error('params failed');
+      this.alert.error('params failed');
       return;
     }
     this.api.connectSocketClicent(this.status.addr, data).subscribe(result => {
@@ -305,7 +307,7 @@ export class SubStatusComponent implements OnInit, OnDestroy {
       };
     }
     if (!action || !jsonStr) {
-      console.error('action or params is empty!');
+      this.alert.error('action or params is empty!');
       return;
     }
     data.append('client', action);
@@ -322,7 +324,7 @@ export class SubStatusComponent implements OnInit, OnDestroy {
       data.append('toApp', this.sshClientForm.get('appKey').value);
     }
     if (!data.get('toNode') || !data.get('toApp')) {
-      console.error('params failed');
+      this.alert.error('params failed');
       return;
     }
     this.api.connectSSHClient(this.status.addr, data).subscribe(result => {
@@ -336,7 +338,7 @@ export class SubStatusComponent implements OnInit, OnDestroy {
     ev.stopPropagation();
     ev.preventDefault();
     if (index < 0) {
-      console.error('index is faild');
+      this.alert.error('index is faild');
       return;
     }
     this.sshAllowNodes.splice(index, 1);
@@ -355,7 +357,7 @@ export class SubStatusComponent implements OnInit, OnDestroy {
     ev.stopPropagation();
     ev.preventDefault();
     if (index < 0) {
-      console.error('index is faild');
+      this.alert.error('index is faild');
       return;
     }
     this.sockAllowNodes.splice(index, 1);
@@ -622,7 +624,7 @@ export class SubStatusComponent implements OnInit, OnDestroy {
   }
   setClientPort(client: string) {
     const app = this.findService(client);
-    let port = 0;
+    let port = '0';
     if (app && this.feedBacks) {
       const result = this.feedBacks.find(el => {
         return el.key === app.key;
@@ -630,7 +632,11 @@ export class SubStatusComponent implements OnInit, OnDestroy {
       if (!result) {
         return 0;
       }
-      port = result.port ? result.port : 0;
+      if (result.port) {
+        port = result.port.toString();
+      } else {
+        port = 'fail';
+      }
     }
     switch (client) {
       case this.SshClient:
@@ -727,13 +733,13 @@ export class SubStatusComponent implements OnInit, OnDestroy {
       // TODO check discovery address
       const addresses = tmp.split(',');
       if (!this.checkDiscoveryAddress(addresses)) {
-        console.error('addresses is faild');
+        this.alert.error('addresses is faild');
         return;
       }
       jsonStr['DiscoveryAddresses'] = addresses;
     }
     if (!this.key) {
-      console.error('node key is empty!');
+      this.alert.error('node key is empty!');
       return;
     }
     const data = new FormData();
@@ -789,11 +795,11 @@ export class SubStatusComponent implements OnInit, OnDestroy {
   removeClientConnection(action: string, index: number) {
     const data = new FormData();
     if (!action) {
-      console.error('client label is empty!');
+      this.alert.error('client label is empty!');
       return;
     }
     if (index < 0) {
-      console.error('index is faild!');
+      this.alert.error('index is faild!');
       return;
     }
     data.append('client', action);

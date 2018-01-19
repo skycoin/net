@@ -97,6 +97,13 @@ app-sub-status {
     .status-item {
       min-width: 1px;
       height: 33.33%;
+      .port-fail {
+        color: red;
+        cursor: pointer;
+        .icon {
+          transform: scale(.7);
+        }
+      }
     }
   }
 }
