@@ -186,6 +186,9 @@ func (req *AppFeedback) Execute(f *MessengerFactory, conn *Connection) (r resp, 
 		return
 	}
 	tr.StopTimeout()
+	if req.Failed {
+		tr.Close()
+	}
 	return
 }
 
