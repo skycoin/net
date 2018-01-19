@@ -439,7 +439,11 @@ func (f *MessengerFactory) ForEachConn(fn func(connection *Connection)) {
 	})
 }
 
-func (f *MessengerFactory) discoveryRegister(conn *Connection, ns *NodeServices) {
+func (f *MessengerFactory) discoveryRegister(conn *Connection, ns *NodeServices) (err error) {
+	if !checkNodeServices(ns) {
+		err = fmt.Errorf("invalid NodeServices %#v", ns)
+		return
+	}
 	f.serviceDiscovery.register(conn, ns)
 	if f.Proxy {
 		nodeServices := f.pack()
@@ -447,6 +451,7 @@ func (f *MessengerFactory) discoveryRegister(conn *Connection, ns *NodeServices)
 			connection.UpdateServices(nodeServices)
 		})
 	}
+	return
 }
 
 func (f *MessengerFactory) discoveryUnregister(conn *Connection) {

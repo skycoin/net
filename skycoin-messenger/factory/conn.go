@@ -10,6 +10,10 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+	"fmt"
+	"net"
+	"strconv"
+	"encoding/hex"
 )
 
 type Connection struct {
@@ -232,16 +236,91 @@ func (c *Connection) RegWithKeys(key, target cipher.PubKey, context map[string]s
 }
 
 // register services to discovery
-func (c *Connection) UpdateServices(ns *NodeServices) error {
+func (c *Connection) UpdateServices(ns *NodeServices) (err error) {
+	if !checkNodeServices(ns) {
+		err = fmt.Errorf("invalid NodeServices %#v", ns)
+		return
+	}
 	c.setServices(ns)
 	if ns == nil {
 		ns = &NodeServices{}
 	}
-	err := c.writeOP(OP_OFFER_SERVICE, ns)
+	err = c.writeOP(OP_OFFER_SERVICE, ns)
 	if err != nil {
 		return err
 	}
-	return nil
+	return
+}
+
+func checkAttrs(attrs []string) bool {
+	if len(attrs) > 3 {
+		return false
+	}
+	for _, v := range attrs {
+		if len(v) > 50 {
+			return false
+		}
+	}
+	return true
+}
+
+func checkAddress(addr string) (valid bool) {
+	host, p, err := net.SplitHostPort(addr)
+	if err != nil {
+		return
+	}
+	if net.ParseIP(host) == nil {
+		return
+	}
+	port, err := strconv.Atoi(p)
+	if err != nil {
+		return
+	}
+	if 0 > port || port > 65535 {
+		return
+	}
+	valid = true
+	return
+}
+
+func checkPubKeyHex(key string) (valid bool) {
+	bytes, err := hex.DecodeString(key)
+	if err != nil {
+		return
+	}
+	if len(bytes) != 33 {
+		return
+	}
+	valid = true
+	return
+}
+
+func checkNodeServices(ns *NodeServices) (valid bool) {
+	valid = checkAddress(ns.ServiceAddress)
+	if !valid {
+		return
+	}
+	for _, s := range ns.Services {
+		valid = checkAttrs(s.Attributes)
+		if !valid {
+			return
+		}
+		valid = checkAddress(s.Address)
+		if !valid {
+			return
+		}
+		if s.Key == EMPATY_PUBLIC_KEY {
+			return false
+		}
+		for _, k := range s.AllowNodes {
+			valid = checkPubKeyHex(k)
+			if !valid {
+				return
+			}
+		}
+	}
+	valid = true
+	return
 }
 
 // register a service to discovery
@@ -267,9 +346,12 @@ func (c *Connection) OfferPrivateServiceWithAddress(address string, allowNodes [
 }
 
 // register a service to discovery
-func (c *Connection) OfferStaticServiceWithAddress(address string, attrs ...string) error {
+func (c *Connection) OfferStaticServiceWithAddress(address string, attrs ...string) (err error) {
 	ns := &NodeServices{Services: []*Service{{Key: c.GetKey(), Attributes: attrs, Address: address}}}
-	c.factory.discoveryRegister(c, ns)
+	err = c.factory.discoveryRegister(c, ns)
+	if err != nil {
+		return
+	}
 	return c.UpdateServices(ns)
 }
 
