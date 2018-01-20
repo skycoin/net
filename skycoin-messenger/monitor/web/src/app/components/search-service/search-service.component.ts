@@ -63,10 +63,10 @@ export class SearchServiceComponent implements OnInit {
     }
     this.status = 0;
     this.search();
-    this.getResult();
+    // this.getResult();
     setTimeout(() => {
       this.status = 1;
-    }, (this.timeOut + 2) * 1000);
+    }, (this.timeOut + 3) * 1000);
   }
   search() {
     const data = new FormData();
@@ -74,12 +74,13 @@ export class SearchServiceComponent implements OnInit {
     Observable.interval(1000).take(this.timeOut).subscribe(() => {
       this.api.searchServices(this.nodeAddr, data).subscribe(seq => {
         this.seqs = this.seqs.concat(seq);
+        this.getResult();
       });
     });
   }
 
   getResult() {
-    Observable.interval(1000).take(this.timeOut + 2).subscribe(() => {
+    Observable.interval(1000).take(this.timeOut + 3).subscribe(() => {
       this.api.getServicesResult(this.nodeAddr).subscribe(result => {
         console.log('result:', result);
         this.result.next(result);
@@ -89,7 +90,7 @@ export class SearchServiceComponent implements OnInit {
   handle() {
     this.result.subscribe((results: Array<Search>) => {
       const tmp = this.filterSeq(results);
-      this.unique(tmp);
+      this.unique(results);
       this.sortByKey();
       console.log('total:', this.totalResults);
       this.results = this.totalResults;
@@ -118,12 +119,15 @@ export class SearchServiceComponent implements OnInit {
     });
   }
   filterSeq(results: Array<Search>) {
-    const tmpResults: Array<Search> = [];
+    let tmpResults: Array<Search> = [];
     if (!results) {
       return;
     }
     results.forEach(result => {
-      if (this.seqs.indexOf(result.seq) > - 1) {
+      const seqIndex = this.seqs.indexOf(result.seq);
+      if (seqIndex > - 1) {
+        this.seqs = this.seqs.splice(seqIndex, 1);
+        tmpResults = [];
         tmpResults.push(result);
       }
     });

@@ -811,6 +811,13 @@ export class SubStatusComponent implements OnInit, OnDestroy {
       if (result) {
         this.init();
         this.dialog.closeAll();
+        const updateTask = setInterval(() => {
+          if (this.socketClientPort > 0 && this.socketClientPort <= 65535) {
+            clearInterval(updateTask);
+            this.alert.close();
+          }
+        }, 500);
+        this.alert.timer('connecting...', 15000);
       }
     });
   }

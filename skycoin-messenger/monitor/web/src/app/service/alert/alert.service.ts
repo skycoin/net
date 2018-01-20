@@ -24,7 +24,7 @@ export class AlertService {
   }
   timer(message: string, timer = 3000) {
     return swal({
-      title: 'Please Waiting',
+      title: 'Please wait',
       text: message,
       timer: timer,
       allowOutsideClick: false,
