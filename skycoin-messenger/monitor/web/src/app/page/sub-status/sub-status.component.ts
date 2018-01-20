@@ -281,10 +281,10 @@ export class SubStatusComponent implements OnInit, OnDestroy {
       data.append('toNode', this.socketClientForm.get('nodeKey').value);
       data.append('toApp', this.socketClientForm.get('appKey').value);
     }
-    if (!data.get('toNode') || !data.get('toApp')) {
-      this.alert.error('params failed');
-      return;
-    }
+    // if (!data.get('toNode') || !data.get('toApp')) {
+    //   this.alert.error('params failed');
+    //   return;
+    // }
     this.api.connectSocketClicent(this.status.addr, data).subscribe(result => {
       this.task.next();
       const updateTask = setInterval(() => {
@@ -331,10 +331,10 @@ export class SubStatusComponent implements OnInit, OnDestroy {
       data.append('toNode', this.sshClientForm.get('nodeKey').value);
       data.append('toApp', this.sshClientForm.get('appKey').value);
     }
-    if (!data.get('toNode') || !data.get('toApp')) {
-      this.alert.error('params failed');
-      return;
-    }
+    // if (!data.get('toNode') || !data.get('toApp')) {
+    //   this.alert.error('params failed');
+    //   return;
+    // }
     this.api.connectSSHClient(this.status.addr, data).subscribe(result => {
       this.task.next();
       const updateTask = setInterval(() => {

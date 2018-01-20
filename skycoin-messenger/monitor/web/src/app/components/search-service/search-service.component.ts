@@ -82,7 +82,6 @@ export class SearchServiceComponent implements OnInit {
   getResult() {
     Observable.interval(1000).take(this.timeOut + 3).subscribe(() => {
       this.api.getServicesResult(this.nodeAddr).subscribe(result => {
-        console.log('result:', result);
         this.result.next(result);
       });
     });
