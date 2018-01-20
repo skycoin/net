@@ -90,6 +90,9 @@ export class SearchServiceComponent implements OnInit {
   handle() {
     this.result.subscribe((results: Array<Search>) => {
       const tmp = this.filterSeq(results);
+      if (!tmp) {
+        return;
+      }
       this.unique(tmp);
       this.sortByKey();
       console.log('total:', this.totalResults);
