@@ -85,8 +85,8 @@ export class SubStatusComponent implements OnInit, OnDestroy {
     socksServer: new FormControl(''),
     sshServer: new FormControl('')
   });
-  sshClientPort = '0';
-  socketClientPort = '0';
+  sshClientPort = 0;
+  socketClientPort = 0;
   nodeVersion = '0.0.1';
   nodeTag = 'dev';
   _appData = new SubDatabase();
@@ -573,6 +573,8 @@ export class SubStatusComponent implements OnInit, OnDestroy {
     return result !== undefined && result !== null;
   }
   setServiceStatus() {
+    this.socketClientPort = 0;
+    this.sshClientPort = 0;
     this.sshColor = 'close-status';
     this.sshClientColor = 'close-status';
     this.socketColor = 'close-status';
@@ -624,31 +626,33 @@ export class SubStatusComponent implements OnInit, OnDestroy {
   }
   setClientPort(client: string) {
     const app = this.findService(client);
-    let port = '0';
+    let port = -1;
     if (app && this.feedBacks) {
       const result = this.feedBacks.find(el => {
         return el.key === app.key;
       });
       if (!result) {
-        return 0;
+        return;
       }
       if (result.port) {
-        port = result.port.toString();
-      } else {
-        port = 'fail';
+        port = result.port;
       }
-    }
-    switch (client) {
-      case this.SshClient:
-        if (this.sshClientPort !== port) {
-          this.sshClientPort = port;
-        }
-        break;
-      case this.SocketClient:
-        if (this.socketClientPort !== port) {
-          this.socketClientPort = port;
-        }
-        break;
+      console.log('result.failed:', result.failed)
+      if (result.failed) {
+        port = -1;
+      }
+      switch (client) {
+        case this.SshClient:
+          if (this.sshClientPort !== port) {
+            this.sshClientPort = port;
+          }
+          break;
+        case this.SocketClient:
+          if (this.socketClientPort !== port) {
+            this.socketClientPort = port;
+          }
+          break;
+      }
     }
   }
 
@@ -657,6 +661,7 @@ export class SubStatusComponent implements OnInit, OnDestroy {
       this.api.getApps(this.status.addr).subscribe((apps: Array<App>) => {
         this.status.apps = apps;
         this.setServiceStatus();
+
         this.setClientPort(this.SshClient);
         this.setClientPort(this.SocketClient);
         if (this.status.apps) {

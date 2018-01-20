@@ -196,9 +196,9 @@
           </button>
         </p>
         <p class="status-item">
-          <span *ngIf="socketClientPort !== '0'" style="vertical-align: sub">
-            <span *ngIf="socketClientPort !== 'fail'">Port: {{socketClientPort}}</span>
-            <span *ngIf="socketClientPort === 'fail'" class="port-fail" (click)="openLog(SocketClient,logDialog)"><mat-icon class="icon">cancel</mat-icon>{{socketClientPort}}</span>
+          <span style="vertical-align: sub">
+            <span *ngIf="socketClientPort > 0">Port: {{socketClientPort}}</span>
+            <span *ngIf="socketClientPort === -1" class="port-fail" (click)="openLog(SocketClient,logDialog)"><mat-icon class="icon">cancel</mat-icon>fail</span>
           </span>
         </p>
       </mat-grid-tile>
@@ -221,9 +221,9 @@
           </button>
         </p>
         <p class="status-item">
-          <span *ngIf="sshClientPort !== '0'" style="vertical-align: sub">
-            <span *ngIf="sshClientPort !== 'fail'"> Port: {{sshClientPort}}</span>
-            <span *ngIf="sshClientPort === 'fail'" class="port-fail" (click)="openLog(SshClient,logDialog)"><mat-icon class="icon">cancel</mat-icon>{{socketClientPort}}</span>
+          <span  style="vertical-align: sub">
+            <span *ngIf="sshClientPort > 0"> Port: {{sshClientPort}}</span>
+            <span *ngIf="sshClientPort === -1" class="port-fail" (click)="openLog(SshClient,logDialog)"><mat-icon class="icon">cancel</mat-icon>fail</span>
           </span>
         </p>
       </mat-grid-tile>

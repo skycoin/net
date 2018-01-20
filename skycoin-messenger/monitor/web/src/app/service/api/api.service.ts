@@ -203,7 +203,7 @@ export interface FeedBack {
 }
 export interface FeedBackItem {
   key?: string;
-  // feedbacks?: FeedBack;
+  failed?: boolean;
   port?: number;
   unread?: boolean;
 }

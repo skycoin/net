@@ -1,4 +1,4 @@
-import { Component, OnInit, ViewEncapsulation, ViewChild } from '@angular/core';
+import { Component, OnInit, ViewEncapsulation, ViewChild, OnDestroy } from '@angular/core';
 import { MatTooltip } from '@angular/material';
 import { ApiService, Conn } from '../../service';
 import { Title } from '@angular/platform-browser';
@@ -10,10 +10,12 @@ import { Title } from '@angular/platform-browser';
   encapsulation: ViewEncapsulation.None
 })
 
-export class DiscoveryHomeComponent implements OnInit {
+export class DiscoveryHomeComponent implements OnInit, OnDestroy {
+
   discoveryPubKey = '';
   nodes: Array<Conn> = [];
   showNodes = false;
+  task = null;
   @ViewChild('copyTooltip') tooltip: MatTooltip;
 
   constructor(private api: ApiService, private titleService: Title) { }
@@ -44,8 +46,13 @@ export class DiscoveryHomeComponent implements OnInit {
   }
   ngOnInit() {
     this.init();
+    this.task = setInterval(() => {
+      this.init();
+    }, 1000);
   }
-
+  ngOnDestroy() {
+    clearInterval(this.task);
+  }
   show(ev: Event) {
     ev.stopPropagation();
     ev.stopImmediatePropagation();
