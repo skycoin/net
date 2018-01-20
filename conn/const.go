@@ -1,5 +1,7 @@
 package conn
 
+import "time"
+
 const (
 	STATUS_CONNECTING = iota
 	STATUS_CONNECTED
@@ -13,12 +15,12 @@ const (
 )
 
 const (
-	QUICK_LOST_THRESH       = 5
+	QUICK_LOST_THRESH       = 3
 	QUICK_LOST_RESEND_COUNT = 2
-)
 
-const (
 	MTU = 1500
+
+	MIN_RTO = 50 * time.Millisecond
 )
 
 const (

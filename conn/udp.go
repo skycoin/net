@@ -600,8 +600,8 @@ func (c *UDPConn) getRTO() (rto time.Duration) {
 
 func (c *UDPConn) setRTO(rto time.Duration) {
 	c.GetContextLogger().Debugf("setRTO %d", rto)
-	if rto < 100*time.Millisecond {
-		rto = 100 * time.Millisecond
+	if rto < MIN_RTO {
+		rto = MIN_RTO
 	}
 	c.FieldsMutex.Lock()
 	c.rto = rto
@@ -742,7 +742,7 @@ func (c *UDPConn) updateRTT(t time.Duration) {
 			if !ok {
 				continue
 			}
-			c.setRTO(t * 3)
+			c.setRTO(time.Duration(r) * 3 / 2)
 		}
 		break
 	}
