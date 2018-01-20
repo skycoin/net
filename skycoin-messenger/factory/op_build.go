@@ -209,7 +209,7 @@ func (req *buildConnResp) Execute(f *MessengerFactory, conn *Connection) (r resp
 	}
 	tr.setUDPConn(conn)
 	fnOK := func(port int) {
-		msg := fmt.Sprintf("connected app %x", req.App)
+		msg := fmt.Sprintf("Connected app %x", req.App)
 		priorityMsg := PriorityMsg{Priority: Connected, Msg: msg}
 		appConn.PutMessage(priorityMsg)
 		appConn.writeOP(OP_BUILD_APP_CONN|RESP_PREFIX, &AppConnResp{
@@ -260,7 +260,7 @@ type forwardNodeConn struct {
 func (req *forwardNodeConn) Execute(f *MessengerFactory, conn *Connection) (r resp, err error) {
 	c, ok := f.GetConnection(req.Node)
 	if !ok {
-		cause := fmt.Sprintf("node %x not exists", req.Node)
+		cause := fmt.Sprintf("Node %x not exists", req.Node)
 		conn.GetContextLogger().Debugf(cause)
 		err = conn.writeOP(OP_FORWARD_NODE_CONN_RESP|RESP_PREFIX, &forwardNodeConnResp{
 			Node:     req.Node,
@@ -352,7 +352,7 @@ type buildConn struct {
 func (req *buildConn) Run(conn *Connection) (err error) {
 	appConn, ok := conn.factory.GetConnection(req.App)
 	if !ok {
-		cause := fmt.Sprintf("node %x app %x not exists", req.Node, req.App)
+		cause := fmt.Sprintf("Node %x app %x not exists", req.Node, req.App)
 		conn.GetContextLogger().Debugf(cause)
 		err = conn.writeOP(OP_FORWARD_NODE_CONN_RESP, &forwardNodeConnResp{
 			Node:     req.Node,
@@ -368,7 +368,7 @@ func (req *buildConn) Run(conn *Connection) (err error) {
 
 	s, ok := appConn.getService(req.App)
 	if !ok {
-		cause := fmt.Sprintf("node %x app %x not exists", req.Node, req.App)
+		cause := fmt.Sprintf("Node %x app %x not exists", req.Node, req.App)
 		conn.GetContextLogger().Debugf(cause)
 		err = conn.writeOP(OP_FORWARD_NODE_CONN_RESP, &forwardNodeConnResp{
 			Node:     req.Node,
@@ -391,7 +391,7 @@ func (req *buildConn) Run(conn *Connection) (err error) {
 			}
 		}
 		if !allow {
-			cause := fmt.Sprintf("node %x app %x forbid %x", req.Node, req.App, req.FromNode)
+			cause := fmt.Sprintf("Node %x app %x forbid %x", req.Node, req.App, req.FromNode)
 			conn.GetContextLogger().Debugf(cause)
 			err = conn.writeOP(OP_FORWARD_NODE_CONN_RESP, &forwardNodeConnResp{
 				Node:     req.Node,
@@ -416,7 +416,7 @@ func (req *buildConn) Run(conn *Connection) (err error) {
 		App:      req.App,
 		FromApp:  req.FromApp,
 		FromNode: req.FromNode,
-		Msg:      PriorityMsg{Priority: Building, Msg: "building udp connection"},
+		Msg:      PriorityMsg{Priority: Building, Msg: "Building connection"},
 		Num:      req.Num,
 	})
 	if err != nil {
