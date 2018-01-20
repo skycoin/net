@@ -181,19 +181,6 @@ func (msg *Message) Acked() {
 	msg.Unlock()
 }
 
-func (msg *Message) Loss() {
-	msg.Lock()
-	msg.status |= MSG_STATUS_LOSS
-	msg.Unlock()
-}
-
-func (msg *UDPMessage) IsLoss() (r bool) {
-	msg.RLock()
-	r = msg.status&MSG_STATUS_LOSS > 0
-	msg.RUnlock()
-	return
-}
-
 func (msg *Message) GetRTT() (rtt time.Duration) {
 	msg.RLock()
 	rtt = msg.rtt
@@ -246,7 +233,6 @@ func (msg *UDPMessage) SetRTO(rto time.Duration, fn func(m *UDPMessage) error) {
 		}
 		msg.resendCnt++
 		msg.Unlock()
-		msg.ResetMiss()
 		fn(msg)
 	})
 	msg.Unlock()
@@ -312,4 +298,17 @@ func (msg *UDPMessage) SetChannelSeq(channel int, seq uint32) {
 
 func (msg *UDPMessage) GetChannel() int {
 	return int(atomic.LoadInt64(&msg.channel))
+}
+
+func (msg *UDPMessage) Loss() {
+	msg.Lock()
+	msg.status |= MSG_STATUS_LOSS
+	msg.Unlock()
+}
+
+func (msg *UDPMessage) IsLoss() (r bool) {
+	msg.RLock()
+	r = msg.status&MSG_STATUS_LOSS > 0
+	msg.RUnlock()
+	return
 }

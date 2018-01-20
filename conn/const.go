@@ -13,6 +13,11 @@ const (
 )
 
 const (
+	QUICK_LOST_THRESH       = 5
+	QUICK_LOST_RESEND_COUNT = 2
+)
+
+const (
 	MTU = 1500
 )
 

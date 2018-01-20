@@ -613,7 +613,7 @@ func (c *UDPConn) addMsg(k uint32, v *msg.UDPMessage) {
 }
 
 func (c *UDPConn) delMsg(seq uint32, ignore bool) error {
-	ok, um, msgs := c.DelMsgAndGetLossMsgs(seq, 3)
+	ok, um, msgs := c.DelMsgAndGetLossMsgs(seq)
 	if ok {
 		c.AddAckCount()
 		if !ignore && !um.IsLoss() {
@@ -845,14 +845,14 @@ func (c *UDPConn) setCwnd(acked, bw, rtt uint64, gain int) {
 }
 
 type ca struct {
-	delivered       uint64
-	deliveredTime   time.Time
-	sentTime        time.Time
-	rttSamples      *rttSampler
-	bwFilter        *maxBandwidthFilter
-	cwnd            uint32
-	usedCwnd        uint32
-	cwndMtx         sync.Mutex
+	delivered     uint64
+	deliveredTime time.Time
+	sentTime      time.Time
+	rttSamples    *rttSampler
+	bwFilter      *maxBandwidthFilter
+	cwnd          uint32
+	usedCwnd      uint32
+	cwndMtx       sync.Mutex
 	mode
 	pacingGain      int
 	pacingRate      uint64

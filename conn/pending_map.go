@@ -145,7 +145,7 @@ func (m *UDPPendingMap) exists(k uint32) (ok bool) {
 	return
 }
 
-func (m *UDPPendingMap) DelMsgAndGetLossMsgs(k uint32, resend uint32) (ok bool, um *msg.UDPMessage, loss []*msg.UDPMessage) {
+func (m *UDPPendingMap) DelMsgAndGetLossMsgs(k uint32) (ok bool, um *msg.UDPMessage, loss []*msg.UDPMessage) {
 	m.Lock()
 	v, ok := m.Pending[k]
 	if !ok {
@@ -156,20 +156,22 @@ func (m *UDPPendingMap) DelMsgAndGetLossMsgs(k uint32, resend uint32) (ok bool, 
 	um.Acked()
 	delete(m.Pending, k)
 
+	m.seqs.Delete(seq(k))
 	m.seqs.AscendLessThan(seq(k), func(i btree.Item) bool {
 		v, ok := m.Pending[uint32(i.(seq))]
 		if ok {
 			v, ok := v.(*msg.UDPMessage)
 			if ok {
-				if v.AddMiss() >= resend {
-					v.ResetMiss()
+				miss := v.AddMiss()
+				x := miss / QUICK_LOST_THRESH
+				y := miss % QUICK_LOST_THRESH
+				if x > 0 && x < QUICK_LOST_RESEND_COUNT && y == 0 {
 					loss = append(loss, v)
 				}
 			}
 		}
 		return true
 	})
-	m.seqs.Delete(seq(k))
 	m.Unlock()
 
 	m.ackedMessagesMutex.Lock()
