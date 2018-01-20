@@ -148,6 +148,7 @@ export class SubStatusComponent implements OnInit, OnDestroy {
       this.alert.error('key is empty!');
       return;
     }
+    console.log('close app:', key);
     const data = new FormData();
     data.append('key', key);
     this.api.closeApp(this.status.addr, data).subscribe(result => {
@@ -285,9 +286,16 @@ export class SubStatusComponent implements OnInit, OnDestroy {
       return;
     }
     this.api.connectSocketClicent(this.status.addr, data).subscribe(result => {
-      console.log('conect socket client');
       this.task.next();
+      const updateTask = setInterval(() => {
+        if (this.socketClientPort > 0 && this.socketClientPort <= 65535) {
+          clearInterval(updateTask);
+          this.alert.close();
+        }
+      }, 500);
+      this.alert.timer('connecting...', 15000);
     });
+
     this.dialog.closeAll();
   }
   connectSSH(ev: Event, action: string, info?: ConnectServiceInfo, ) {
@@ -328,8 +336,14 @@ export class SubStatusComponent implements OnInit, OnDestroy {
       return;
     }
     this.api.connectSSHClient(this.status.addr, data).subscribe(result => {
-      console.log('conect ssh client');
       this.task.next();
+      const updateTask = setInterval(() => {
+        if (this.sshClientPort > 0 && this.sshClientPort <= 65535) {
+          clearInterval(updateTask);
+          this.alert.close();
+        }
+      }, 500);
+      this.alert.timer('connecting...', 15000);
     });
     this.dialog.closeAll();
   }
@@ -637,10 +651,13 @@ export class SubStatusComponent implements OnInit, OnDestroy {
       if (result.port) {
         port = result.port;
       }
-      console.log('result.failed:', result.failed)
       if (result.failed) {
         port = -1;
+        this.alert.close();
       }
+      // if (port > 0 && port <= 65535) {
+      //   this.alert.close();
+      // }
       switch (client) {
         case this.SshClient:
           if (this.sshClientPort !== port) {
