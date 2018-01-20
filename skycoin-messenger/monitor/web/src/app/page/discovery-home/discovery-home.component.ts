@@ -38,11 +38,21 @@ export class DiscoveryHomeComponent implements OnInit {
         this.discoveryPubKey = key;
       }
     });
-  }
-  ngOnInit() {
-    this.init();
     this.api.getAllNode().subscribe((resp: Array<Conn>) => {
       this.nodes = resp;
     });
+  }
+  ngOnInit() {
+    this.init();
+  }
+
+  show(ev: Event) {
+    ev.stopPropagation();
+    ev.stopImmediatePropagation();
+    ev.preventDefault();
+    this.showNodes = !this.showNodes;
+    if (this.showNodes) {
+      this.init();
+    }
   }
 }
