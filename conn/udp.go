@@ -491,23 +491,16 @@ func (c *UDPConn) Ack(seq uint32) error {
 func (c *UDPConn) ack(seq uint32) error {
 	nSeq := c.GetNextAckSeq()
 	c.GetContextLogger().Debugf("ack %d, next %d", seq, nSeq)
-	var missing []uint32
-	var ml int
-	if seq > nSeq+1 {
-		missing = c.GetMissingSeqs(nSeq+1, seq)
-		c.GetContextLogger().Debugf("missing %v", missing)
-		ml = len(missing)
-	}
-	p := make([]byte, msg.ACK_HEADER_SIZE+msg.PKG_HEADER_SIZE+4*ml)
+	p := make([]byte, msg.ACK_HEADER_SIZE+msg.PKG_HEADER_SIZE)
 	m := p[msg.PKG_HEADER_SIZE:]
 	m[msg.ACK_TYPE_BEGIN] = msg.TYPE_ACK
 	binary.BigEndian.PutUint32(m[msg.ACK_SEQ_BEGIN:], seq)
 	binary.BigEndian.PutUint32(m[msg.ACK_NEXT_SEQ_BEGIN:], nSeq)
-
-	for i, v := range missing {
-		binary.BigEndian.PutUint32(m[msg.ACK_NEXT_SEQ_END+i*4:], v)
+	if seq > nSeq+1 {
+		acked := c.GetAckedSeqs(nSeq+1, seq)
+		c.GetContextLogger().Debugf("acked %b", acked)
+		binary.BigEndian.PutUint32(m[msg.ACK_ACKED_SEQ_BEGIN:msg.ACK_ACKED_SEQ_END], acked)
 	}
-
 	checksum := crc32.ChecksumIEEE(m)
 	binary.BigEndian.PutUint32(p[msg.PKG_CRC32_BEGIN:], checksum)
 	return c.WriteExt(p)
@@ -529,8 +522,9 @@ func (c *UDPConn) RecvAck(m []byte) (err error) {
 	}
 	seq := binary.BigEndian.Uint32(m[msg.ACK_SEQ_BEGIN:msg.ACK_SEQ_END])
 	ns := binary.BigEndian.Uint32(m[msg.ACK_NEXT_SEQ_BEGIN:msg.ACK_NEXT_SEQ_END])
+	acked := binary.BigEndian.Uint32(m[msg.ACK_ACKED_SEQ_BEGIN:msg.ACK_ACKED_SEQ_END])
 
-	c.GetContextLogger().Debugf("recv ack %d, next %d", seq, ns)
+	c.GetContextLogger().Debugf("recv ack %d, next %d, acked", seq, ns, acked)
 	err = c.delMsg(seq, false)
 	if err != nil {
 		return
@@ -543,24 +537,16 @@ func (c *UDPConn) RecvAck(m []byte) (err error) {
 		}
 	}
 
-	if seq > ns+1 {
-		i := msg.ACK_NEXT_SEQ_END
-		mm := make(map[uint32]struct{})
-		for len(m)-i >= 4 {
-			v := binary.BigEndian.Uint32(m[i:])
-			mm[v] = struct{}{}
-			i = i + 4
-		}
-		c.GetContextLogger().Debugf("recover ack [%d-%d) missing %v", ns+1, seq, mm)
-
-		for j := ns + 1; j < seq; j++ {
-			if _, ok := mm[j]; !ok {
-				err = c.delMsg(j, true)
-				if err != nil {
-					return
-				}
+	for i := uint32(0); acked > 0; i++ {
+		if acked&1 > 0 {
+			n := i + ns + 1
+			c.GetContextLogger().Debugf("ignore ack %d", n)
+			err = c.delMsg(n, true)
+			if err != nil {
+				return
 			}
 		}
+		acked >>= 1
 	}
 
 	return
