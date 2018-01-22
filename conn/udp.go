@@ -524,7 +524,7 @@ func (c *UDPConn) RecvAck(m []byte) (err error) {
 	ns := binary.BigEndian.Uint32(m[msg.ACK_NEXT_SEQ_BEGIN:msg.ACK_NEXT_SEQ_END])
 	acked := binary.BigEndian.Uint32(m[msg.ACK_ACKED_SEQ_BEGIN:msg.ACK_ACKED_SEQ_END])
 
-	c.GetContextLogger().Debugf("recv ack %d, next %d, acked", seq, ns, acked)
+	c.GetContextLogger().Debugf("recv ack %d, next %d, acked %d", seq, ns, acked)
 	err = c.delMsg(seq, false)
 	if err != nil {
 		return

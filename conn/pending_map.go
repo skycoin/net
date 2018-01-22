@@ -127,11 +127,15 @@ func (m *UDPPendingMap) AddMsg(k uint32, v msg.Interface) {
 }
 
 func (m *UDPPendingMap) Dismiss() {
-	m.Lock()
+	m.RLock()
 	for _, v := range m.Pending {
-		v.(*msg.UDPMessage).Cancel()
+		m, ok := v.(*msg.UDPMessage)
+		if !ok || m == nil {
+			continue
+		}
+		m.Cancel()
 	}
-	m.Unlock()
+	m.RUnlock()
 }
 
 func (m *UDPPendingMap) getMinUnAckSeq() (s uint32, ok bool) {
