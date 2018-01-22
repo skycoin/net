@@ -955,7 +955,7 @@ func (ca *ca) newPendingChannel() (channel int) {
 
 	ca.bifPdId++
 	channel = ca.bifPdId
-	ca.bifPdChans[channel] = newPdChan(10)
+	ca.bifPdChans[channel] = newPdChan(3)
 	return
 }
 
@@ -989,17 +989,13 @@ func (ca *ca) addToPendingChannel(channel int, m *msg.UDPMessage) {
 	}
 
 	ch.mtx.Lock()
-	//ca.cwndMtx.Lock()
-	//for ca.usedCwnd+1 > ca.cwnd {
-	//	ca.cwndMtx.Unlock()
-	//	ch.cond.Wait()
-	//	ca.cwndMtx.Lock()
-	//}
+	for ch.pd.Len() >= ch.maxPd {
+		ch.cond.Wait()
+	}
 	ch.seq++
 	m.SetChannelSeq(channel, ch.seq)
 	atomic.AddInt32(&ca.pendingCnt, 1)
 	ch.pd.ReplaceOrInsert(m)
-	//ca.cwndMtx.Unlock()
 	ch.mtx.Unlock()
 }
 
