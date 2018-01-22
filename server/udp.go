@@ -19,16 +19,17 @@ func NewServerUDPConn(c *net.UDPConn) *ServerUDPConn {
 		UDPConn: conn.UDPConn{
 			UdpConn:          c,
 			ConnCommonFields: conn.NewConnCommonFileds(),
+			UnsharedUdpConn:  true,
 		},
 	}
 }
 
 func (c *ServerUDPConn) ReadLoop(fn func(c *net.UDPConn, addr *net.UDPAddr) *conn.UDPConn) (err error) {
 	defer func() {
-		//if e := recover(); e != nil {
-		//	c.GetContextLogger().Debug(e)
-		//	err = fmt.Errorf("readloop panic err:%v", e)
-		//}
+		if e := recover(); e != nil {
+			c.GetContextLogger().Debug(e)
+			err = fmt.Errorf("readloop panic err:%v", e)
+		}
 		if err != nil {
 			c.SetStatusToError(err)
 		}
@@ -72,64 +73,29 @@ func (c *ServerUDPConn) ReadLoop(fn func(c *net.UDPConn, addr *net.UDPAddr) *con
 		switch t {
 		case msg.TYPE_ACK:
 			at = time.Now()
-			func() {
-				var err error
-				defer func() {
-					if e := recover(); e != nil {
-						cc.GetContextLogger().Debug(e)
-						err = fmt.Errorf("readloop panic err:%v", e)
-					}
-					if err != nil {
-						cc.SetStatusToError(err)
-						cc.Close()
-					}
-				}()
-				err = cc.RecvAck(m)
-			}()
+			wrapForClient(cc, func() error {
+				return cc.RecvAck(m)
+			})
 			c.GetContextLogger().Debugf("process ack d %s", time.Now().Sub(at))
 		case msg.TYPE_PONG:
 		case msg.TYPE_PING:
-			func() {
-				var err error
-				defer func() {
-					if e := recover(); e != nil {
-						cc.GetContextLogger().Debug(e)
-						err = fmt.Errorf("readloop panic err:%v", e)
-					}
-					if err != nil {
-						cc.SetStatusToError(err)
-						cc.Close()
-					}
-				}()
+			wrapForClient(cc, func() error {
 				m[msg.PING_MSG_TYPE_BEGIN] = msg.TYPE_PONG
 				checksum := crc32.ChecksumIEEE(m)
 				binary.BigEndian.PutUint32(maxBuf[msg.PKG_CRC32_BEGIN:], checksum)
-				err = cc.WriteExt(maxBuf)
-				if err != nil {
-					return
-				}
 				cc.GetContextLogger().Debugf("pong")
-			}()
+				return cc.WriteExt(maxBuf)
+			})
 		case msg.TYPE_NORMAL, msg.TYPE_FEC, msg.TYPE_REQ, msg.TYPE_RESP:
 			nt = time.Now()
-			func() {
-				var err error
-				//defer func() {
-				//	if e := recover(); e != nil {
-				//		cc.GetContextLogger().Debug(e)
-				//		err = fmt.Errorf("readloop panic err:%v", e)
-				//	}
-				//	if err != nil {
-				//		cc.SetStatusToError(err)
-				//		cc.Close()
-				//	}
-				//}()
-				err = cc.Process(t, m)
-				if err != nil {
-					return
-				}
-			}()
+			wrapForClient(cc, func() error {
+				return cc.Process(t, m)
+			})
 			c.GetContextLogger().Debugf("process normal d %s", time.Now().Sub(nt))
+		case msg.TYPE_FIN:
+			wrapForClient(cc, func() error {
+				return conn.ErrFin
+			})
 		default:
 			cc.GetContextLogger().Debugf("not implemented msg type %d", t)
 			cc.SetStatusToError(fmt.Errorf("not implemented msg type %d", t))
@@ -141,11 +107,17 @@ func (c *ServerUDPConn) ReadLoop(fn func(c *net.UDPConn, addr *net.UDPAddr) *con
 	}
 }
 
-func (c *ServerUDPConn) Close() {
-	c.FieldsMutex.RLock()
-	if c.UdpConn != nil {
-		c.UdpConn.Close()
-	}
-	c.FieldsMutex.RUnlock()
-	c.ConnCommonFields.Close()
+func wrapForClient(cc *conn.UDPConn, fn func() error) {
+	var err error
+	defer func() {
+		if e := recover(); e != nil {
+			cc.GetContextLogger().Debug(e)
+			err = fmt.Errorf("wrapForClient panic err:%v", e)
+		}
+		if err != nil {
+			cc.SetStatusToError(err)
+			cc.Close()
+		}
+	}()
+	err = fn()
 }

@@ -17,6 +17,7 @@ type ClientUDPConn struct {
 func NewClientUDPConn(c *net.UDPConn, addr *net.UDPAddr) *ClientUDPConn {
 	uc := conn.NewUDPConn(c, addr)
 	uc.SendPing = true
+	uc.UnsharedUdpConn = true
 	return &ClientUDPConn{UDPConn: uc}
 }
 
@@ -59,19 +60,13 @@ func (c *ClientUDPConn) ReadLoop() (err error) {
 			if err != nil {
 				return err
 			}
+		case msg.TYPE_FIN:
+			err = conn.ErrFin
+			break
 		default:
 			c.GetContextLogger().Debugf("not implemented msg type %d", t)
 			return fmt.Errorf("not implemented msg type %d", t)
 		}
 		c.UpdateLastTime()
 	}
-}
-
-func (c *ClientUDPConn) Close() {
-	c.FieldsMutex.RLock()
-	if c.UdpConn != nil {
-		c.UdpConn.Close()
-	}
-	c.FieldsMutex.RUnlock()
-	c.ConnCommonFields.Close()
 }

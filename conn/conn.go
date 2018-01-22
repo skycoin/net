@@ -66,7 +66,7 @@ type ConnCommonFields struct {
 	receivedBytes uint64
 
 	Status int // STATUS_CONNECTING, STATUS_CONNECTED, STATUS_ERROR
-	Err    error
+	err    error
 
 	In           chan []byte
 	Out          chan []byte
@@ -112,9 +112,20 @@ func (c *ConnCommonFields) SetStatusToError(err error) {
 		return
 	}
 	c.Status = STATUS_ERROR
-	c.Err = err
+	c.err = err
 	c.FieldsMutex.Unlock()
 	c.GetContextLogger().Debugf("SetStatusToError %v", err)
+}
+
+func (c *ConnCommonFields) GetStatusError() (err error) {
+	c.FieldsMutex.Lock()
+	if c.Status != STATUS_ERROR {
+		c.FieldsMutex.Unlock()
+		return
+	}
+	err = c.err
+	c.FieldsMutex.Unlock()
+	return
 }
 
 func (c *ConnCommonFields) UpdateLastAck(s uint32) {

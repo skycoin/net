@@ -22,8 +22,9 @@ type UDPConn struct {
 	*ConnCommonFields
 	*UDPPendingMap
 	streamQueue
-	UdpConn *net.UDPConn
-	addr    *net.UDPAddr
+	UdpConn         *net.UDPConn
+	UnsharedUdpConn bool
+	addr            *net.UDPAddr
 
 	// write loop with ping
 	SendPing bool
@@ -50,6 +51,8 @@ type UDPConn struct {
 	// fec
 	*fecEncoder
 	*fecDecoder
+
+	closed bool
 }
 
 const (
@@ -510,6 +513,16 @@ func (c *UDPConn) ack(seq uint32) error {
 	return c.WriteExt(p)
 }
 
+func (c *UDPConn) fin() error {
+	p := make([]byte, msg.PKG_HEADER_SIZE+msg.MSG_TYPE_SIZE)
+	m := p[msg.PKG_HEADER_SIZE:]
+	m[msg.MSG_TYPE_BEGIN] = msg.TYPE_FIN
+	checksum := crc32.ChecksumIEEE(m)
+	binary.BigEndian.PutUint32(p[msg.PKG_CRC32_BEGIN:], checksum)
+	c.GetContextLogger().Debug("fin")
+	return c.WriteExt(p)
+}
+
 func (c *UDPConn) RecvAck(m []byte) (err error) {
 	if len(m) < msg.ACK_HEADER_SIZE {
 		return fmt.Errorf("invalid ack msg %x", m)
@@ -569,7 +582,20 @@ func (c *UDPConn) GetNextSeq() uint32 {
 }
 
 func (c *UDPConn) Close() {
+	c.FieldsMutex.Lock()
+	if c.closed {
+		return
+	}
+	c.closed = true
+	c.FieldsMutex.Unlock()
+	c.UDPPendingMap.Dismiss()
+	if c.addr != nil && c.GetStatusError() != ErrFin {
+		c.fin()
+	}
 	c.ConnCommonFields.Close()
+	if c.UnsharedUdpConn {
+		c.UdpConn.Close()
+	}
 }
 
 func (c *UDPConn) String() string {

@@ -40,6 +40,7 @@ const (
 	TYPE_ACK    = 0x80
 	TYPE_PING   = 0x81
 	TYPE_PONG   = 0x82
+	TYPE_FIN    = 0x83
 )
 
 const (
@@ -47,6 +48,7 @@ const (
 	MSG_STATUS_TRANSMITTED
 	MSG_STATUS_ACKED
 	MSG_STATUS_LOSS
+	MSG_STATUS_CANCEL
 )
 
 // ack msg index

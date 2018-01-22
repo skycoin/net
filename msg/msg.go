@@ -256,6 +256,15 @@ func (msg *UDPMessage) Acked() {
 	msg.Unlock()
 }
 
+func (msg *UDPMessage) Cancel() {
+	msg.Lock()
+	msg.status |= MSG_STATUS_CANCEL
+	if msg.resendTimer != nil {
+		msg.resendTimer.Stop()
+	}
+	msg.Unlock()
+}
+
 func (msg *UDPMessage) Miss() uint32 {
 	return atomic.LoadUint32(&msg.miss)
 }

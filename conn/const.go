@@ -1,6 +1,9 @@
 package conn
 
-import "time"
+import (
+	"errors"
+	"time"
+)
 
 const (
 	STATUS_CONNECTING = iota
@@ -60,3 +63,5 @@ const (
 	drain
 	probeBW
 )
+
+var ErrFin = errors.New("eof")
