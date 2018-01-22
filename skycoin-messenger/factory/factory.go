@@ -448,9 +448,23 @@ func (f *MessengerFactory) discoveryRegister(conn *Connection, ns *NodeServices)
 	if f.Proxy {
 		nodeServices := f.pack()
 		f.ForEachConn(func(connection *Connection) {
-			connection.UpdateServices(nodeServices)
+			err := connection.UpdateServices(nodeServices)
+			connection.GetContextLogger().Errorf("discoveryRegister err %v", err)
 		})
 	}
+	return
+}
+
+func (f *MessengerFactory) ResyncToDiscovery(connection *Connection) (err error) {
+	if !f.Proxy {
+		return
+	}
+	nodeServices := f.pack()
+	if nodeServices == nil {
+		return
+	}
+	err = connection.UpdateServices(nodeServices)
+	connection.GetContextLogger().Errorf("ResyncToDiscovery err %v", err)
 	return
 }
 
