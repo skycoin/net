@@ -1,4 +1,4 @@
-import { Component, OnInit, ViewEncapsulation } from '@angular/core';
+import { Component, OnInit, ViewEncapsulation, OnDestroy } from '@angular/core';
 import { ApiService } from '../../service';
 import { Observable } from 'rxjs/Observable';
 import { BehaviorSubject } from 'rxjs/BehaviorSubject';
@@ -16,20 +16,33 @@ import 'rxjs/add/observable/interval';
   encapsulation: ViewEncapsulation.None
 })
 
-export class SearchServiceComponent implements OnInit {
+export class SearchServiceComponent implements OnInit, OnDestroy {
   searchStr = '';
   nodeAddr = '';
   seqs = [];
   timeOut = 1;
   resultTask: Subscription = null;
+  searchTask: Subscription = null;
   totalResults: Array<Search> = [];
   results: Array<Search> = [];
   status = 0;
+
   private result: Subject<Array<Search>> = new BehaviorSubject<Array<Search>>([]);
   constructor(private api: ApiService, private dialogRef: MatDialogRef<SearchServiceComponent>) { }
   ngOnInit() {
     this.handle();
     this.refresh();
+  }
+  ngOnDestroy() {
+    if (this.searchTask) {
+      this.searchTask.unsubscribe();
+    }
+    if (this.resultTask) {
+      this.resultTask.unsubscribe();
+    }
+    if (this.result) {
+      this.result.unsubscribe();
+    }
   }
   connectSocket(nodeKey: string, appKey: string) {
     if (!nodeKey || !appKey) {
@@ -64,14 +77,11 @@ export class SearchServiceComponent implements OnInit {
     this.status = 0;
     this.search();
     // this.getResult();
-    setTimeout(() => {
-      this.status = 1;
-    }, (this.timeOut + 3) * 1000);
   }
   search() {
     const data = new FormData();
     data.append('key', this.searchStr);
-    Observable.interval(1000).take(this.timeOut).subscribe(() => {
+    this.searchTask = Observable.interval(1000).take(this.timeOut).subscribe(() => {
       this.api.searchServices(this.nodeAddr, data).subscribe(seq => {
         this.seqs = this.seqs.concat(seq);
         this.getResult();
@@ -80,7 +90,7 @@ export class SearchServiceComponent implements OnInit {
   }
 
   getResult() {
-    Observable.interval(1000).take(this.timeOut + 3).subscribe(() => {
+    this.resultTask = Observable.interval(1000).take(this.timeOut + 3).subscribe(() => {
       this.api.getServicesResult(this.nodeAddr).subscribe(result => {
         this.result.next(result);
       });
@@ -94,8 +104,8 @@ export class SearchServiceComponent implements OnInit {
       }
       this.unique(tmp);
       this.sortByKey();
-      console.log('total:', this.totalResults);
       this.results = this.totalResults;
+      this.status = 1;
     });
   }
   sortByKey() {

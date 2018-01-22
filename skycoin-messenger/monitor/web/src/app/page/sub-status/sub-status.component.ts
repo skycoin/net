@@ -107,6 +107,9 @@ export class SubStatusComponent implements OnInit, OnDestroy {
   SshServer = 'sshs';
   SocketClient = 'socksc';
   SocketServer = 'sockss';
+  isWindowsOs = navigator.platform.toLowerCase().indexOf('win');
+  appColor: Map<string, string> = new Map<string, string>();
+  closeStatus = 'close-status';
   constructor(
     private router: Router,
     private route: ActivatedRoute,
@@ -118,6 +121,7 @@ export class SubStatusComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit() {
+    this.initAppsStatus();
     this.appSource = new SubStatusDataSource(this._appData);
     this.transportSource = new SubStatusDataSource(this._transportData);
     this.sshSource = new SubStatusDataSource(this._sshServerData);
@@ -135,10 +139,18 @@ export class SubStatusComponent implements OnInit, OnDestroy {
       this.power = 'warn';
       this.isManager = env.isManager;
     });
-    // this.alert.error('this is error message!');
   }
   ngOnDestroy() {
     this.close();
+  }
+  initAppsStatus() {
+    this.appColor.set(this.SshServer, this.closeStatus);
+    this.appColor.set(this.SshClient, this.closeStatus);
+    this.appColor.set(this.SocketServer, this.closeStatus);
+    this.appColor.set(this.SocketClient, this.closeStatus);
+  }
+  getAppColor(key: string) {
+
   }
   closeApp(ev: Event, key: string) {
     ev.stopImmediatePropagation();
@@ -153,6 +165,7 @@ export class SubStatusComponent implements OnInit, OnDestroy {
     data.append('key', key);
     this.api.closeApp(this.status.addr, data).subscribe(result => {
       if (result) {
+        this.initAppsStatus();
         this.init();
       }
     });
@@ -171,13 +184,18 @@ export class SubStatusComponent implements OnInit, OnDestroy {
     ev.stopImmediatePropagation();
     ev.stopPropagation();
     ev.preventDefault();
-    const ref = this.dialog.open(TerminalComponent, {
-      panelClass: 'terminal-dialog',
-      backdropClass: 'terminal-backdrop',
-      width: '100%',
-      disableClose: true
+    this.alert.confirm('Warning', 'If you are not familiar with the command, use it carefully.', 'warning').then(result => {
+      if (result.value) {
+        const ref = this.dialog.open(TerminalComponent, {
+          panelClass: 'terminal-dialog',
+          backdropClass: 'terminal-backdrop',
+          width: '100%',
+          disableClose: true
+        });
+        ref.componentInstance.addr = this.status.addr;
+      }
     });
-    ref.componentInstance.addr = this.status.addr;
+
   }
   openDebug(ev: Event, content: any) {
     this.api.getDebugPage('192.168.0.2:6001').subscribe((res) => {
@@ -291,6 +309,8 @@ export class SubStatusComponent implements OnInit, OnDestroy {
         if (this.socketClientPort > 0 && this.socketClientPort <= 65535) {
           clearInterval(updateTask);
           this.alert.close();
+        } else if (this.socketClientPort === -1) {
+          this.alert.close();
         }
       }, 500);
       this.alert.timer('connecting...', 15000);
@@ -340,6 +360,8 @@ export class SubStatusComponent implements OnInit, OnDestroy {
       const updateTask = setInterval(() => {
         if (this.sshClientPort > 0 && this.sshClientPort <= 65535) {
           clearInterval(updateTask);
+          this.alert.close();
+        } else if (this.sshClientPort === -1) {
           this.alert.close();
         }
       }, 500);
@@ -587,8 +609,7 @@ export class SubStatusComponent implements OnInit, OnDestroy {
     return result !== undefined && result !== null;
   }
   setServiceStatus() {
-    this.socketClientPort = 0;
-    this.sshClientPort = 0;
+
     this.sshColor = 'close-status';
     this.sshClientColor = 'close-status';
     this.socketColor = 'close-status';
@@ -603,16 +624,11 @@ export class SubStatusComponent implements OnInit, OnDestroy {
       this._sshServerData.push(this.sshAllowNodes);
       this._socketServerData.push(this.sockAllowNodes);
       if (this.isExist(this.SshServer)) {
+        this.appColor.set(this.SshServer, this.statrStatusCss);
         this.sshColor = this.statrStatusCss;
       }
-      if (this.isExist(this.SshClient)) {
-        this.sshClientColor = this.statrStatusCss;
-      }
       if (this.isExist(this.SocketServer)) {
-        this.socketColor = this.statrStatusCss;
-      }
-      if (this.isExist(this.SocketClient)) {
-        this.socketClientColor = this.statrStatusCss;
+        this.appColor.set(this.SocketServer, this.statrStatusCss);
       }
     }
   }
@@ -638,39 +654,40 @@ export class SubStatusComponent implements OnInit, OnDestroy {
       });
     }
   }
-  setClientPort(client: string) {
-    const app = this.findService(client);
-    let port = -1;
-    if (app && this.feedBacks) {
-      const result = this.feedBacks.find(el => {
+  setClientPort() {
+    this.socketClientPort = 0;
+    this.sshClientPort = 0;
+    if (!this.status.apps || !this.feedBacks) {
+      return;
+    }
+    this.status.apps.forEach(((app: App) => {
+      const feedBack = this.feedBacks.find(el => {
         return el.key === app.key;
       });
-      if (!result) {
-        return;
+      if (feedBack) {
+        let port = -1;
+        if (feedBack.port) {
+          port = feedBack.port;
+        }
+        if (feedBack.failed) {
+          port = -1;
+        }
+        switch (app.attributes[0]) {
+          case this.SshClient:
+            if (this.sshClientPort !== port) {
+              this.sshClientPort = port;
+              this.appColor.set(this.SshClient, this.statrStatusCss);
+            }
+            break;
+          case this.SocketClient:
+            if (this.socketClientPort !== port) {
+              this.socketClientPort = port;
+              this.appColor.set(this.SocketClient, this.statrStatusCss);
+            }
+            break;
+        }
       }
-      if (result.port) {
-        port = result.port;
-      }
-      if (result.failed) {
-        port = -1;
-        this.alert.close();
-      }
-      // if (port > 0 && port <= 65535) {
-      //   this.alert.close();
-      // }
-      switch (client) {
-        case this.SshClient:
-          if (this.sshClientPort !== port) {
-            this.sshClientPort = port;
-          }
-          break;
-        case this.SocketClient:
-          if (this.socketClientPort !== port) {
-            this.socketClientPort = port;
-          }
-          break;
-      }
-    }
+    }));
   }
 
   fillApps() {
@@ -678,9 +695,7 @@ export class SubStatusComponent implements OnInit, OnDestroy {
       this.api.getApps(this.status.addr).subscribe((apps: Array<App>) => {
         this.status.apps = apps;
         this.setServiceStatus();
-
-        this.setClientPort(this.SshClient);
-        this.setClientPort(this.SocketClient);
+        this.setClientPort();
         if (this.status.apps) {
           this.status.apps.sort((a1: App, a2: App) => {
             return a1.key.localeCompare(a2.key);
@@ -841,6 +856,7 @@ export class SubStatusComponent implements OnInit, OnDestroy {
       }
     });
   }
+
   init() {
     this.startRequest = true;
     if (this.key) {

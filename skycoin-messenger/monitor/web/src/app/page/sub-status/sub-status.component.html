@@ -95,7 +95,7 @@
           </button>
         </p>
       </mat-grid-tile>
-      <mat-grid-tile>
+      <mat-grid-tile *ngIf="isWindowsOs < 0">
         <p class="status-box-item-title">
           <small>terminal</small>
           <!-- <mat-icon class="icon-pointer" (click)="discoveriesStatus($event,discoveryStatus)">info</mat-icon> -->
@@ -146,7 +146,7 @@
           </mat-menu>
         </p>
         <p class="status-box-item-content status-item">
-          <button mat-icon-button (click)="runSocketServer($event)" [ngClass]="socketColor">
+          <button mat-icon-button (click)="runSocketServer($event)" [ngClass]="appColor?.get(SocketServer)">
             <mat-icon aria-label="Shadowsocks">near_me</mat-icon>
           </button>
         </p>
@@ -170,7 +170,7 @@
           </mat-menu>
         </p>
         <p class="status-box-item-content status-item">
-          <button mat-icon-button (click)="runSSHServer($event)" [ngClass]="sshColor">
+          <button mat-icon-button (click)="runSSHServer($event)" [ngClass]="appColor?.get(SshServer)">
             <mat-icon aria-label="SSH">computer</mat-icon>
           </button>
         </p>
@@ -191,7 +191,7 @@
           </mat-menu>
         </p>
         <p class="status-box-item-content status-item">
-          <button mat-icon-button (click)="inputKeys($event,'socket',socketClientDialog)" [ngClass]="socketClientColor">
+          <button mat-icon-button (click)="inputKeys($event,'socket',socketClientDialog)" [ngClass]="appColor?.get(SocketClient)">
             <mat-icon aria-label="Shadowsocks">near_me</mat-icon>
           </button>
         </p>
@@ -216,7 +216,7 @@
           </mat-menu>
         </p>
         <p class="status-box-item-content status-item">
-          <button mat-icon-button (click)="inputKeys($event,'ssh',sshClientDialog)" [ngClass]="sshClientColor">
+          <button mat-icon-button (click)="inputKeys($event,'ssh',sshClientDialog)" [ngClass]="appColor?.get(SshClient)">
             <mat-icon aria-label="SSH">computer</mat-icon>
           </button>
         </p>
