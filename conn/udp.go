@@ -574,7 +574,9 @@ func (c *UDPConn) Close() {
 	}
 	c.closed = true
 	c.FieldsMutex.Unlock()
-	c.UDPPendingMap.Dismiss()
+	if c.UDPPendingMap != nil {
+		c.UDPPendingMap.Dismiss()
+	}
 	if c.addr != nil && c.GetStatusError() != ErrFin {
 		c.fin()
 	}

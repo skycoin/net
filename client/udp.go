@@ -23,9 +23,11 @@ func NewClientUDPConn(c *net.UDPConn, addr *net.UDPAddr) *ClientUDPConn {
 
 func (c *ClientUDPConn) ReadLoop() (err error) {
 	defer func() {
-		if e := recover(); e != nil {
-			c.GetContextLogger().Debug(e)
-			err = fmt.Errorf("readloop panic err:%v", e)
+		if !conn.DEV {
+			if e := recover(); e != nil {
+				c.GetContextLogger().Debug(e)
+				err = fmt.Errorf("readloop panic err:%v", e)
+			}
 		}
 		if err != nil {
 			c.SetStatusToError(err)

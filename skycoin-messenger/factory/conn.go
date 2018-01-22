@@ -394,8 +394,10 @@ func (c *Connection) SendCustom(msg []byte) error {
 
 func (c *Connection) preprocessor() (err error) {
 	defer func() {
-		if e := recover(); e != nil {
-			c.GetContextLogger().Debugf("panic in preprocessor %v", e)
+		if !conn.DEV {
+			if e := recover(); e != nil {
+				c.GetContextLogger().Debugf("panic in preprocessor %v", e)
+			}
 		}
 		if err != nil {
 			c.GetContextLogger().Debugf("preprocessor err %v", err)

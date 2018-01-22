@@ -449,7 +449,9 @@ func (f *MessengerFactory) discoveryRegister(conn *Connection, ns *NodeServices)
 		nodeServices := f.pack()
 		f.ForEachConn(func(connection *Connection) {
 			err := connection.UpdateServices(nodeServices)
-			connection.GetContextLogger().Errorf("discoveryRegister err %v", err)
+			if err != nil {
+				connection.GetContextLogger().Errorf("discoveryRegister err %v", err)
+			}
 		})
 	}
 	return
@@ -464,7 +466,9 @@ func (f *MessengerFactory) ResyncToDiscovery(connection *Connection) (err error)
 		return
 	}
 	err = connection.UpdateServices(nodeServices)
-	connection.GetContextLogger().Errorf("ResyncToDiscovery err %v", err)
+	if err != nil {
+		connection.GetContextLogger().Errorf("ResyncToDiscovery err %v", err)
+	}
 	return
 }
 

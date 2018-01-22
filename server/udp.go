@@ -26,9 +26,11 @@ func NewServerUDPConn(c *net.UDPConn) *ServerUDPConn {
 
 func (c *ServerUDPConn) ReadLoop(fn func(c *net.UDPConn, addr *net.UDPAddr) *conn.UDPConn) (err error) {
 	defer func() {
-		if e := recover(); e != nil {
-			c.GetContextLogger().Debug(e)
-			err = fmt.Errorf("readloop panic err:%v", e)
+		if !conn.DEV {
+			if e := recover(); e != nil {
+				c.GetContextLogger().Debug(e)
+				err = fmt.Errorf("readloop panic err:%v", e)
+			}
 		}
 		if err != nil {
 			c.SetStatusToError(err)
@@ -110,9 +112,11 @@ func (c *ServerUDPConn) ReadLoop(fn func(c *net.UDPConn, addr *net.UDPAddr) *con
 func wrapForClient(cc *conn.UDPConn, fn func() error) {
 	var err error
 	defer func() {
-		if e := recover(); e != nil {
-			cc.GetContextLogger().Debug(e)
-			err = fmt.Errorf("wrapForClient panic err:%v", e)
+		if !conn.DEV {
+			if e := recover(); e != nil {
+				cc.GetContextLogger().Debug(e)
+				err = fmt.Errorf("wrapForClient panic err:%v", e)
+			}
 		}
 		if err != nil {
 			cc.SetStatusToError(err)

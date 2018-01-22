@@ -6,6 +6,10 @@ import (
 )
 
 const (
+	DEV = true
+)
+
+const (
 	STATUS_CONNECTING = iota
 	STATUS_CONNECTED
 	STATUS_ERROR
