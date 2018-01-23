@@ -6,7 +6,8 @@ import (
 )
 
 const (
-	DEV = true
+	DEV            = true
+	DEBUG_DATA_HEX = false
 )
 
 const (

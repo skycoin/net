@@ -185,7 +185,9 @@ func (t *Transport) nodeReadLoop(conn *Connection, getAppConn func(id uint32) ne
 				conn.GetContextLogger().Debugf("node conn read err %v", err)
 				return
 			}
-			conn.GetContextLogger().Debugf("get chan in %x", m)
+			if cn.DEBUG_DATA_HEX {
+				conn.GetContextLogger().Debugf("get chan in %x", m)
+			}
 			t.downloadBW.add(len(m))
 			id := binary.BigEndian.Uint32(m[PKG_HEADER_ID_BEGIN:PKG_HEADER_ID_END])
 			appConn := getAppConn(id)
@@ -254,7 +256,9 @@ func (t *Transport) appReadLoop(id uint32, appConn net.Conn, conn *Connection, c
 		pkg := util.FixedMtuPool.Get()
 		pkg = pkg[:PKG_HEADER_END+n]
 		copy(pkg, buf[:PKG_HEADER_END+n])
-		conn.GetContextLogger().Debugf("app conn in %x", pkg)
+		if cn.DEBUG_DATA_HEX {
+			conn.GetContextLogger().Debugf("app conn in %x", pkg)
+		}
 		t.uploadBW.add(len(pkg))
 		conn.WriteToChannel(channel, pkg)
 	}

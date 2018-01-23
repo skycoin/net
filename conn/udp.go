@@ -364,7 +364,11 @@ func fec(b []byte, seq uint32) (result []byte) {
 func (c *UDPConn) Process(t byte, m []byte) (err error) {
 	seq := binary.BigEndian.Uint32(m[msg.MSG_SEQ_BEGIN:msg.MSG_SEQ_END])
 	l := binary.BigEndian.Uint32(m[msg.MSG_LEN_BEGIN:msg.MSG_LEN_END])
-	c.GetContextLogger().Debugf("seq %d l %d, len %d \n%x", seq, l, len(m), m)
+	c.GetContextLogger().Debugf("seq %d l %d, len %d", seq, l, len(m))
+	if DEBUG_DATA_HEX {
+		c.GetContextLogger().Debugf("%x", m)
+	}
+
 	if t == msg.TYPE_FEC {
 		m = m[msg.MSG_HEADER_END:]
 	}
@@ -383,7 +387,10 @@ func (c *UDPConn) Process(t byte, m []byte) (err error) {
 				t := m[msg.MSG_TYPE_BEGIN]
 				seq := binary.BigEndian.Uint32(m[msg.MSG_SEQ_BEGIN:msg.MSG_SEQ_END])
 				l := binary.BigEndian.Uint32(m[msg.MSG_LEN_BEGIN:msg.MSG_LEN_END])
-				c.GetContextLogger().Debugf("fec recovered seq %d l %d len %d\n%x\n", seq, l, len(m), m)
+				c.GetContextLogger().Debugf("fec recovered seq %d l %d len %d", seq, l, len(m))
+				if DEBUG_DATA_HEX {
+					c.GetContextLogger().Debugf("fec recovered \n%x", m)
+				}
 				if uint32(len(m)) >= msg.MSG_HEADER_END+l {
 					err = c.process(t, seq, m[msg.MSG_HEADER_END:msg.MSG_HEADER_END+l])
 					if err != nil {
@@ -433,10 +440,14 @@ func (c *UDPConn) process(t byte, seq uint32, m []byte) (err error) {
 	if ok {
 		for _, m := range ms {
 			if m.Type != msg.TYPE_REQ {
-				c.GetContextLogger().Debugf("MustGetCrypto t %d seq %d \n%x", m.Type, m.GetSeq(), m.Body)
+				if DEBUG_DATA_HEX {
+					c.GetContextLogger().Debugf("MustGetCrypto t %d seq %d \n%x", m.Type, m.GetSeq(), m.Body)
+				}
 				crypto := c.MustGetCrypto()
 				err = crypto.Decrypt(m.Body)
-				c.GetContextLogger().Debugf("MustGetCrypto out t %d seq %d \n%x", m.Type, m.GetSeq(), m.Body)
+				if DEBUG_DATA_HEX {
+					c.GetContextLogger().Debugf("MustGetCrypto out t %d seq %d \n%x", m.Type, m.GetSeq(), m.Body)
+				}
 				if err != nil {
 					return
 				}
@@ -463,7 +474,9 @@ func (c *UDPConn) WriteBytes(bytes []byte) (err error) {
 	l := len(bytes)
 	c.AddSentBytes(l)
 	n, err := c.UdpConn.WriteToUDP(bytes, c.addr)
-	c.GetContextLogger().Debugf("write out %x", bytes)
+	if DEBUG_DATA_HEX {
+		c.GetContextLogger().Debugf("write out %x", bytes)
+	}
 	if err == nil && n != l {
 		return errors.New("nothing was written")
 	}
@@ -474,7 +487,9 @@ func (c *UDPConn) WriteExt(bytes []byte) (err error) {
 	l := len(bytes)
 	c.AddSentBytes(l)
 	n, err := c.UdpConn.WriteToUDP(bytes, c.addr)
-	c.GetContextLogger().Debugf("write out %x", bytes)
+	if DEBUG_DATA_HEX {
+		c.GetContextLogger().Debugf("write out %x", bytes)
+	}
 	if err == nil && n != l {
 		return errors.New("nothing was written")
 	}
@@ -756,7 +771,7 @@ func (c *UDPConn) updateRTT(t time.Duration) {
 			if !ok {
 				continue
 			}
-			c.setRTO(time.Duration(r) * 3 / 2)
+			c.setRTO(time.Duration(r) * 2)
 		}
 		break
 	}

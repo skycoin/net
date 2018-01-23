@@ -411,7 +411,9 @@ OUTER:
 			if !ok {
 				return
 			}
-			c.GetContextLogger().Debugf("preprocessor read %x", m)
+			if conn.DEBUG_DATA_HEX {
+				c.GetContextLogger().Debugf("preprocessor read %x", m)
+			}
 			if len(m) < MSG_HEADER_END {
 				return
 			}
