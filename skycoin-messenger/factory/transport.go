@@ -6,6 +6,7 @@ import (
 	"fmt"
 	log "github.com/sirupsen/logrus"
 	cn "github.com/skycoin/net/conn"
+	"github.com/skycoin/net/util"
 	"github.com/skycoin/skycoin/src/cipher"
 	"io"
 	"net"
@@ -106,6 +107,10 @@ func (t *Transport) clientSideConnect(address string, sc *SeedConfig, iv []byte)
 		Creator: t.creator,
 	})
 	if err != nil {
+		return
+	}
+	if conn == nil {
+		err = errors.New("clientSideConnect acceptUDPWithConfig return nil conn")
 		return
 	}
 	err = conn.SetCrypto(sc.publicKey, sc.secKey, t.ToNode, iv)
@@ -246,7 +251,8 @@ func (t *Transport) appReadLoop(id uint32, appConn net.Conn, conn *Connection, c
 			log.Debugf("app conn read err %v, %d", err, n)
 			return
 		}
-		pkg := make([]byte, PKG_HEADER_END+n)
+		pkg := util.FixedMtuPool.Get()
+		pkg = pkg[:PKG_HEADER_END+n]
 		copy(pkg, buf[:PKG_HEADER_END+n])
 		conn.GetContextLogger().Debugf("app conn in %x", pkg)
 		t.uploadBW.add(len(pkg))
