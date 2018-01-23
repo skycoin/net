@@ -3,6 +3,7 @@ package conn
 import (
 	"errors"
 	"github.com/klauspost/reedsolomon"
+	"github.com/skycoin/net/util"
 )
 
 type fecDecoder struct {
@@ -173,7 +174,7 @@ func (fec *fecEncoder) encode(data []byte) (datas [][]byte, err error) {
 		for i := 0; i < fec.dataShards; i++ {
 			shard := fec.cache[i]
 			slen := len(shard)
-			xorBytes(shard[slen:fec.maxSize], shard[slen:fec.maxSize], shard[slen:fec.maxSize])
+			util.XorBytes(shard[slen:fec.maxSize], shard[slen:fec.maxSize], shard[slen:fec.maxSize])
 		}
 
 		c := fec.tmpCache

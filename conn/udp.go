@@ -181,6 +181,17 @@ func (c *UDPConn) writeLoopWithPing() (err error) {
 	}
 }
 
+func (c *UDPConn) ackReady() (seq uint32, ok bool) {
+	c.lastAckMtx.Lock()
+	seq = c.lastAck
+	if c.lastCnt != c.lastCnted {
+		ok = true
+		c.lastCnted = c.lastCnt
+	}
+	c.lastAckMtx.Unlock()
+	return
+}
+
 func (c *UDPConn) ackLoop() (err error) {
 	t := time.NewTicker(2 * time.Millisecond)
 	defer func() {
@@ -193,14 +204,12 @@ func (c *UDPConn) ackLoop() (err error) {
 	for {
 		select {
 		case <-t.C:
-			la := atomic.LoadUint32(&c.lastAck)
-			lt := atomic.LoadUint32(&c.lastCnt)
-			if lt != c.lastCnted {
+			la, ok := c.ackReady()
+			if ok {
 				err = c.ack(la)
 				if err != nil {
 					return
 				}
-				c.lastCnted = lt
 			} else {
 				t.Stop()
 				c.lastAckMtx.Lock()
@@ -310,7 +319,7 @@ func (c *UDPConn) writePendingMsgs() (err error) {
 				pkgBytes = m.PkgBytes()
 				crypto := c.GetCrypto()
 				if crypto != nil {
-					err = crypto.Encrypt(pkgBytes[msg.PKG_HEADER_SIZE+msg.MSG_HEADER_END:])
+					err = crypto.Encrypt(pkgBytes[msg.PKG_HEADER_SIZE+msg.UDP_HEADER_END:])
 					if err != nil {
 						return
 					}
@@ -350,27 +359,45 @@ func (c *UDPConn) writePendingMsgs() (err error) {
 	}
 }
 
+func (c *UDPConn) fillAckInfo(m []byte) {
+	nSeq := c.GetNextAckSeq()
+	c.lastAckMtx.Lock()
+	seq := c.lastAck
+	c.lastCnted = c.lastCnt
+	c.lastAckMtx.Unlock()
+	binary.BigEndian.PutUint32(m[msg.UDP_ACK_SEQ_BEGIN:], seq)
+	binary.BigEndian.PutUint32(m[msg.UDP_ACK_NEXT_SEQ_BEGIN:], nSeq)
+	if seq > nSeq+1 {
+		acked := c.GetAckedSeqs(nSeq+1, seq)
+		binary.BigEndian.PutUint32(m[msg.UDP_ACK_ACKED_SEQ_BEGIN:], acked)
+	}
+}
+
 func fec(b []byte, seq uint32) (result []byte) {
-	hz := msg.PKG_HEADER_SIZE + msg.MSG_HEADER_SIZE
+	hz := msg.PKG_HEADER_SIZE + msg.UDP_HEADER_SIZE
 	result = make([]byte, hz+len(b))
 	l := copy(result[hz:], b)
 	m := result[msg.PKG_HEADER_SIZE:]
 	m[0] = msg.TYPE_FEC
-	binary.BigEndian.PutUint32(m[msg.MSG_SEQ_BEGIN:msg.MSG_SEQ_END], seq)
-	binary.BigEndian.PutUint32(m[msg.MSG_LEN_BEGIN:msg.MSG_LEN_END], uint32(l))
+	binary.BigEndian.PutUint32(m[msg.UDP_SEQ_BEGIN:msg.UDP_SEQ_END], seq)
+	binary.BigEndian.PutUint32(m[msg.UDP_LEN_BEGIN:msg.UDP_LEN_END], uint32(l))
 	return
 }
 
 func (c *UDPConn) Process(t byte, m []byte) (err error) {
-	seq := binary.BigEndian.Uint32(m[msg.MSG_SEQ_BEGIN:msg.MSG_SEQ_END])
-	l := binary.BigEndian.Uint32(m[msg.MSG_LEN_BEGIN:msg.MSG_LEN_END])
+	err = c.processAckInfo(m)
+	if err != nil {
+		return
+	}
+	seq := binary.BigEndian.Uint32(m[msg.UDP_SEQ_BEGIN:msg.UDP_SEQ_END])
+	l := binary.BigEndian.Uint32(m[msg.UDP_LEN_BEGIN:msg.UDP_LEN_END])
 	c.GetContextLogger().Debugf("seq %d l %d, len %d", seq, l, len(m))
 	if DEBUG_DATA_HEX {
 		c.GetContextLogger().Debugf("%x", m)
 	}
 
 	if t == msg.TYPE_FEC {
-		m = m[msg.MSG_HEADER_END:]
+		m = m[msg.UDP_HEADER_END:]
 	}
 	g, err := c.decode(seq, m)
 	if err != nil {
@@ -380,19 +407,19 @@ func (c *UDPConn) Process(t byte, m []byte) (err error) {
 		for i, b := range g.dataRecv {
 			if !b {
 				m := g.datas[i]
-				if len(m) <= msg.MSG_HEADER_SIZE {
-					c.GetContextLogger().Error("fec recovered len(m) <= msg.MSG_HEADER_SIZE")
+				if len(m) <= msg.UDP_HEADER_SIZE {
+					c.GetContextLogger().Error("fec recovered len(m) <= msg.UDP_HEADER_SIZE")
 					continue
 				}
-				t := m[msg.MSG_TYPE_BEGIN]
-				seq := binary.BigEndian.Uint32(m[msg.MSG_SEQ_BEGIN:msg.MSG_SEQ_END])
-				l := binary.BigEndian.Uint32(m[msg.MSG_LEN_BEGIN:msg.MSG_LEN_END])
+				t := m[msg.UDP_TYPE_BEGIN]
+				seq := binary.BigEndian.Uint32(m[msg.UDP_SEQ_BEGIN:msg.UDP_SEQ_END])
+				l := binary.BigEndian.Uint32(m[msg.UDP_LEN_BEGIN:msg.UDP_LEN_END])
 				c.GetContextLogger().Debugf("fec recovered seq %d l %d len %d", seq, l, len(m))
 				if DEBUG_DATA_HEX {
 					c.GetContextLogger().Debugf("fec recovered \n%x", m)
 				}
-				if uint32(len(m)) >= msg.MSG_HEADER_END+l {
-					err = c.process(t, seq, m[msg.MSG_HEADER_END:msg.MSG_HEADER_END+l])
+				if uint32(len(m)) >= msg.UDP_HEADER_END+l {
+					err = c.process(t, seq, m[msg.UDP_HEADER_END:msg.UDP_HEADER_END+l])
 					if err != nil {
 						return
 					}
@@ -401,14 +428,22 @@ func (c *UDPConn) Process(t byte, m []byte) (err error) {
 		}
 	}
 	if t != msg.TYPE_FEC &&
-		uint32(len(m)) >= msg.MSG_HEADER_END+l {
-		err = c.process(t, seq, m[msg.MSG_HEADER_END:msg.MSG_HEADER_END+l])
+		uint32(len(m)) >= msg.UDP_HEADER_END+l {
+		err = c.process(t, seq, m[msg.UDP_HEADER_END:msg.UDP_HEADER_END+l])
 		if err != nil {
 			return
 		}
 	}
 
 	return
+}
+
+func (c *UDPConn) processAckInfo(m []byte) (err error) {
+	seq := binary.BigEndian.Uint32(m[msg.UDP_ACK_SEQ_BEGIN:])
+	ns := binary.BigEndian.Uint32(m[msg.UDP_ACK_NEXT_SEQ_BEGIN:])
+	acked := binary.BigEndian.Uint32(m[msg.UDP_ACK_ACKED_SEQ_BEGIN:])
+	c.GetContextLogger().Debugf("udp ack %d, next %d, acked %b", seq, ns, acked)
+	return c.recvAck(seq, ns, acked)
 }
 
 func (c *UDPConn) process(t byte, seq uint32, m []byte) (err error) {
@@ -469,6 +504,7 @@ func (c *UDPConn) WriteResp(bytes []byte) (err error) {
 }
 
 func (c *UDPConn) WriteBytes(bytes []byte) (err error) {
+	c.fillAckInfo(bytes[msg.PKG_CRC32_END:])
 	checksum := crc32.ChecksumIEEE(bytes[msg.PKG_CRC32_END:])
 	binary.BigEndian.PutUint32(bytes[msg.PKG_CRC32_BEGIN:], checksum)
 	l := len(bytes)
@@ -497,8 +533,10 @@ func (c *UDPConn) WriteExt(bytes []byte) (err error) {
 }
 
 func (c *UDPConn) Ack(seq uint32) error {
-	atomic.StoreUint32(&c.lastAck, seq)
-	atomic.AddUint32(&c.lastCnt, 1)
+	c.lastAckMtx.Lock()
+	c.lastAck = seq
+	c.lastCnt++
+	c.lastAckMtx.Unlock()
 	c.lastAckCond.Broadcast()
 	return nil
 }
@@ -513,7 +551,6 @@ func (c *UDPConn) ack(seq uint32) error {
 	binary.BigEndian.PutUint32(m[msg.ACK_NEXT_SEQ_BEGIN:], nSeq)
 	if seq > nSeq+1 {
 		acked := c.GetAckedSeqs(nSeq+1, seq)
-		c.GetContextLogger().Debugf("acked %b", acked)
 		binary.BigEndian.PutUint32(m[msg.ACK_ACKED_SEQ_BEGIN:msg.ACK_ACKED_SEQ_END], acked)
 	}
 	checksum := crc32.ChecksumIEEE(m)
@@ -522,24 +559,16 @@ func (c *UDPConn) ack(seq uint32) error {
 }
 
 func (c *UDPConn) fin() error {
-	p := make([]byte, msg.PKG_HEADER_SIZE+msg.MSG_TYPE_SIZE)
+	p := make([]byte, msg.PKG_HEADER_SIZE+msg.UDP_TYPE_SIZE)
 	m := p[msg.PKG_HEADER_SIZE:]
-	m[msg.MSG_TYPE_BEGIN] = msg.TYPE_FIN
+	m[msg.UDP_TYPE_BEGIN] = msg.TYPE_FIN
 	checksum := crc32.ChecksumIEEE(m)
 	binary.BigEndian.PutUint32(p[msg.PKG_CRC32_BEGIN:], checksum)
 	c.GetContextLogger().Debug("fin")
 	return c.WriteExt(p)
 }
 
-func (c *UDPConn) RecvAck(m []byte) (err error) {
-	if len(m) < msg.ACK_HEADER_SIZE {
-		return fmt.Errorf("invalid ack msg %x", m)
-	}
-	seq := binary.BigEndian.Uint32(m[msg.ACK_SEQ_BEGIN:msg.ACK_SEQ_END])
-	ns := binary.BigEndian.Uint32(m[msg.ACK_NEXT_SEQ_BEGIN:msg.ACK_NEXT_SEQ_END])
-	acked := binary.BigEndian.Uint32(m[msg.ACK_ACKED_SEQ_BEGIN:msg.ACK_ACKED_SEQ_END])
-
-	c.GetContextLogger().Debugf("recv ack %d, next %d, acked %d", seq, ns, acked)
+func (c *UDPConn) recvAck(seq, ns, acked uint32) (err error) {
 	err = c.delMsg(seq, false)
 	if err != nil {
 		return
@@ -565,6 +594,18 @@ func (c *UDPConn) RecvAck(m []byte) (err error) {
 	}
 
 	return
+}
+
+func (c *UDPConn) RecvAck(m []byte) (err error) {
+	if len(m) < msg.ACK_HEADER_SIZE {
+		return fmt.Errorf("invalid ack msg %x", m)
+	}
+	seq := binary.BigEndian.Uint32(m[msg.ACK_SEQ_BEGIN:msg.ACK_SEQ_END])
+	ns := binary.BigEndian.Uint32(m[msg.ACK_NEXT_SEQ_BEGIN:msg.ACK_NEXT_SEQ_END])
+	acked := binary.BigEndian.Uint32(m[msg.ACK_ACKED_SEQ_BEGIN:msg.ACK_ACKED_SEQ_END])
+
+	c.GetContextLogger().Debugf("recv ack %d, next %d, acked %b", seq, ns, acked)
+	return c.recvAck(seq, ns, acked)
 }
 
 func (c *UDPConn) Ping() error {

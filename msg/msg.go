@@ -305,12 +305,12 @@ func (msg *UDPMessage) PkgBytes() (result []byte) {
 	}
 
 	result = util.FixedMtuPool.Get()
-	result = result[:PKG_HEADER_SIZE+MSG_HEADER_SIZE+msg.Len]
+	result = result[:PKG_HEADER_SIZE+UDP_HEADER_SIZE+msg.Len]
 	m := result[PKG_HEADER_SIZE:]
 	m[0] = byte(msg.Type)
-	binary.BigEndian.PutUint32(m[MSG_SEQ_BEGIN:MSG_SEQ_END], msg.GetSeq())
-	binary.BigEndian.PutUint32(m[MSG_LEN_BEGIN:MSG_LEN_END], msg.Len)
-	copy(m[MSG_HEADER_END:], msg.Body)
+	binary.BigEndian.PutUint32(m[UDP_SEQ_BEGIN:], msg.GetSeq())
+	binary.BigEndian.PutUint32(m[UDP_LEN_BEGIN:], msg.Len)
+	copy(m[UDP_HEADER_END:], msg.Body)
 
 	msg.Lock()
 	msg.cache = result
@@ -332,5 +332,5 @@ func (msg *UDPMessage) GetCache() (result []byte) {
 }
 
 func (msg *UDPMessage) PkgBytesLen() int {
-	return int(PKG_HEADER_SIZE + MSG_HEADER_SIZE + msg.Len)
+	return int(PKG_HEADER_SIZE + UDP_HEADER_SIZE + msg.Len)
 }

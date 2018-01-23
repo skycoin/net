@@ -35,5 +35,6 @@ func (fp *FixedSizePool) Put(c []byte) {
 		}
 		c = c[:fp.size]
 	}
+	XorBytes(c, c, c)
 	fp.pool.Put(c)
 }
