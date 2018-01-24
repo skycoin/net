@@ -177,7 +177,7 @@ func (m *UDPPendingMap) DelMsgAndGetLossMsgs(k uint32) (ok bool, um *msg.UDPMess
 				miss := v.AddMiss()
 				x := miss / QUICK_LOST_THRESH
 				y := miss % QUICK_LOST_THRESH
-				if x > 0 && x < QUICK_LOST_RESEND_COUNT && y == 0 {
+				if x > 0 && x <= QUICK_LOST_RESEND_COUNT && y == 0 {
 					loss = append(loss, v)
 				}
 			}

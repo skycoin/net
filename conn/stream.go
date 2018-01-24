@@ -63,15 +63,15 @@ func (q *fecStreamQueue) Push(k uint32, m *msg.UDPMessage) (ok bool, msgs []*msg
 		return
 	}
 	defer func() {
-		logrus.Debugf("fecStreamQueue push k %d return %t, len %d", k, ok, len(msgs))
+		logrus.Debugf("fecStreamQueue return %t, len %d, push k %d, next %d ", ok, len(msgs), k, q._getNextAckSeq())
 	}()
 	q.mutex.Lock()
 	defer q.mutex.Unlock()
 	if k <= q.ackedSeq {
 		return
 	}
-	ok = true
 	if k == q._getNextAckSeq() {
+		ok = true
 		if q.msgs.Len() < 1 {
 			msgs = []*msg.UDPMessage{m}
 			q.ackedSeq = k

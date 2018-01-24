@@ -229,19 +229,27 @@ func (t *Transport) appReadLoop(id uint32, appConn net.Conn, conn *Connection, c
 		defer t.connsMutex.Unlock()
 		// exited by err
 		if t.conns[id] != nil {
+			buf[PKG_HEADER_OP_BEGIN] = OP_CLOSE
+			//log.Infof("close %v, %d", create, id)
 			if !conn.IsClosed() {
-				buf[PKG_HEADER_OP_BEGIN] = OP_CLOSE
-				conn.WriteToChannel(channel, buf[:PKG_HEADER_END])
+				func() {
+					defer func() {
+						if e := recover(); e != nil {
+							conn.GetContextLogger().Debugf("close app conn %d, err %v", id, e)
+						}
+					}()
+					conn.WriteToChannel(channel, buf[:PKG_HEADER_END])
+				}()
 			}
 			if create {
 				delete(t.conns, id)
 			} else {
 				t.conns[id] = nil
 			}
-		} else { // by OP_CLOSE
-			if create {
-				delete(t.conns, id)
-			}
+			return
+		}
+		if create {
+			delete(t.conns, id)
 		}
 	}()
 	if create {

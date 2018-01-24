@@ -360,16 +360,18 @@ func (c *UDPConn) writePendingMsgs() (err error) {
 }
 
 func (c *UDPConn) fillAckInfo(m []byte) {
-	nSeq := c.GetNextAckSeq()
 	c.lastAckMtx.Lock()
 	seq := c.lastAck
 	c.lastCnted = c.lastCnt
 	c.lastAckMtx.Unlock()
+	nSeq := c.GetNextAckSeq()
 	binary.BigEndian.PutUint32(m[msg.UDP_ACK_SEQ_BEGIN:], seq)
 	binary.BigEndian.PutUint32(m[msg.UDP_ACK_NEXT_SEQ_BEGIN:], nSeq)
 	if seq > nSeq+1 {
 		acked := c.GetAckedSeqs(nSeq+1, seq)
 		binary.BigEndian.PutUint32(m[msg.UDP_ACK_ACKED_SEQ_BEGIN:], acked)
+	} else {
+		binary.BigEndian.PutUint32(m[msg.UDP_ACK_ACKED_SEQ_BEGIN:], 0)
 	}
 }
 

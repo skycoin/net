@@ -7,7 +7,7 @@ import (
 
 const (
 	DEV            = true
-	DEBUG_DATA_HEX = false
+	DEBUG_DATA_HEX = true
 )
 
 const (
@@ -23,8 +23,8 @@ const (
 )
 
 const (
-	QUICK_LOST_THRESH       = 3
-	QUICK_LOST_RESEND_COUNT = 2
+	QUICK_LOST_THRESH       = 5
+	QUICK_LOST_RESEND_COUNT = 1
 
 	MTU = 1500
 
