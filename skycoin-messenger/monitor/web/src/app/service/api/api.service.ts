@@ -104,6 +104,9 @@ export class ApiService {
   editClientConnection(data: FormData) {
     return this.handlePost(this.connUrl + 'editClientConnection', data);
   }
+  SetClientAutoStart(data: FormData) {
+    return this.handlePost(this.connUrl + 'setClientAutoStart', data);
+  }
   getClientConnection(data: FormData) {
     return this.handlePost(this.connUrl + 'getClientConnection', data);
   }
@@ -158,6 +161,7 @@ export interface ConnectServiceInfo {
   nodeKey?: string;
   appKey?: string;
   count?: number;
+  auto_start?: boolean;
 }
 export interface Conn {
   key?: string;

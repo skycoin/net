@@ -1,4 +1,4 @@
-import { Component, OnInit, ViewEncapsulation, OnDestroy } from '@angular/core';
+import { Component, OnInit, ViewEncapsulation, OnDestroy, AfterContentInit } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { environment as env } from '../../../environments/environment';
 import {
@@ -27,7 +27,8 @@ import {
   LoadingComponent,
   TerminalComponent,
   SearchServiceComponent,
-  WalletComponent
+  WalletComponent,
+  ClientSettingComponent
 } from '../../components';
 import 'rxjs/add/observable/of';
 import 'rxjs/add/observable/timer';
@@ -40,8 +41,9 @@ import { BehaviorSubject } from 'rxjs/BehaviorSubject';
   styleUrls: ['./sub-status.component.scss'],
   encapsulation: ViewEncapsulation.None
 })
-export class SubStatusComponent implements OnInit, OnDestroy {
-  task = new Subject();
+export class SubStatusComponent implements OnInit, OnDestroy, AfterContentInit {
+  cols = 6;
+  rowHeight = '2:1';
   alertMsg = '';
   sshColumns = ['index', 'key', 'del'];
   displayedColumns = ['index', 'key', 'app', 'action'];
@@ -94,7 +96,7 @@ export class SubStatusComponent implements OnInit, OnDestroy {
   _sshServerData = new SubDatabase();
   _socketServerData = new SubDatabase();
   isProduction = env.production;
-  clientConnectionInfo: ConnectServiceInfo | null;
+  clientConnectionInfo: Array<ConnectServiceInfo> | null;
   // socketClientConnectionInfo: ConnectServiceInfo | null;
   discoveries: Map<string, boolean>;
   debugData = '';
@@ -110,6 +112,7 @@ export class SubStatusComponent implements OnInit, OnDestroy {
   isWindowsOs = navigator.platform.toLowerCase().indexOf('win');
   appColor: Map<string, string> = new Map<string, string>();
   closeStatus = 'close-status';
+  task = new Subject();
   constructor(
     private router: Router,
     private route: ActivatedRoute,
@@ -139,6 +142,32 @@ export class SubStatusComponent implements OnInit, OnDestroy {
       this.power = 'warn';
       this.isManager = env.isManager;
     });
+  }
+  ngAfterContentInit() {
+    // TODO socket auto start
+    // const data = new FormData();
+    // data.append('client', this.SocketClient);
+    // this.api.getClientConnection(data).subscribe((info: Array<ConnectServiceInfo>) => {
+    //   info.forEach(conn => {
+    //     if (conn.auto_start) {
+    //       data.delete('client');
+    //       data.append('toNode', conn.nodeKey);
+    //       data.append('toApp', conn.appKey);
+    //       this.api.connectSocketClicent(this.status.addr, data).subscribe(result => {
+    //         this.task.next();
+    //         const updateTask = setInterval(() => {
+    //           if (this.socketClientPort > 0 && this.socketClientPort <= 65535) {
+    //             clearInterval(updateTask);
+    //             this.alert.close();
+    //           } else if (this.socketClientPort === -1) {
+    //             this.alert.close();
+    //           }
+    //         }, 500);
+    //         this.alert.timer('connecting...', 15000);
+    //       });
+    //     }
+    //   });
+    // });
   }
   ngOnDestroy() {
     this.close();
@@ -212,10 +241,10 @@ export class SubStatusComponent implements OnInit, OnDestroy {
 
     const value = { nodeKey: info.nodeKey, appKey: info.appKey };
     switch (form) {
-      case 'sshClient':
+      case this.SshClient:
         this.sshClientForm.patchValue(value);
         break;
-      case 'socketClient':
+      case this.SocketClient:
         this.socketClientForm.patchValue(value);
         break;
     }
@@ -299,10 +328,6 @@ export class SubStatusComponent implements OnInit, OnDestroy {
       data.append('toNode', this.socketClientForm.get('nodeKey').value);
       data.append('toApp', this.socketClientForm.get('appKey').value);
     }
-    // if (!data.get('toNode') || !data.get('toApp')) {
-    //   this.alert.error('params failed');
-    //   return;
-    // }
     this.api.connectSocketClicent(this.status.addr, data).subscribe(result => {
       this.task.next();
       const updateTask = setInterval(() => {
@@ -510,15 +535,22 @@ export class SubStatusComponent implements OnInit, OnDestroy {
     ev.stopImmediatePropagation();
     ev.stopPropagation();
     ev.preventDefault();
-    console.log('reboot');
-    this.api.reboot(this.status.addr).subscribe(isOk => {
-      if (isOk) {
-        if (this.task) {
-          this.close();
+    this.alert.confirm(
+      'Warning',
+      'The current operation will reboot your Node.Please confirm whether to continue.',
+      'warning').then(result => {
+        if (result.value) {
+          this.api.reboot(this.status.addr).subscribe(isOk => {
+            if (isOk) {
+              console.log('reboot result:', isOk);
+              if (this.task) {
+                this.close();
+              }
+              this.startTask();
+            }
+          });
         }
-        this.startTask();
-      }
-    });
+      });
   }
   inputKeys(ev: Event, action: string, content: any) {
     ev.stopImmediatePropagation();
@@ -533,7 +565,7 @@ export class SubStatusComponent implements OnInit, OnDestroy {
     } else {
       const data = new FormData();
       data.append('client', action);
-      this.api.getClientConnection(data).subscribe((info: ConnectServiceInfo) => {
+      this.api.getClientConnection(data).subscribe((info: Array<ConnectServiceInfo>) => {
         this.clientConnectionInfo = info;
       });
     }
@@ -836,6 +868,27 @@ export class SubStatusComponent implements OnInit, OnDestroy {
       }
     });
   }
+  setClientAuto(action: string, auto: boolean, index: number) {
+    const data = new FormData();
+    if (!action) {
+      this.alert.error('client label is empty!');
+      return;
+    }
+    if (index < 0) {
+      this.alert.error('index is faild!');
+      return;
+    }
+    data.append('client', action);
+    data.append('index', String(index));
+    data.append('auto', String(auto));
+    this.api.SetClientAutoStart(data).subscribe((result) => {
+      if (result) {
+        this.api.getClientConnection(data).subscribe((info: Array<ConnectServiceInfo>) => {
+          this.clientConnectionInfo = info;
+        });
+      }
+    });
+  }
   removeClientConnection(action: string, index: number) {
     const data = new FormData();
     if (!action) {
@@ -850,7 +903,7 @@ export class SubStatusComponent implements OnInit, OnDestroy {
     data.append('index', String(index));
     this.api.removeClientConnection(data).subscribe((result) => {
       if (result) {
-        this.api.getClientConnection(data).subscribe((info: ConnectServiceInfo) => {
+        this.api.getClientConnection(data).subscribe((info: Array<ConnectServiceInfo>) => {
           this.clientConnectionInfo = info;
         });
       }

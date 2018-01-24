@@ -26,7 +26,7 @@ export class SearchServiceComponent implements OnInit, OnDestroy {
   totalResults: Array<Search> = [];
   results: Array<Search> = [];
   status = 0;
-
+  SocketClient = 'socksc';
   private result: Subject<Array<Search>> = new BehaviorSubject<Array<Search>>([]);
   constructor(private api: ApiService, private dialogRef: MatDialogRef<SearchServiceComponent>) { }
   ngOnInit() {
@@ -53,9 +53,10 @@ export class SearchServiceComponent implements OnInit, OnDestroy {
       label: '',
       nodeKey: nodeKey,
       appKey: appKey,
-      count: 1
+      count: 1,
+      auto_start: false,
     };
-    data.append('client', 'socket');
+    data.append('client', this.SocketClient);
     data.append('data', JSON.stringify(jsonStr));
     this.api.saveClientConnection(data).subscribe(res => {
       data.delete('data');
