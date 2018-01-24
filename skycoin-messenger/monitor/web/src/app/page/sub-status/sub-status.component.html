@@ -19,8 +19,7 @@
         <span style="color: red">{{status?.addr}}</span>
       </p>
     </div>
-
-    <mat-grid-list cols="6" rowHeight="2:1">
+    <mat-grid-list [cols]="cols" [rowHeight]="rowHeight">
       <mat-grid-tile>
         <p class="status-box-item-title">
           <small>Status</small>
@@ -34,9 +33,7 @@
           <mat-icon>layers</mat-icon>
         </p>
         <p class="status-box-item-content">
-          <mat-chip-list>
-            <mat-chip style="background-color: #6b6bff; color:#fff;">{{status?.type}}</mat-chip>
-          </mat-chip-list>
+          {{status?.type}}
         </p>
       </mat-grid-tile>
       <mat-grid-tile>
@@ -57,12 +54,13 @@
   </mat-card-content>
 </mat-card>
 
+<!-- Operation Box -->
 <mat-card *ngIf="isManager">
   <mat-card-title>
     <span>Operations</span>
   </mat-card-title>
   <mat-card-content>
-    <mat-grid-list cols="6" rowHeight="2:1">
+    <mat-grid-list [cols]="cols" [rowHeight]="rowHeight">
 
       <mat-grid-tile>
         <p class="status-box-item-title">
@@ -95,7 +93,7 @@
           </button>
         </p>
       </mat-grid-tile>
-      <mat-grid-tile>
+      <mat-grid-tile *ngIf="isWindowsOs < 0">
         <p class="status-box-item-title">
           <small>terminal</small>
           <!-- <mat-icon class="icon-pointer" (click)="discoveriesStatus($event,discoveryStatus)">info</mat-icon> -->
@@ -121,13 +119,14 @@
   </mat-card-content>
 </mat-card>
 
+<!-- Apps Box -->
 <mat-card *ngIf="isManager">
   <mat-card-title>
     <span>Apps</span>
   </mat-card-title>
   <mat-card-content>
 
-    <mat-grid-list cols="6" rowHeight="2:1">
+    <mat-grid-list [cols]="cols" [rowHeight]="rowHeight">
       <mat-grid-tile>
         <p class="status-box-item-title status-item">
           <small>Shadowsocks</small>
@@ -146,7 +145,7 @@
           </mat-menu>
         </p>
         <p class="status-box-item-content status-item">
-          <button mat-icon-button (click)="runSocketServer($event)" [ngClass]="socketColor">
+          <button mat-icon-button (click)="runSocketServer($event)" [ngClass]="appColor?.get(SocketServer)">
             <mat-icon aria-label="Shadowsocks">near_me</mat-icon>
           </button>
         </p>
@@ -170,7 +169,7 @@
           </mat-menu>
         </p>
         <p class="status-box-item-content status-item">
-          <button mat-icon-button (click)="runSSHServer($event)" [ngClass]="sshColor">
+          <button mat-icon-button (click)="runSSHServer($event)" [ngClass]="appColor?.get(SshServer)">
             <mat-icon aria-label="SSH">computer</mat-icon>
           </button>
         </p>
@@ -184,6 +183,10 @@
             <mat-icon aria-label="more">more_vert</mat-icon>
           </button>
           <mat-menu #socketClientmenu="matMenu">
+            <button mat-menu-item>
+              <mat-icon>settings</mat-icon>
+              <span>Setting</span>
+            </button>
             <button mat-menu-item (click)="openLog(SocketClient,logDialog)" [class.unread]="isUnread(SocketClient) > 0">
               <mat-icon>description</mat-icon>
               <span>Messages</span>
@@ -191,14 +194,15 @@
           </mat-menu>
         </p>
         <p class="status-box-item-content status-item">
-          <button mat-icon-button (click)="inputKeys($event,'socket',socketClientDialog)" [ngClass]="socketClientColor">
+          <button mat-icon-button (click)="inputKeys($event,SocketClient,socketClientDialog)" [ngClass]="appColor?.get(SocketClient)">
             <mat-icon aria-label="Shadowsocks">near_me</mat-icon>
           </button>
         </p>
         <p class="status-item">
           <span style="vertical-align: sub">
             <span *ngIf="socketClientPort > 0">Port: {{socketClientPort}}</span>
-            <span *ngIf="socketClientPort === -1" class="port-fail" (click)="openLog(SocketClient,logDialog)"><mat-icon class="icon">cancel</mat-icon>fail</span>
+            <span *ngIf="socketClientPort === -1" class="port-fail" (click)="openLog(SocketClient,logDialog)">
+              <mat-icon class="icon">cancel</mat-icon>fail</span>
           </span>
         </p>
       </mat-grid-tile>
@@ -216,14 +220,15 @@
           </mat-menu>
         </p>
         <p class="status-box-item-content status-item">
-          <button mat-icon-button (click)="inputKeys($event,'ssh',sshClientDialog)" [ngClass]="sshClientColor">
+          <button mat-icon-button (click)="inputKeys($event,SshClient,sshClientDialog)" [ngClass]="appColor?.get(SshClient)">
             <mat-icon aria-label="SSH">computer</mat-icon>
           </button>
         </p>
         <p class="status-item">
-          <span  style="vertical-align: sub">
+          <span style="vertical-align: sub">
             <span *ngIf="sshClientPort > 0"> Port: {{sshClientPort}}</span>
-            <span *ngIf="sshClientPort === -1" class="port-fail" (click)="openLog(SshClient,logDialog)"><mat-icon class="icon">cancel</mat-icon>fail</span>
+            <span *ngIf="sshClientPort === -1" class="port-fail" (click)="openLog(SshClient,logDialog)">
+              <mat-icon class="icon">cancel</mat-icon>fail</span>
           </span>
         </p>
       </mat-grid-tile>
@@ -231,6 +236,7 @@
   </mat-card-content>
 </mat-card>
 
+<!-- Transport Box -->
 <div *ngIf="_transportData?.isShow">
   <h3 class="status-app-title">
     <span>Transports</span>
@@ -271,6 +277,7 @@
 </div>
 
 
+<!-- App List Box -->
 <div *ngIf="_appData?.isShow">
   <!-- <h3 class="status-app-title">
     <span>Apps</span>
@@ -334,6 +341,7 @@
   </ul>
 </ng-template> -->
 
+<!-- SSH Server Setting Box -->
 <ng-template #sshSettings>
   <h1 mat-dialog-title>
     <span>SSH Settings</span>
@@ -371,6 +379,9 @@
     </mat-table>
   </div>
 </ng-template>
+
+
+<!-- Socket Server Setting -->
 <ng-template #sockSettings>
   <h1 mat-dialog-title>
     <span>Socks Settings</span>
@@ -407,6 +418,8 @@
   </div>
 </ng-template>
 
+
+<!-- SSH Client Modal -->
 <ng-template #sshClientDialog>
   <div mat-dialog-title class="dialog-title">
     <div class="title-text">SSH Service keys</div>
@@ -440,35 +453,37 @@
     </div>
   </div>
   <div class="quick-box" *ngIf="clientConnectionInfo?.length > 0 ">
-    <!-- && !dialogMode -->
-    <h5>Records:</h5>
-    <table class="quick-table">
-      <tr class="item" *ngFor="let info of clientConnectionInfo;let i=index;">
-        <td>
-          <input class="label" type="text" appLabel [text]="info?.label" [info]="info" [index]="i" [client]="'ssh'">
-        </td>
-        <td>
-          <p class="key">{{info?.nodeKey | ellipsis:'center':8}}</p>
-        </td>
-        <td>
-          <p class="key">{{info?.appKey | ellipsis:'center':8}}</p>
-        </td>
-        <td class="actions">
-          <a href="javascript:void(0)" (click)="removeClientConnection('ssh',i)">
+    <!-- SSH Client -->
+    <mat-list class="record-list">
+      <mat-list-item class="record-list-item" *ngFor="let info of clientConnectionInfo;let i=index;">
+        <mat-checkbox style="margin-right:1em;" matTooltip="Automatic startup" [(ngModel)]="info.auto_start" (click)="setClientAuto(SshClient,!info.auto_start,i)"></mat-checkbox>
+        <input class="label" type="text" appLabel [text]="info?.label" [info]="info" [index]="i" [client]="SshClient">
+        <span class="keys">
+          <p class="key">
+            {{info?.nodeKey | ellipsis:'center':14}}
+          </p>
+          <p class="key">
+            {{info?.appKey | ellipsis:'center':14}}
+          </p>
+        </span>
+        <span class="actions">
+          <a href="javascript:void(0)" (click)="removeClientConnection(SshClient,i)" matTooltip="delete record">
             <mat-icon>delete</mat-icon>
           </a>
-          <a href="javascript:void(0)" (click)="setFormValue($event,info,'sshClient')">
+          <a href="javascript:void(0)" (click)="setFormValue($event,info,SshClient)" matTooltip="edit record">
             <mat-icon>edit</mat-icon>
           </a>
-          <a href="javascript:void(0)" (click)="connectSSH($event,'ssh',info)">
+          <a href="javascript:void(0)" (click)="connectSSH($event,SshClient,info)" matTooltip="connect">
             <mat-icon>swap_horiz</mat-icon>
           </a>
-        </td>
-      </tr>
-    </table>
+        </span>
+      </mat-list-item>
+    </mat-list>
+
   </div>
 </ng-template>
 
+<!-- Socket Client Modal -->
 <ng-template #socketClientDialog>
   <h1 mat-dialog-title>
     <span>Socket Service keys</span>
@@ -523,49 +538,39 @@
       </p>
     </div>
   </div>
+
+  <!--  Socket Client -->
   <div class="quick-box" *ngIf="clientConnectionInfo?.length > 0">
-    <h5>Records:</h5>
-    <table class="quick-table">
-      <tr class="item" *ngFor="let info of clientConnectionInfo;let i=index;">
-        <td>
-          <input class="label" type="text" appLabel [text]="info?.label" [info]="info" [index]="i" [client]="'socket'">
-        </td>
-        <td>
-          <p class="key">{{info?.nodeKey | ellipsis:'center':8}}</p>
-        </td>
-        <td>
-          <p class="key">{{info?.appKey | ellipsis:'center':8}}</p>
-        </td>
-        <td class="actions">
-          <a href="javascript:void(0)" (click)="removeClientConnection('socket',i)">
+    <mat-list class="record-list">
+      <mat-list-item class="record-list-item" *ngFor="let info of clientConnectionInfo;let i=index;">
+        <mat-checkbox style="margin-right:1em;" matTooltip="Automatic startup" [(ngModel)]="info.auto_start" (click)="setClientAuto(SocketClient,!info.auto_start,i)"></mat-checkbox>
+        <input class="label" type="text" appLabel [text]="info?.label" [info]="info" [index]="i" [client]="SocketClient">
+        <span class="keys">
+          <p class="key">
+            {{info?.nodeKey | ellipsis:'center':14}}
+          </p>
+          <p class="key">
+            {{info?.appKey | ellipsis:'center':14}}
+          </p>
+        </span>
+        <span class="actions">
+          <a href="javascript:void(0)" (click)="removeClientConnection(SocketClient,i)" matTooltip="delete record">
             <mat-icon>delete</mat-icon>
           </a>
-          <a href="javascript:void(0)" (click)="setFormValue($event,info,'socketClient')">
+          <a href="javascript:void(0)" (click)="setFormValue($event,info,SocketClient)" matTooltip="edit record">
             <mat-icon>edit</mat-icon>
           </a>
-          <a href="javascript:void(0)" (click)="connectSocket($event,'socket',info)">
+          <a href="javascript:void(0)" (click)="connectSocket($event,SocketClient,info)" matTooltip="connect">
             <mat-icon>swap_horiz</mat-icon>
           </a>
-
-        </td>
-      </tr>
-    </table>
+        </span>
+      </mat-list-item>
+    </mat-list>
   </div>
 </ng-template>
-<ng-template #alert>
-  <h1 mat-dialog-title class="text-center">
-    <span>Information</span>
-    <!-- <mat-icon>file_download</mat-icon> -->
-  </h1>
-  <div mat-dialog-content class="text-center">
-    <p>{{alertMsg}}</p>
-    <!-- <p class="text-center">
-      <button mat-raised-button color="primary" tabindex="-1" mat-dialog-close>Close</button>
-    </p> -->
-  </div>
 
-</ng-template>
 
+<!-- Discovery Config Box -->
 <ng-template #config>
   <form [formGroup]="configForm" class="setting-box">
     <mat-form-field style="width: 100%">
@@ -608,6 +613,8 @@
 
 </ng-template>
 
+
+<!-- Debug Box -->
 <ng-template #debugPage>
   <div appDebug [innerHTML]="debugData | safe:'html'">
 

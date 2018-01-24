@@ -20,21 +20,31 @@ import {
   MatProgressSpinnerModule,
   MatMenuModule,
   MatPaginatorModule,
-  MatSlideToggleModule
+  MatSlideToggleModule,
+  MatSelectModule,
+  MatCheckboxModule,
+  MatRadioModule,
 } from '@angular/material';
 import { AppComponent } from './app.component';
 import { HttpClientModule } from '@angular/common/http';
 import { ApiService, UserService, AlertService } from './service';
 import { TimeAgoPipe, ByteToPipe, EllipsisPipe, IterablePipe, SafePipe } from './pipe';
 import { LabelDirective, ShortcutInputDirective, DebugDirective, ClipboardDirective } from './directives';
-import { DashboardComponent, SubStatusComponent, LoginComponent, UpdatePassComponent, DiscoveryHomeComponent } from './page';
+import {
+  DashboardComponent,
+  SubStatusComponent,
+  LoginComponent,
+  UpdatePassComponent,
+  DiscoveryHomeComponent
+} from './page';
 import {
   UpdateCardComponent,
   AlertComponent,
   LoadingComponent,
   TerminalComponent,
   SearchServiceComponent,
-  WalletComponent
+  WalletComponent,
+  ClientSettingComponent,
 } from './components';
 import { AppRoutingModule } from './route/app-routing.module';
 
@@ -63,7 +73,8 @@ import { AppRoutingModule } from './route/app-routing.module';
     LoadingComponent,
     TerminalComponent,
     SearchServiceComponent,
-    WalletComponent
+    WalletComponent,
+    ClientSettingComponent
   ],
   entryComponents: [
     UpdateCardComponent,
@@ -71,7 +82,8 @@ import { AppRoutingModule } from './route/app-routing.module';
     LoadingComponent,
     TerminalComponent,
     SearchServiceComponent,
-    WalletComponent
+    WalletComponent,
+    ClientSettingComponent
   ],
   imports: [
     BrowserModule,
@@ -97,7 +109,10 @@ import { AppRoutingModule } from './route/app-routing.module';
     MatProgressSpinnerModule,
     MatMenuModule,
     MatPaginatorModule,
-    MatSlideToggleModule
+    MatSlideToggleModule,
+    MatSelectModule,
+    MatCheckboxModule,
+    MatRadioModule
   ],
   providers: [ApiService, UserService, AlertService],
   bootstrap: [AppComponent]

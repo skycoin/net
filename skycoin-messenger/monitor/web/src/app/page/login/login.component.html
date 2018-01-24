@@ -6,7 +6,7 @@
   <p>Please enter management password.</p>
   <form class="example-form" [formGroup]="loginForm">
     <mat-form-field class="field-full-width">
-      <input matInput placeholder="Password" type="password" formControlName="pass" autocomplete="off" (focus)="init()">
+      <input matInput placeholder="Password" type="password" formControlName="pass" autocomplete="off" (focus)="init()" autofocus>
       <mat-error *ngIf="loginForm?.get('pass')?.hasError('required')">
         Please enter a valid Password!
       </mat-error>
