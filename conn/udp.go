@@ -39,8 +39,8 @@ type UDPConn struct {
 	lastAck     uint32
 	lastCnt     uint32
 	lastCnted   uint32
+	lastAckCond *sync.Cond
 	lastAckMtx  sync.Mutex
-	lastAckChan chan struct{}
 
 	// congestion algorithm
 	*ca
@@ -78,7 +78,8 @@ func NewUDPConn(c *net.UDPConn, addr *net.UDPAddr) *UDPConn {
 		<-conn.pacingTimer.C
 	}
 	conn.pacingChan = make(chan struct{}, 1)
-	conn.lastAckChan = make(chan struct{}, 1)
+	conn.lastAckCond = sync.NewCond(&conn.lastAckMtx)
+	go conn.ackLoop()
 	return conn
 }
 
@@ -93,14 +94,9 @@ func (c *UDPConn) WriteLoop() (err error) {
 		pingTicker = time.NewTicker(time.Second * UDP_PING_TICK_PERIOD)
 		pingTickerChan = pingTicker.C
 	}
-	var ackTicker *time.Ticker
-	var ackTickerChan <-chan time.Time
 	defer func() {
 		if pingTicker != nil {
 			pingTicker.Stop()
-		}
-		if ackTicker != nil {
-			ackTicker.Stop()
 		}
 		if err != nil {
 			c.SetStatusToError(err)
@@ -138,22 +134,6 @@ func (c *UDPConn) WriteLoop() (err error) {
 				c.GetContextLogger().Debugf("write msg is failed %v", err)
 				return err
 			}
-		case <-ackTickerChan:
-			if c.GetCrypto() == nil {
-				continue
-			}
-			la, ok := c.ackReady()
-			if ok {
-				err = c.ack(la)
-				if err != nil {
-					return
-				}
-			} else {
-				ackTicker.Stop()
-			}
-		case <-c.lastAckChan:
-			ackTicker = time.NewTicker(2 * time.Millisecond)
-			ackTickerChan = ackTicker.C
 		case <-c.pacingChan:
 			err := c.writePendingMsgs()
 			if err != nil {
@@ -166,8 +146,6 @@ func (c *UDPConn) WriteLoop() (err error) {
 				c.SetStatusToError(err)
 				c.Close()
 			}
-		case <-c.disconnected:
-			return
 		}
 	}
 }
@@ -181,6 +159,40 @@ func (c *UDPConn) ackReady() (seq uint32, ok bool) {
 	}
 	c.lastAckMtx.Unlock()
 	return
+}
+
+func (c *UDPConn) ackLoop() (err error) {
+	t := time.NewTicker(2 * time.Millisecond)
+	defer func() {
+		t.Stop()
+		if err != nil {
+			c.SetStatusToError(err)
+		}
+	}()
+
+	for {
+		select {
+		case <-t.C:
+			la, ok := c.ackReady()
+			if ok {
+				err = c.ack(la)
+				if err != nil {
+					return
+				}
+			} else {
+				t.Stop()
+				c.lastAckMtx.Lock()
+				c.lastAckCond.Wait()
+				c.lastAckMtx.Unlock()
+				if c.IsClosed() {
+					return
+				}
+				t = time.NewTicker(2 * time.Millisecond)
+			}
+		case <-c.disconnected:
+			return
+		}
+	}
 }
 
 func (c *UDPConn) Write(bytes []byte) (err error) {
@@ -476,7 +488,7 @@ func (c *UDPConn) Ack(seq uint32) error {
 	c.lastAck = seq
 	c.lastCnt++
 	c.lastAckMtx.Unlock()
-	c.lastAckChan <- struct{}{}
+	c.lastAckCond.Broadcast()
 	return nil
 }
 
@@ -562,6 +574,13 @@ func (c *UDPConn) GetNextSeq() uint32 {
 	return atomic.AddUint32(&c.seq, 1)
 }
 
+func (c *UDPConn) IsClose() (r bool) {
+	c.FieldsMutex.RLock()
+	r = c.closed
+	c.FieldsMutex.RUnlock()
+	return
+}
+
 func (c *UDPConn) Close() {
 	c.FieldsMutex.Lock()
 	if c.closed {
@@ -578,6 +597,9 @@ func (c *UDPConn) Close() {
 	c.ConnCommonFields.Close()
 	if c.UnsharedUdpConn {
 		c.UdpConn.Close()
+	}
+	if c.lastAckCond != nil {
+		c.lastAckCond.Broadcast()
 	}
 }
 
