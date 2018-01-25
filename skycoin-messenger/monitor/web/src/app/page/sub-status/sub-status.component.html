@@ -462,6 +462,7 @@
   <div class="quick-box" *ngIf="clientConnectionInfo?.length > 0 ">
     <!-- SSH Client -->
     <mat-list class="record-list">
+      
       <mat-list-item class="record-list-item" *ngFor="let info of clientConnectionInfo;let i=index;">
         <!-- <mat-checkbox style="margin-right:1em;" matTooltip="Automatic startup" [(ngModel)]="info.auto_start" (click)="setClientAuto(SshClient,!info.auto_start,i)"></mat-checkbox> -->
         <input class="label" type="text" appLabel [text]="info?.label" [info]="info" [index]="i" [client]="SshClient">
@@ -548,7 +549,13 @@
 
   <!--  Socket Client -->
   <div class="quick-box" *ngIf="clientConnectionInfo?.length > 0">
+    <div class="record-list-thread">
+      <span class="label">label</span>
+      <span class="keys">NodeKey and AppKey</span>
+      <span class="opertaions">opertations</span>
+    </div>
     <mat-list class="record-list">
+        
       <mat-list-item class="record-list-item" *ngFor="let info of clientConnectionInfo;let i=index;">
         <!-- <mat-checkbox style="margin-right:1em;" matTooltip="Automatic startup" [(ngModel)]="info.auto_start" (click)="setClientAuto(SocketClient,!info.auto_start,i)"></mat-checkbox> -->
         <input class="label" type="text" appLabel [text]="info?.label" [info]="info" [index]="i" [client]="SocketClient">

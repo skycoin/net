@@ -1,6 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { FormControl, FormGroup, Validators } from '@angular/forms';
-import { ApiService, ConnectServiceInfo } from '../../service';
+import { ApiService, ConnectServiceInfo, AlertService } from '../../service';
 import { MatDialogRef } from '@angular/material';
 
 @Component({
@@ -32,7 +32,8 @@ export class AppsSettingComponent implements OnInit {
   socksc_opts: Array<ConnectServiceInfo> = [];
   sshc_opts: Array<ConnectServiceInfo> = [];
   addr = '';
-  constructor(private api: ApiService, private dialogRef: MatDialogRef<AppsSettingComponent>) { }
+  version = '';
+  constructor(private api: ApiService, private dialogRef: MatDialogRef<AppsSettingComponent>, private alert: AlertService) { }
 
   ngOnInit() {
     const data = new FormData();
@@ -46,25 +47,32 @@ export class AppsSettingComponent implements OnInit {
     });
 
     this.api.getAutoStart(this.addr).subscribe((config) => {
-      this.settingForm.get('sockss').setValue(config.sockss === 'true' ? true : false);
-      this.settingForm.get('socksc').setValue(config.socksc === 'true' ? true : false);
-      this.settingForm.get('sshs').setValue(config.sshs === 'true' ? true : false);
-      this.settingForm.get('sshc').setValue(config.sshc === 'true' ? true : false);
-      this.settingForm.get('sshc_conf_nodeKey').setValue(config.sshc_conf_nodeKey);
-      this.settingForm.get('sshc_conf_appKey').setValue(config.sshc_conf_appKey);
-      this.settingForm.get('socksc_conf_nodeKey').setValue(config.socksc_conf_nodeKey);
-      this.settingForm.get('socksc_conf_appKey').setValue(config.socksc_conf_appKey);
+      console.log('auto config:', config);
+      this.settingForm.patchValue(config);
+      this.version = config.version;
     });
   }
   save() {
+    let isCheck = true;
     const data = new FormData();
     const json = this.settingForm.value;
-    json[this.sshc] = String(json[this.sshc]);
-    json[this.sshs] = String(json[this.sshs]);
-    json[this.sockss] = String(json[this.sockss]);
-    json[this.socksc] = String(json[this.socksc]);
-    json['sshc_conf'] = '';
-    json['socksc_conf'] = '';
+    if (json[this.sshc]) {
+      if (!json['sshc_conf_nodeKey'] || !json['sshc_conf_appKey']) {
+        isCheck = false;
+      }
+    }
+    if (json[this.socksc]) {
+      if (!json['socksc_conf_nodeKey'] || !json['socksc_conf_appKey']) {
+        isCheck = false;
+      }
+    }
+    if (!isCheck) {
+      this.alert.error('Please fill in the required parameters for the full client.');
+      return;
+    }
+    // json['sshc_conf'] = '';
+    // json['socksc_conf'] = '';
+    json['version'] = this.version;
     data.append('data', JSON.stringify(json));
     this.api.setAutoStart(this.addr, data).subscribe((result) => {
       if (result) {

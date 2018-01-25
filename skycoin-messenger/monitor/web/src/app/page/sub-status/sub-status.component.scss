@@ -342,7 +342,21 @@ app-sub-status {
 }
 
 .quick-box {
-  margin: .5rem 0;
+  margin: 1rem 0;
+  .record-list-thread {
+    display: flex;
+    background-color: #efefef;
+    padding: .5em;
+    span {
+      text-align: center;
+    }
+    .label {
+      width: 80px;
+    }
+    .keys {
+      flex-grow: 2;
+    }
+  }
   .record-list {
     .record-list-item {
       // border-bottom: 1px solid #d0d0d0;
