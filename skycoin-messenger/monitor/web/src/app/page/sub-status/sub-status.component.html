@@ -194,10 +194,6 @@
             <mat-icon aria-label="more">more_vert</mat-icon>
           </button>
           <mat-menu #socketClientmenu="matMenu">
-            <button mat-menu-item>
-              <mat-icon>settings</mat-icon>
-              <span>Setting</span>
-            </button>
             <button mat-menu-item (click)="openLog(SocketClient,logDialog)" [class.unread]="isUnread(SocketClient) > 0">
               <mat-icon>description</mat-icon>
               <span>Messages</span>
