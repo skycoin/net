@@ -57,7 +57,7 @@ func (c *ClientUDPConn) ReadLoop() (err error) {
 			if err != nil {
 				return err
 			}
-		case msg.TYPE_NORMAL, msg.TYPE_FEC, msg.TYPE_REQ, msg.TYPE_RESP:
+		case msg.TYPE_NORMAL, msg.TYPE_FEC, msg.TYPE_SYN:
 			err = c.Process(t, m)
 			if err != nil {
 				return err

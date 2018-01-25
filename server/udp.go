@@ -88,7 +88,7 @@ func (c *ServerUDPConn) ReadLoop(fn func(c *net.UDPConn, addr *net.UDPAddr) *con
 				cc.GetContextLogger().Debugf("pong")
 				return cc.WriteExt(pkg)
 			})
-		case msg.TYPE_NORMAL, msg.TYPE_FEC, msg.TYPE_REQ, msg.TYPE_RESP:
+		case msg.TYPE_NORMAL, msg.TYPE_FEC, msg.TYPE_SYN:
 			nt = time.Now()
 			wrapForClient(cc, func() error {
 				return cc.Process(t, m)

@@ -43,15 +43,10 @@ type Connection interface {
 
 	WaitForDisconnected()
 
-	WriteReq(bytes []byte) (err error)
-	WriteResp(bytes []byte) (err error)
+	WriteSyn(bytes []byte) (err error)
 
 	SetCrypto(crypto *Crypto)
 	GetCrypto() *Crypto
-
-	AddDirectlyHistory(seq uint32)
-	RemoveDirectlyHistory() (seq uint32)
-	DirectlyHistoryLen() (len int)
 }
 
 type ConnCommonFields struct {
@@ -236,24 +231,4 @@ func (c *ConnCommonFields) MustGetCrypto() *Crypto {
 		c.cryptoMutex.Unlock()
 	}
 	return v.(*Crypto)
-}
-
-func (c *ConnCommonFields) AddDirectlyHistory(seq uint32) {
-	c.directlyHistoryMutex.Lock()
-	c.directlyHistory.PushBack(seq)
-	c.directlyHistoryMutex.Unlock()
-}
-
-func (c *ConnCommonFields) DirectlyHistoryLen() (len int) {
-	c.directlyHistoryMutex.Lock()
-	len = c.directlyHistory.Len()
-	c.directlyHistoryMutex.Unlock()
-	return
-}
-
-func (c *ConnCommonFields) RemoveDirectlyHistory() (seq uint32) {
-	c.directlyHistoryMutex.Lock()
-	seq = c.directlyHistory.Remove(c.directlyHistory.Front()).(uint32)
-	c.directlyHistoryMutex.Unlock()
-	return
 }

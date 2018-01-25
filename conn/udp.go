@@ -39,8 +39,8 @@ type UDPConn struct {
 	lastAck     uint32
 	lastCnt     uint32
 	lastCnted   uint32
-	lastAckCond *sync.Cond
 	lastAckMtx  sync.Mutex
+	lastAckChan chan struct{}
 
 	// congestion algorithm
 	*ca
@@ -78,8 +78,7 @@ func NewUDPConn(c *net.UDPConn, addr *net.UDPAddr) *UDPConn {
 		<-conn.pacingTimer.C
 	}
 	conn.pacingChan = make(chan struct{}, 1)
-	conn.lastAckCond = sync.NewCond(&conn.lastAckMtx)
-	go conn.ackLoop()
+	conn.lastAckChan = make(chan struct{}, 1)
 	return conn
 }
 
@@ -88,61 +87,33 @@ func (c *UDPConn) ReadLoop() error {
 }
 
 func (c *UDPConn) WriteLoop() (err error) {
+	var pingTicker *time.Ticker
+	var pingTickerChan <-chan time.Time
 	if c.SendPing {
-		err = c.writeLoopWithPing()
-	} else {
-		err = c.writeLoop()
+		pingTicker = time.NewTicker(time.Second * UDP_PING_TICK_PERIOD)
+		pingTickerChan = pingTicker.C
 	}
-	c.GetContextLogger().Debugf("%s", c.String())
-	return
-}
-
-func (c *UDPConn) writeLoop() (err error) {
+	var ackTicker *time.Ticker
+	var ackTickerChan <-chan time.Time
 	defer func() {
+		if pingTicker != nil {
+			pingTicker.Stop()
+		}
+		if ackTicker != nil {
+			ackTicker.Stop()
+		}
 		if err != nil {
 			c.SetStatusToError(err)
 		}
-	}()
-	for {
-		select {
-		case m, ok := <-c.Out:
-			if !ok {
-				c.GetContextLogger().Debug("udp conn closed")
-				return nil
-			}
-			err := c.Write(m)
-			if err != nil {
-				c.GetContextLogger().Debugf("write msg is failed %v", err)
-				return err
-			}
-		case <-c.pacingChan:
-			err := c.writePendingMsgs()
-			if err != nil {
-				c.SetStatusToError(err)
-				c.Close()
-			}
-		case <-c.pacingTimer.C:
-			err := c.writePendingMsgs()
-			if err != nil {
-				c.SetStatusToError(err)
-				c.Close()
-			}
-		}
-	}
-}
-
-func (c *UDPConn) writeLoopWithPing() (err error) {
-	ticker := time.NewTicker(time.Second * UDP_PING_TICK_PERIOD)
-	defer func() {
-		ticker.Stop()
-		if err != nil {
-			c.SetStatusToError(err)
-		}
+		c.GetContextLogger().Debug("udp conn closed %s", c.String())
 	}()
 
 	for {
 		select {
-		case <-ticker.C:
+		case <-pingTickerChan:
+			if c.GetCrypto() == nil {
+				continue
+			}
 			nowUnix := time.Now().Unix()
 			lastTime := c.GetLastTime()
 			if nowUnix-lastTime >= UDP_GC_PERIOD {
@@ -156,8 +127,10 @@ func (c *UDPConn) writeLoopWithPing() (err error) {
 				return err
 			}
 		case m, ok := <-c.Out:
+			if c.GetCrypto() == nil {
+				continue
+			}
 			if !ok {
-				c.GetContextLogger().Debug("udp conn closed")
 				return nil
 			}
 			err := c.Write(m)
@@ -165,6 +138,22 @@ func (c *UDPConn) writeLoopWithPing() (err error) {
 				c.GetContextLogger().Debugf("write msg is failed %v", err)
 				return err
 			}
+		case <-ackTickerChan:
+			if c.GetCrypto() == nil {
+				continue
+			}
+			la, ok := c.ackReady()
+			if ok {
+				err = c.ack(la)
+				if err != nil {
+					return
+				}
+			} else {
+				ackTicker.Stop()
+			}
+		case <-c.lastAckChan:
+			ackTicker = time.NewTicker(2 * time.Millisecond)
+			ackTickerChan = ackTicker.C
 		case <-c.pacingChan:
 			err := c.writePendingMsgs()
 			if err != nil {
@@ -177,6 +166,8 @@ func (c *UDPConn) writeLoopWithPing() (err error) {
 				c.SetStatusToError(err)
 				c.Close()
 			}
+		case <-c.disconnected:
+			return
 		}
 	}
 }
@@ -190,37 +181,6 @@ func (c *UDPConn) ackReady() (seq uint32, ok bool) {
 	}
 	c.lastAckMtx.Unlock()
 	return
-}
-
-func (c *UDPConn) ackLoop() (err error) {
-	t := time.NewTicker(2 * time.Millisecond)
-	defer func() {
-		t.Stop()
-		if err != nil {
-			c.SetStatusToError(err)
-		}
-	}()
-
-	for {
-		select {
-		case <-t.C:
-			la, ok := c.ackReady()
-			if ok {
-				err = c.ack(la)
-				if err != nil {
-					return
-				}
-			} else {
-				t.Stop()
-				c.lastAckMtx.Lock()
-				c.lastAckCond.Wait()
-				c.lastAckMtx.Unlock()
-				t = time.NewTicker(2 * time.Millisecond)
-			}
-		case <-c.disconnected:
-			return
-		}
-	}
 }
 
 func (c *UDPConn) Write(bytes []byte) (err error) {
@@ -316,7 +276,7 @@ func (c *UDPConn) writePendingMsgs() (err error) {
 			c.GetContextLogger().Debugf("before encrypt out %x", pkgBytes)
 		}
 		switch m.Type {
-		case msg.TYPE_NORMAL, msg.TYPE_RESP:
+		case msg.TYPE_NORMAL:
 			if tx {
 				crypto := c.GetCrypto()
 				if crypto != nil {
@@ -328,8 +288,7 @@ func (c *UDPConn) writePendingMsgs() (err error) {
 				m.SetCache(pkgBytes)
 			}
 			err = c.WriteBytes(pkgBytes)
-		case msg.TYPE_REQ:
-			c.AddDirectlyHistory(m.GetSeq())
+		case msg.TYPE_SYN:
 			err = c.WriteBytes(pkgBytes)
 		}
 		if err != nil {
@@ -450,24 +409,7 @@ func (c *UDPConn) processAckInfo(m []byte) (err error) {
 
 func (c *UDPConn) process(t byte, seq uint32, m []byte) (err error) {
 	switch t {
-	case msg.TYPE_REQ:
-		if c.DirectlyHistoryLen() > 0 {
-			seq := c.RemoveDirectlyHistory()
-			err = c.delMsg(seq, false)
-			if err != nil {
-				return
-			}
-		}
-	case msg.TYPE_RESP:
-		if c.DirectlyHistoryLen() > 0 {
-			seq := c.RemoveDirectlyHistory()
-			err = c.delMsg(seq, false)
-			if err != nil {
-				return
-			}
-		}
-		fallthrough
-	case msg.TYPE_NORMAL:
+	case msg.TYPE_SYN, msg.TYPE_NORMAL:
 		err = c.Ack(seq)
 		if err != nil {
 			return
@@ -476,7 +418,7 @@ func (c *UDPConn) process(t byte, seq uint32, m []byte) (err error) {
 	ok, ms := c.Push(seq, msg.NewUDP(t, seq, m))
 	if ok {
 		for _, m := range ms {
-			if m.Type != msg.TYPE_REQ {
+			if m.Type != msg.TYPE_SYN {
 				if DEBUG_DATA_HEX {
 					c.GetContextLogger().Debugf("MustGetCrypto t %d seq %d \n%x", m.Type, m.GetSeq(), m.Body)
 				}
@@ -495,13 +437,8 @@ func (c *UDPConn) process(t byte, seq uint32, m []byte) (err error) {
 	return
 }
 
-func (c *UDPConn) WriteReq(bytes []byte) (err error) {
-	err = c.writeToChannel(0, bytes, msg.TYPE_REQ)
-	return
-}
-
-func (c *UDPConn) WriteResp(bytes []byte) (err error) {
-	err = c.writeToChannel(0, bytes, msg.TYPE_RESP)
+func (c *UDPConn) WriteSyn(bytes []byte) (err error) {
+	err = c.writeToChannel(0, bytes, msg.TYPE_SYN)
 	return
 }
 
@@ -539,7 +476,7 @@ func (c *UDPConn) Ack(seq uint32) error {
 	c.lastAck = seq
 	c.lastCnt++
 	c.lastAckMtx.Unlock()
-	c.lastAckCond.Broadcast()
+	c.lastAckChan <- struct{}{}
 	return nil
 }
 
@@ -711,7 +648,8 @@ func (c *UDPConn) delMsg(seq uint32, ignore bool) error {
 		c.ca.bifMtx.Lock()
 		c.ca.bif -= um.PkgBytesLen()
 		c.ca.bifMtx.Unlock()
-		return c.writePendingMsgs()
+		c.pacingChan <- struct{}{}
+		return nil
 	} else if !ignore {
 		c.GetContextLogger().Debugf("over ack %s", c)
 		c.AddOverAckCount()
