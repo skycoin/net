@@ -169,14 +169,24 @@ type UDPMessage struct {
 }
 
 func NewUDP(t uint8, seq uint32, bytes []byte) *UDPMessage {
+	if len(bytes) > util.FixedMtuPool.Size {
+		panic("invalid UDPMessage body size")
+	}
+	b := util.FixedMtuPool.Get()
+	l := copy(b, bytes)
 	return &UDPMessage{
-		Message: New(t, seq, bytes),
+		Message: New(t, seq, b[:l]),
 	}
 }
 
 func NewUDPWithoutSeq(t uint8, bytes []byte) *UDPMessage {
+	if len(bytes) > util.FixedMtuPool.Size {
+		panic("invalid UDPMessage body size")
+	}
+	b := util.FixedMtuPool.Get()
+	l := copy(b, bytes)
 	return &UDPMessage{
-		Message: NewWithoutSeq(t, bytes),
+		Message: NewWithoutSeq(t, b[:l]),
 	}
 }
 
@@ -224,7 +234,7 @@ func (msg *UDPMessage) Acked() {
 	}
 	if msg.Body != nil {
 		util.FixedMtuPool.Put(msg.Body)
-		msg.cache = nil
+		msg.Body = nil
 	}
 	msg.Unlock()
 }

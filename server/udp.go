@@ -41,8 +41,8 @@ func (c *ServerUDPConn) ReadLoop(fn func(c *net.UDPConn, addr *net.UDPAddr) *con
 	var rt = time.Time{}
 	var at = time.Time{}
 	var nt = time.Time{}
+	maxBuf := make([]byte, conn.MTU)
 	for {
-		maxBuf := make([]byte, conn.MTU)
 		rt = time.Now()
 		n, addr, err := c.UdpConn.ReadFromUDP(maxBuf)
 		c.GetContextLogger().Debugf("process read udp d %s", time.Now().Sub(rt))
@@ -62,10 +62,10 @@ func (c *ServerUDPConn) ReadLoop(fn func(c *net.UDPConn, addr *net.UDPAddr) *con
 			return err
 		}
 		c.AddReceivedBytes(n)
-		maxBuf = maxBuf[:n]
+		pkg := maxBuf[:n]
 		cc := fn(c.UdpConn, addr)
-		m := maxBuf[msg.PKG_HEADER_SIZE:]
-		checksum := binary.BigEndian.Uint32(maxBuf[msg.PKG_CRC32_BEGIN:])
+		m := pkg[msg.PKG_HEADER_SIZE:]
+		checksum := binary.BigEndian.Uint32(pkg[msg.PKG_CRC32_BEGIN:])
 		if checksum != crc32.ChecksumIEEE(m) {
 			c.GetContextLogger().Infof("checksum !=")
 			continue
@@ -84,9 +84,9 @@ func (c *ServerUDPConn) ReadLoop(fn func(c *net.UDPConn, addr *net.UDPAddr) *con
 			wrapForClient(cc, func() error {
 				m[msg.PING_MSG_TYPE_BEGIN] = msg.TYPE_PONG
 				checksum := crc32.ChecksumIEEE(m)
-				binary.BigEndian.PutUint32(maxBuf[msg.PKG_CRC32_BEGIN:], checksum)
+				binary.BigEndian.PutUint32(pkg[msg.PKG_CRC32_BEGIN:], checksum)
 				cc.GetContextLogger().Debugf("pong")
-				return cc.WriteExt(maxBuf)
+				return cc.WriteExt(pkg)
 			})
 		case msg.TYPE_NORMAL, msg.TYPE_FEC, msg.TYPE_REQ, msg.TYPE_RESP:
 			nt = time.Now()

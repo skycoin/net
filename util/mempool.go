@@ -8,7 +8,7 @@ var (
 
 type FixedSizePool struct {
 	pool sync.Pool
-	size int
+	Size int
 }
 
 func NewFixedSizePool(size int) (fp *FixedSizePool) {
@@ -18,7 +18,7 @@ func NewFixedSizePool(size int) (fp *FixedSizePool) {
 				return make([]byte, size)
 			},
 		},
-		size: size,
+		Size: size,
 	}
 	return fp
 }
@@ -29,11 +29,11 @@ func (fp *FixedSizePool) Get() []byte {
 }
 
 func (fp *FixedSizePool) Put(c []byte) {
-	if len(c) != fp.size {
-		if cap(c) != fp.size {
+	if len(c) != fp.Size {
+		if cap(c) != fp.Size {
 			return
 		}
-		c = c[:fp.size]
+		c = c[:fp.Size]
 	}
 	fp.pool.Put(c)
 }

@@ -311,12 +311,13 @@ func (c *UDPConn) writePendingMsgs() (err error) {
 		} else {
 			c.GetContextLogger().Debugf("resend msg seq %d", m.GetSeq())
 		}
-		var pkgBytes []byte
+		pkgBytes := m.PkgBytes()
+		if DEBUG_DATA_HEX {
+			c.GetContextLogger().Debugf("before encrypt out %x", pkgBytes)
+		}
 		switch m.Type {
 		case msg.TYPE_NORMAL, msg.TYPE_RESP:
-			pkgBytes = m.GetCache()
-			if len(pkgBytes) == 0 {
-				pkgBytes = m.PkgBytes()
+			if tx {
 				crypto := c.GetCrypto()
 				if crypto != nil {
 					err = crypto.Encrypt(pkgBytes[msg.PKG_HEADER_SIZE+msg.UDP_HEADER_END:])
@@ -329,7 +330,6 @@ func (c *UDPConn) writePendingMsgs() (err error) {
 			err = c.WriteBytes(pkgBytes)
 		case msg.TYPE_REQ:
 			c.AddDirectlyHistory(m.GetSeq())
-			pkgBytes = m.PkgBytes()
 			err = c.WriteBytes(pkgBytes)
 		}
 		if err != nil {

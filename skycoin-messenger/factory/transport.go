@@ -6,7 +6,6 @@ import (
 	"fmt"
 	log "github.com/sirupsen/logrus"
 	cn "github.com/skycoin/net/conn"
-	"github.com/skycoin/net/util"
 	"github.com/skycoin/skycoin/src/cipher"
 	"io"
 	"net"
@@ -209,6 +208,10 @@ func (t *Transport) nodeReadLoop(conn *Connection, getAppConn func(id uint32) ne
 			err = writeAll(appConn, body)
 			if err != nil {
 				conn.GetContextLogger().Debugf("app conn write err %v", err)
+				t.connsMutex.Lock()
+				t.conns[id] = nil
+				t.connsMutex.Unlock()
+				appConn.Close()
 				continue
 			}
 		}
@@ -261,9 +264,7 @@ func (t *Transport) appReadLoop(id uint32, appConn net.Conn, conn *Connection, c
 			log.Debugf("app conn read err %v, %d", err, n)
 			return
 		}
-		pkg := util.FixedMtuPool.Get()
-		pkg = pkg[:PKG_HEADER_END+n]
-		copy(pkg, buf[:PKG_HEADER_END+n])
+		pkg := buf[:PKG_HEADER_END+n]
 		if cn.DEBUG_DATA_HEX {
 			conn.GetContextLogger().Debugf("app conn in %x", pkg)
 		}

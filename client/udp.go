@@ -34,16 +34,16 @@ func (c *ClientUDPConn) ReadLoop() (err error) {
 		}
 		c.Close()
 	}()
+	maxBuf := make([]byte, conn.MTU)
 	for {
-		maxBuf := make([]byte, conn.MTU)
 		n, err := c.UdpConn.Read(maxBuf)
 		if err != nil {
 			return err
 		}
 		c.AddReceivedBytes(n)
-		maxBuf = maxBuf[:n]
-		m := maxBuf[msg.PKG_HEADER_SIZE:]
-		checksum := binary.BigEndian.Uint32(maxBuf[msg.PKG_CRC32_BEGIN:])
+		pkg := maxBuf[:n]
+		m := pkg[msg.PKG_HEADER_SIZE:]
+		checksum := binary.BigEndian.Uint32(pkg[msg.PKG_CRC32_BEGIN:])
 		if checksum != crc32.ChecksumIEEE(m) {
 			c.GetContextLogger().Infof("checksum !=")
 			continue
