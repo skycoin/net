@@ -185,6 +185,7 @@ export class SubStatusComponent implements OnInit, OnDestroy, AfterContentInit {
       width: '600px'
     });
     ref.componentInstance.addr = this.status.addr;
+    ref.componentInstance.key = this.key;
   }
   closeApp(ev: Event, key: string) {
     ev.stopImmediatePropagation();
@@ -748,7 +749,9 @@ export class SubStatusComponent implements OnInit, OnDestroy, AfterContentInit {
   }
   openConfigSettings(ev: Event, content: any) {
     this.configForm.reset();
-    this.api.getAutoStart(this.status.addr).subscribe((config: AutoStartConfig) => {
+    const data = new FormData();
+    data.append('key', this.key);
+    this.api.getAutoStart(this.status.addr, data).subscribe((config: AutoStartConfig) => {
       this.autoStart = config;
       this.configForm.patchValue({ 'socksServer': config.socks_server });
       this.configForm.patchValue({ 'sshServer': config.ssh_server });
