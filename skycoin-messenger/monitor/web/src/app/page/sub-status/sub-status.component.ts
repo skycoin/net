@@ -28,7 +28,7 @@ import {
   TerminalComponent,
   SearchServiceComponent,
   WalletComponent,
-  ClientSettingComponent
+  AppsSettingComponent
 } from '../../components';
 import 'rxjs/add/observable/of';
 import 'rxjs/add/observable/timer';
@@ -84,8 +84,6 @@ export class SubStatusComponent implements OnInit, OnDestroy, AfterContentInit {
   });
   configForm = new FormGroup({
     DiscoveryAddresses: new FormControl(''),
-    socksServer: new FormControl(''),
-    sshServer: new FormControl('')
   });
   sshClientPort = 0;
   socketClientPort = 0;
@@ -180,6 +178,13 @@ export class SubStatusComponent implements OnInit, OnDestroy, AfterContentInit {
   }
   getAppColor(key: string) {
 
+  }
+
+  openAppsSetting(ev: Event) {
+    const ref = this.dialog.open(AppsSettingComponent, {
+      width: '600px'
+    });
+    ref.componentInstance.addr = this.status.addr;
   }
   closeApp(ev: Event, key: string) {
     ev.stopImmediatePropagation();
@@ -548,6 +553,8 @@ export class SubStatusComponent implements OnInit, OnDestroy, AfterContentInit {
               }
               this.startTask();
             }
+          }, err => {
+            this.alert.error(err);
           });
         }
       });
@@ -792,14 +799,9 @@ export class SubStatusComponent implements OnInit, OnDestroy, AfterContentInit {
 
   updateSettings(ev: Event) {
     this.dialog.closeAll();
-    const jsonStr = {
-      // DiscoveryAddresses: this.configForm.get('DiscoveryAddresses').value.split(','),
-      socks_server: this.configForm.get('socksServer').value,
-      ssh_server: this.configForm.get('sshServer').value
-    };
+    const jsonStr = {};
     const tmp = this.configForm.get('DiscoveryAddresses').value;
     if (tmp) {
-      // TODO check discovery address
       const addresses = tmp.split(',');
       if (!this.checkDiscoveryAddress(addresses)) {
         this.alert.error('addresses is faild');
@@ -814,9 +816,6 @@ export class SubStatusComponent implements OnInit, OnDestroy, AfterContentInit {
     const data = new FormData();
     data.append('key', this.key);
     data.append('data', JSON.stringify(jsonStr));
-    this.api.setAutoStart(this.status.addr, data).subscribe(result => {
-      console.log('set auto config:', result);
-    });
     if (tmp) {
       console.log('update discovery address');
       this.api.setNodeConfig(data).subscribe(result => {
@@ -868,27 +867,27 @@ export class SubStatusComponent implements OnInit, OnDestroy, AfterContentInit {
       }
     });
   }
-  setClientAuto(action: string, auto: boolean, index: number) {
-    const data = new FormData();
-    if (!action) {
-      this.alert.error('client label is empty!');
-      return;
-    }
-    if (index < 0) {
-      this.alert.error('index is faild!');
-      return;
-    }
-    data.append('client', action);
-    data.append('index', String(index));
-    data.append('auto', String(auto));
-    this.api.SetClientAutoStart(data).subscribe((result) => {
-      if (result) {
-        this.api.getClientConnection(data).subscribe((info: Array<ConnectServiceInfo>) => {
-          this.clientConnectionInfo = info;
-        });
-      }
-    });
-  }
+  // setClientAuto(action: string, auto: boolean, index: number) {
+  //   const data = new FormData();
+  //   if (!action) {
+  //     this.alert.error('client label is empty!');
+  //     return;
+  //   }
+  //   if (index < 0) {
+  //     this.alert.error('index is faild!');
+  //     return;
+  //   }
+  //   data.append('client', action);
+  //   data.append('index', String(index));
+  //   data.append('auto', String(auto));
+  //   this.api.SetClientAutoStart(data).subscribe((result) => {
+  //     if (result) {
+  //       this.api.getClientConnection(data).subscribe((info: Array<ConnectServiceInfo>) => {
+  //         this.clientConnectionInfo = info;
+  //       });
+  //     }
+  //   });
+  // }
   removeClientConnection(action: string, index: number) {
     const data = new FormData();
     if (!action) {

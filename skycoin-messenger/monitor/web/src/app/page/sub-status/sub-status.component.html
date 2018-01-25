@@ -93,7 +93,7 @@
           </button>
         </p>
       </mat-grid-tile>
-      <mat-grid-tile *ngIf="isWindowsOs < 0">
+      <mat-grid-tile>
         <p class="status-box-item-title">
           <small>terminal</small>
           <!-- <mat-icon class="icon-pointer" (click)="discoveriesStatus($event,discoveryStatus)">info</mat-icon> -->
@@ -127,6 +127,17 @@
   <mat-card-content>
 
     <mat-grid-list [cols]="cols" [rowHeight]="rowHeight">
+      <mat-grid-tile>
+        <p class="status-box-item-title">
+          <small>Apps Setting</small>
+          <!-- <mat-icon class="icon-pointer" (click)="discoveriesStatus($event,discoveryStatus)">info</mat-icon> -->
+        </p>
+        <p class="status-box-item-content">
+          <button mat-icon-button color="primary" (click)="openAppsSetting($event)">
+            <mat-icon aria-label="settings">settings</mat-icon>
+          </button>
+        </p>
+      </mat-grid-tile>
       <mat-grid-tile>
         <p class="status-box-item-title status-item">
           <small>Shadowsocks</small>
@@ -456,7 +467,7 @@
     <!-- SSH Client -->
     <mat-list class="record-list">
       <mat-list-item class="record-list-item" *ngFor="let info of clientConnectionInfo;let i=index;">
-        <mat-checkbox style="margin-right:1em;" matTooltip="Automatic startup" [(ngModel)]="info.auto_start" (click)="setClientAuto(SshClient,!info.auto_start,i)"></mat-checkbox>
+        <!-- <mat-checkbox style="margin-right:1em;" matTooltip="Automatic startup" [(ngModel)]="info.auto_start" (click)="setClientAuto(SshClient,!info.auto_start,i)"></mat-checkbox> -->
         <input class="label" type="text" appLabel [text]="info?.label" [info]="info" [index]="i" [client]="SshClient">
         <span class="keys">
           <p class="key">
@@ -543,7 +554,7 @@
   <div class="quick-box" *ngIf="clientConnectionInfo?.length > 0">
     <mat-list class="record-list">
       <mat-list-item class="record-list-item" *ngFor="let info of clientConnectionInfo;let i=index;">
-        <mat-checkbox style="margin-right:1em;" matTooltip="Automatic startup" [(ngModel)]="info.auto_start" (click)="setClientAuto(SocketClient,!info.auto_start,i)"></mat-checkbox>
+        <!-- <mat-checkbox style="margin-right:1em;" matTooltip="Automatic startup" [(ngModel)]="info.auto_start" (click)="setClientAuto(SocketClient,!info.auto_start,i)"></mat-checkbox> -->
         <input class="label" type="text" appLabel [text]="info?.label" [info]="info" [index]="i" [client]="SocketClient">
         <span class="keys">
           <p class="key">
@@ -581,17 +592,6 @@
         <span>xxxxxxxxx).Multiple public keys are separated by commas</span>
       </mat-hint>
     </mat-form-field>
-    <section class="auto-setting-box">
-      <p class="title item">Automatic startup</p>
-      <section class="item">
-        <span class="left">ShadowSocks Server</span>
-        <mat-slide-toggle class="right" formControlName="socksServer"></mat-slide-toggle>
-      </section>
-      <section class="item">
-        <span class="left">SSH Server</span>
-        <mat-slide-toggle class="right" formControlName="sshServer"></mat-slide-toggle>
-      </section>
-    </section>
     <section class="discovery-address-box">
       <p class="title">Discovery Addresses Status</p>
       <ul class="discovery-status-list">
