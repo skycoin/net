@@ -276,9 +276,6 @@ func (m *Monitor) setNodeConfig(w http.ResponseWriter, r *http.Request) (result 
 }
 
 func (m *Monitor) getNodeConfig(w http.ResponseWriter, r *http.Request) (result []byte, err error, code int) {
-	if !verifyLogin(w, r) {
-		return
-	}
 	if r.Method != "POST" {
 		code = BAD_REQUEST
 		err = errors.New("please use post method")
