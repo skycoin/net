@@ -106,7 +106,6 @@ func (m *Monitor) Start(webDir string) {
 	http.HandleFunc("/conn/saveClientConnection", bundle(m.SaveClientConnection))
 	http.HandleFunc("/conn/removeClientConnection", bundle(m.RemoveClientConnection))
 	http.HandleFunc("/conn/editClientConnection", bundle(m.EditClientConnection))
-	http.HandleFunc("/conn/setClientAutoStart", bundle(m.SetClientAutoStart))
 	http.HandleFunc("/conn/getClientConnection", bundle(m.GetClientConnection))
 	http.HandleFunc("/login", bundle(m.Login))
 	http.HandleFunc("/checkLogin", bundle(m.checkLogin))
@@ -277,9 +276,6 @@ func (m *Monitor) setNodeConfig(w http.ResponseWriter, r *http.Request) (result 
 }
 
 func (m *Monitor) getNodeConfig(w http.ResponseWriter, r *http.Request) (result []byte, err error, code int) {
-	if !verifyLogin(w, r) {
-		return
-	}
 	if r.Method != "POST" {
 		code = BAD_REQUEST
 		err = errors.New("please use post method")
@@ -301,7 +297,6 @@ type ClientConnection struct {
 	NodeKey   string `json:"nodeKey"`
 	AppKey    string `json:"appKey"`
 	Count     int    `json:"count"`
-	AutoStart bool   `json:"auto_start"`
 }
 type clientConnectionSlice []ClientConnection
 
@@ -318,8 +313,6 @@ func (c clientConnectionSlice) Exist(rf ClientConnection) bool {
 	return false
 }
 
-//var sshClient = filepath.Join(file.UserHome(), ".skywire", "manager", "sshClient.json")
-//var socketClient = filepath.Join(file.UserHome(), ".skywire", "manager", "socketClient.json")
 var clientPath = filepath.Join(file.UserHome(), ".skywire", "manager", "clients.json")
 var clientLimit = 5
 
@@ -434,41 +427,7 @@ func (m *Monitor) EditClientConnection(w http.ResponseWriter, r *http.Request) (
 	result = []byte("true")
 	return
 }
-func (m *Monitor) SetClientAutoStart(w http.ResponseWriter, r *http.Request) (result []byte, err error, code int) {
-	if !verifyLogin(w, r) {
-		return
-	}
-	client := r.FormValue("client")
-	auto := r.FormValue("auto")
-	index, err := strconv.Atoi(r.FormValue("index"))
-	if err != nil {
-		return
-	}
-	isAuto, err := strconv.ParseBool(auto)
-	if err != nil {
-		return
-	}
-	cfs, err := readConfig()
-	if err != nil && !os.IsNotExist(err) {
-		return
-	}
-	cf, ok := cfs[client]
-	if !ok {
-		errors.New("System Error")
-		return
-	}
-	for k := range cf {
-		cf[k].AutoStart = false
-	}
-	cf[index].AutoStart = isAuto
-	cfs[client] = cf
-	err = saveClientFile(cfs)
-	if err != nil {
-		return
-	}
-	result = []byte("true")
-	return
-}
+
 func readConfig() (cfs map[string]clientConnectionSlice, err error) {
 	fb, err := ioutil.ReadFile(clientPath)
 	if err != nil {
@@ -502,20 +461,6 @@ func saveClientFile(data interface{}) (err error) {
 	err = ioutil.WriteFile(clientPath, d, 0600)
 	return
 }
-
-//func getFilePath(client string) string {
-//	switch client {
-//	case "ssh":
-//		client = sshClient
-//		break
-//	case "socket":
-//		client = socketClient
-//	default:
-//		client = ""
-//	}
-//
-//	return client
-//}
 
 var upgrader = websocket.Upgrader{
 	ReadBufferSize:  1024,

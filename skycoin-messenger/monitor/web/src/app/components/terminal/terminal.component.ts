@@ -49,13 +49,14 @@ export class TerminalComponent implements OnInit, OnDestroy {
       };
       this.ws.onclose = (ev: CloseEvent) => {
         this.isWrite = false;
-        // console.log('test:', ev);
+        console.log('onclose:', ev);
         if (this.xterm) {
           this.xterm.writeln('Connection interrupted...');
         }
       };
       this.ws.onerror = (ev: Event) => {
         this.isWrite = false;
+        console.log('onerror:', ev);
         if (this.xterm) {
           this.xterm.writeln('Connection interrupted...');
         }

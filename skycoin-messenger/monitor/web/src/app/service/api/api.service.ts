@@ -7,6 +7,7 @@ import 'rxjs/add/observable/throw';
 import 'rxjs/add/observable/empty';
 import { Router } from '@angular/router';
 import { MatDialog } from '@angular/material';
+import { AlertService } from '../alert/alert.service';
 
 @Injectable()
 export class ApiService {
@@ -15,7 +16,11 @@ export class ApiService {
   private bankUrl = '127.0.0.1:8080/';
   private callbackParm = 'callback';
   private jsonHeader = { 'Content-Type': 'application/json' };
-  constructor(private httpClient: HttpClient, private router: Router, private dialog: MatDialog) { }
+  constructor(
+    private httpClient: HttpClient,
+    private router: Router,
+    private dialog: MatDialog,
+    private alert: AlertService) { }
 
   getServerInfo() {
     return this.handleGet(this.connUrl + 'getServerInfo', { responseType: 'text' });
@@ -144,7 +149,16 @@ export class ApiService {
     if (url === '') {
       return Observable.throw('Url is empty.');
     }
-    return this.httpClient.post(url, data, opts).catch(err => this.handleError(err));
+    return this.httpClient.post(url, data, opts).catch(err => this.handleNodeError(err));
+  }
+  handleNodeError(err: HttpErrorResponse) {
+    if (err.status === 302) {
+      console.log('open url');
+      this.dialog.closeAll();
+      this.router.navigate([{ outlets: { user: ['login'] } }]);
+      return Observable.empty();
+    }
+    return Observable.throw(err.error.text);
   }
   handleError(err: HttpErrorResponse) {
     if (err.status === 302) {
