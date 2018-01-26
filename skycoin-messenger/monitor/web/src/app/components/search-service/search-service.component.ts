@@ -93,12 +93,14 @@ export class SearchServiceComponent implements OnInit, OnDestroy {
   getResult() {
     this.resultTask = Observable.interval(1000).take(this.timeOut + 3).subscribe(() => {
       this.api.getServicesResult(this.nodeAddr).subscribe(result => {
+        console.log('get search:', result);
         this.result.next(result);
       });
     });
   }
   handle() {
     this.result.subscribe((results: Array<Search>) => {
+      this.status = 1;
       const tmp = this.filterSeq(results);
       if (!tmp) {
         return;
@@ -106,7 +108,6 @@ export class SearchServiceComponent implements OnInit, OnDestroy {
       this.unique(tmp);
       this.sortByKey();
       this.results = this.totalResults;
-      this.status = 1;
     });
   }
   sortByKey() {
