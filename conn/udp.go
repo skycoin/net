@@ -651,16 +651,18 @@ func (c *UDPConn) delMsg(seq uint32, ignore bool) error {
 			c.updateRTT(um.GetRTT())
 		}
 		c.updateDeliveryRate(um)
-		if len(msgs) > 1 {
-			c.GetContextLogger().Debugf("resend loss msgs %v", msgs)
-			for _, msg := range msgs {
-				err := c.resendMsg(msg)
-				if err != nil {
-					c.SetStatusToError(err)
-					c.Close()
-					return err
+		if QUICK_LOST_ENABLE {
+			if len(msgs) > 1 {
+				c.GetContextLogger().Debugf("resend loss msgs %v", msgs)
+				for _, msg := range msgs {
+					err := c.resendMsg(msg)
+					if err != nil {
+						c.SetStatusToError(err)
+						c.Close()
+						return err
+					}
+					c.AddLossResendCount()
 				}
-				c.AddLossResendCount()
 			}
 		}
 		c.UpdateLastAck(seq)
@@ -670,8 +672,7 @@ func (c *UDPConn) delMsg(seq uint32, ignore bool) error {
 		c.ca.bifMtx.Lock()
 		c.ca.bif -= um.PkgBytesLen()
 		c.ca.bifMtx.Unlock()
-		c.pacingChan <- struct{}{}
-		return nil
+		return c.writePendingMsgs()
 	} else if !ignore {
 		c.GetContextLogger().Debugf("over ack %s", c)
 		c.AddOverAckCount()

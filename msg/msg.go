@@ -295,9 +295,6 @@ func (msg *UDPMessage) GetChannel() int {
 func (msg *UDPMessage) Loss() {
 	msg.Lock()
 	msg.status |= MSG_STATUS_LOSS
-	if msg.resendTimer != nil {
-		msg.resendTimer.Stop()
-	}
 	msg.Unlock()
 }
 
