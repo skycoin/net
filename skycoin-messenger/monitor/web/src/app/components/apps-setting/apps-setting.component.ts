@@ -32,6 +32,7 @@ export class AppsSettingComponent implements OnInit {
   socksc_opts: Array<ConnectServiceInfo> = [];
   sshc_opts: Array<ConnectServiceInfo> = [];
   addr = '';
+  key = '';
   version = '';
   constructor(private api: ApiService, private dialogRef: MatDialogRef<AppsSettingComponent>, private alert: AlertService) { }
 
@@ -46,8 +47,9 @@ export class AppsSettingComponent implements OnInit {
       });
     });
 
-    this.api.getAutoStart(this.addr).subscribe((config) => {
-      console.log('auto config:', config);
+    data.append('key', this.key);
+    this.api.getAutoStart(this.addr, data).subscribe((config) => {
+      // console.log('auto config:', config);
       this.settingForm.patchValue(config);
       this.version = config.version;
     });
@@ -74,6 +76,7 @@ export class AppsSettingComponent implements OnInit {
     // json['socksc_conf'] = '';
     json['version'] = this.version;
     data.append('data', JSON.stringify(json));
+    data.append('key', this.key);
     this.api.setAutoStart(this.addr, data).subscribe((result) => {
       if (result) {
         this.dialogRef.close();

@@ -62,8 +62,8 @@ export class ApiService {
   reboot(addr: string) {
     return this.handleNodePost(addr, '/node/reboot');
   }
-  getAutoStart(addr: string) {
-    return this.handleNodePost(addr, '/node/run/getAutoStartConfig');
+  getAutoStart(addr: string, data: FormData) {
+    return this.handleNodePost(addr, '/node/run/getAutoStartConfig', data);
   }
   setAutoStart(addr: string, data?: FormData) {
     return this.handleNodePost(addr, '/node/run/setAutoStartConfig', data);
