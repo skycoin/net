@@ -64,6 +64,10 @@ func (c *ServerUDPConn) ReadLoop(fn func(c *net.UDPConn, addr *net.UDPAddr) *con
 		c.AddReceivedBytes(n)
 		pkg := maxBuf[:n]
 		cc := fn(c.UdpConn, addr)
+		if cc.IsClosed() {
+			c.GetContextLogger().Infof("udp server conn closed")
+			continue
+		}
 		m := pkg[msg.PKG_HEADER_SIZE:]
 		checksum := binary.BigEndian.Uint32(pkg[msg.PKG_CRC32_BEGIN:])
 		if checksum != crc32.ChecksumIEEE(m) {

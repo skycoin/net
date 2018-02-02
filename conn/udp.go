@@ -93,8 +93,6 @@ func (c *UDPConn) WriteLoop() (err error) {
 	if c.SendPing {
 		pingTicker = time.NewTicker(time.Second * UDP_PING_TICK_PERIOD)
 		pingTickerChan = pingTicker.C
-	} else {
-		pingTickerChan = make(<-chan time.Time)
 	}
 	defer func() {
 		if pingTicker != nil {
@@ -103,7 +101,7 @@ func (c *UDPConn) WriteLoop() (err error) {
 		if err != nil {
 			c.SetStatusToError(err)
 		}
-		c.GetContextLogger().Debug("udp conn closed %s", c.String())
+		c.GetContextLogger().Debugf("udp conn closed %s", c.String())
 	}()
 
 	for {
@@ -125,9 +123,6 @@ func (c *UDPConn) WriteLoop() (err error) {
 				return err
 			}
 		case m, ok := <-c.Out:
-			if c.GetCrypto() == nil {
-				continue
-			}
 			if !ok {
 				return nil
 			}
