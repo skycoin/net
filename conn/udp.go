@@ -93,6 +93,8 @@ func (c *UDPConn) WriteLoop() (err error) {
 	if c.SendPing {
 		pingTicker = time.NewTicker(time.Second * UDP_PING_TICK_PERIOD)
 		pingTickerChan = pingTicker.C
+	} else {
+		pingTickerChan = make(<-chan time.Time)
 	}
 	defer func() {
 		if pingTicker != nil {
