@@ -507,9 +507,10 @@ func (c *Connection) WaitForKey() (err error) {
 		close(ok)
 	}()
 	select {
-	case <-time.After(15 * time.Second):
-		c.Close()
+	case <-time.After(10 * time.Second):
 		err = errors.New("reg timeout")
+		c.SetStatusToError(err)
+		c.Close()
 	case <-ok:
 	}
 	return err

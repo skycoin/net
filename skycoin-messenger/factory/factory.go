@@ -90,6 +90,7 @@ func (f *MessengerFactory) acceptedUDPCallback(connection *factory.Connection) {
 }
 
 func (f *MessengerFactory) callbackLoop(conn *Connection) (err error) {
+	go conn.WaitForKey()
 	var m []byte
 	var ok bool
 	defer func() {
@@ -178,7 +179,7 @@ func (f *MessengerFactory) register(key cipher.PubKey, connection *Connection) {
 			return
 		}
 		log.Debugf("reg close %s %p for %p", key.Hex(), c, connection)
-		defer c.Close()
+		go c.Close()
 	}
 	connection.UpdateConnectTime()
 	f.regConnections[key] = connection
@@ -206,13 +207,15 @@ func (f *MessengerFactory) ForEachAcceptedConnection(fn func(key cipher.PubKey, 
 func (f *MessengerFactory) unregister(key cipher.PubKey, connection *Connection) {
 	f.regConnectionsMutex.Lock()
 	c, ok := f.regConnections[key]
-	if ok && c == connection {
-		delete(f.regConnections, key)
-		f.regConnectionsMutex.Unlock()
-		log.Debugf("unreg %s %p", key.Hex(), c)
-	} else if ok {
-		f.regConnectionsMutex.Unlock()
-		log.Debugf("unreg %s %p != new %p", key.Hex(), connection, c)
+	if ok {
+		if c == connection {
+			delete(f.regConnections, key)
+			f.regConnectionsMutex.Unlock()
+			log.Debugf("unreg %s %p", key.Hex(), c)
+		} else {
+			f.regConnectionsMutex.Unlock()
+			log.Debugf("unreg %s %p != new %p", key.Hex(), connection, c)
+		}
 	} else {
 		f.regConnectionsMutex.Unlock()
 	}
@@ -362,10 +365,11 @@ func (f *MessengerFactory) connectUDPWithConfig(address string, config *ConnConf
 	f.fieldsMutex.Unlock()
 	c, err := f.udp.ConnectAfterListen(address)
 	if err != nil {
-		return nil, err
+		return
 	}
 	if c == nil {
-		panic("c == nil")
+		err = fmt.Errorf("connectUDPWithConfig %s exists before ConnectAfterListen", address)
+		return
 	}
 	connection = newUDPClientConnection(c, f)
 	connection.SetContextLogger(connection.GetContextLogger().WithField("app", "transport"))

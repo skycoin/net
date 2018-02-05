@@ -47,6 +47,8 @@ type Connection interface {
 
 	SetCrypto(crypto *Crypto)
 	GetCrypto() *Crypto
+
+	SetStatusToError(err error)
 }
 
 type ConnCommonFields struct {

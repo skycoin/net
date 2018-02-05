@@ -94,6 +94,7 @@ func (req *appConn) Execute(f *MessengerFactory, conn *Connection) (r resp, err 
 			if sc == nil {
 				connection.GetContextLogger().Debugf("tr sc is nil")
 			}
+			connection.SetKey(req.Node)
 			err := connection.SetCrypto(sc.publicKey, sc.secKey, req.Node, iv)
 			if err != nil {
 				connection.GetContextLogger().Debugf("set crypto err %v", err)

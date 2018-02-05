@@ -103,7 +103,6 @@ func (t *Transport) clientSideConnect(address string, sc *SeedConfig, iv []byte)
 	t.connAcked = true
 	t.fieldsMutex.Unlock()
 	conn, err := t.factory.acceptUDPWithConfig(address, &ConnConfig{
-		Creator: t.creator,
 	})
 	if err != nil {
 		return
@@ -134,6 +133,7 @@ func (t *Transport) serverSiceConnect(address, appAddress string, sc *SeedConfig
 	if err != nil {
 		return
 	}
+	conn.SetKey(t.FromNode)
 	err = conn.SetCrypto(sc.publicKey, sc.secKey, t.FromNode, iv)
 	if err != nil {
 		return
