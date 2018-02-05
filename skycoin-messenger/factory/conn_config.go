@@ -16,7 +16,6 @@ import (
 type ConnConfig struct {
 	Reconnect     bool
 	ReconnectWait time.Duration
-	Creator       *MessengerFactory
 
 	// generate seed, private key and public key for the connection
 	// seed config file path

@@ -86,7 +86,6 @@ func (t *Transport) ListenAndConnect(address string, key cipher.PubKey) (conn *C
 		return
 	}
 	conn, err = t.factory.connectUDPWithConfig(address, &ConnConfig{
-		Creator:   t.creator,
 		UseCrypto: RegWithKeyAndEncryptionVersion,
 		TargetKey: key,
 	})
@@ -128,7 +127,6 @@ func (t *Transport) connAck() {
 // Connect to node A and server app
 func (t *Transport) serverSiceConnect(address, appAddress string, sc *SeedConfig, iv []byte) (err error) {
 	conn, err := t.factory.connectUDPWithConfig(address, &ConnConfig{
-		Creator: t.creator,
 	})
 	if err != nil {
 		return

@@ -439,7 +439,7 @@ type connAck struct {
 // run on node b from node a udp
 func (req *connAck) Run(conn *Connection) (err error) {
 	conn.GetContextLogger().Debugf("recv conn ack %s", req.App.Hex())
-	appConn, ok := conn.factory.GetConnection(req.App)
+	appConn, ok := conn.factory.Parent.GetConnection(req.App)
 	if !ok {
 		conn.GetContextLogger().Debugf("app %x not exists", req.App)
 		return

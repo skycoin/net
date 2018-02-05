@@ -8,6 +8,7 @@ import (
 	"github.com/skycoin/net/client"
 	"github.com/skycoin/net/conn"
 	"github.com/skycoin/net/server"
+	"errors"
 )
 
 type UDPFactory struct {
@@ -121,6 +122,7 @@ func (factory *UDPFactory) GC() {
 			factory.udpConnMapMutex.RLock()
 			for k, udp := range factory.udpConnMap {
 				if nowUnix-udp.GetLastTime() >= conn.UDP_GC_PERIOD {
+					udp.SetStatusToError(errors.New("udp gc timeout"))
 					udp.Close()
 					closed = append(closed, k)
 				}
