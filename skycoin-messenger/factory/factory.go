@@ -374,9 +374,6 @@ func (f *MessengerFactory) connectUDPWithConfig(address string, config *ConnConf
 	connection = newUDPClientConnection(c, f)
 	connection.SetContextLogger(connection.GetContextLogger().WithField("app", "transport"))
 	if config != nil {
-		if config.Creator != nil {
-			connection.factory = config.Creator
-		}
 		if config.UseCrypto == RegWithKeyAndEncryptionVersion {
 			var key cipher.PubKey
 			var secKey cipher.SecKey
