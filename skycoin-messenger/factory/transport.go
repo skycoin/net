@@ -375,6 +375,14 @@ func (t *Transport) Close() {
 		return
 	}
 
+	msg := PriorityMsg{Priority: TransportClosed, Msg: "Transport closed", Type: Failed}
+	t.appConnHolder.PutMessage(msg)
+	t.appConnHolder.SetAppFeedback(&AppFeedback{
+		App:    t.ToApp,
+		Failed: true,
+		Msg:    msg,
+	})
+
 	if t.timeoutTimer != nil {
 		t.timeoutTimer.Stop()
 	}
@@ -402,11 +410,6 @@ func (t *Transport) Close() {
 	} else {
 		t.appConnHolder.setTransport(t.FromApp, nil)
 	}
-	t.appConnHolder.SetAppFeedback(&AppFeedback{
-		App:    t.ToApp,
-		Failed: true,
-		Msg:    PriorityMsg{Priority: TransportClosed, Msg: "transport closed", Type: Failed},
-	})
 }
 
 func (t *Transport) IsClientSide() bool {
