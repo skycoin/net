@@ -67,7 +67,9 @@ func (f *MessengerFactory) acceptedUDPCallback(connection *factory.Connection) {
 	if !ok {
 		c = newUDPServerConnection(connection, f)
 	}
-	c.SetContextLogger(c.GetContextLogger().WithField("app", "messenger"))
+	c.SetContextLogger(c.GetContextLogger().
+		WithField("mf", fmt.Sprintf("%p", f)).
+		WithField("dir", "in"))
 	if !conn.DEV {
 		defer func() {
 			if e := recover(); e != nil {
@@ -153,7 +155,9 @@ func (f *MessengerFactory) callbackLoop(conn *Connection) (err error) {
 func (f *MessengerFactory) acceptedCallback(connection *factory.Connection) {
 	var err error
 	c := newConnection(connection, f)
-	c.SetContextLogger(c.GetContextLogger().WithField("app", "messenger"))
+	c.SetContextLogger(c.GetContextLogger().
+		WithField("mf", fmt.Sprintf("%p", f)).
+		WithField("dir", "in"))
 	if !conn.DEV {
 		defer func() {
 			if e := recover(); e != nil {
@@ -297,7 +301,7 @@ func (f *MessengerFactory) ConnectWithConfig(address string, config *ConnConfig)
 		return err
 	}
 	conn = newClientConnection(c, f)
-	conn.SetContextLogger(conn.GetContextLogger().WithField("app", "messenger"))
+	conn.SetContextLogger(conn.GetContextLogger().WithField("dir", "out"))
 	if config != nil {
 		conn.onConnected = config.OnConnected
 		conn.onDisconnected = config.OnDisconnected
@@ -360,6 +364,7 @@ func (f *MessengerFactory) connectUDPWithConfig(address string, config *ConnConf
 	f.fieldsMutex.Lock()
 	if f.udp == nil {
 		err = errors.New("udp is nil")
+		f.fieldsMutex.Unlock()
 		return
 	}
 	f.fieldsMutex.Unlock()
@@ -372,7 +377,10 @@ func (f *MessengerFactory) connectUDPWithConfig(address string, config *ConnConf
 		return
 	}
 	connection = newUDPClientConnection(c, f)
-	connection.SetContextLogger(connection.GetContextLogger().WithField("app", "transport"))
+	connection.SetContextLogger(connection.GetContextLogger().
+		WithField("app", "transport").
+		WithField("mf", fmt.Sprintf("%p", f)).
+		WithField("dir", "out"))
 	if config != nil {
 		if config.UseCrypto == RegWithKeyAndEncryptionVersion {
 			var key cipher.PubKey
@@ -396,6 +404,7 @@ func (f *MessengerFactory) acceptUDPWithConfig(address string, config *ConnConfi
 	f.fieldsMutex.Lock()
 	if f.udp == nil {
 		err = errors.New("udp is nil")
+		f.fieldsMutex.Unlock()
 		return
 	}
 	f.fieldsMutex.Unlock()
@@ -408,7 +417,10 @@ func (f *MessengerFactory) acceptUDPWithConfig(address string, config *ConnConfi
 	}
 	connection = newUDPServerConnection(c, f)
 	go f.udp.AcceptedCallback(c)
-	connection.SetContextLogger(connection.GetContextLogger().WithField("app", "transport"))
+	connection.SetContextLogger(connection.GetContextLogger().
+		WithField("app", "transport").
+		WithField("mf", fmt.Sprintf("%p", f)).
+		WithField("dir", "in"))
 	return
 }
 
