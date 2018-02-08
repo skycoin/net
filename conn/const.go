@@ -70,4 +70,4 @@ const (
 	probeBW
 )
 
-var ErrFin = errors.New("eof")
+var ErrFin = errors.New("fin")

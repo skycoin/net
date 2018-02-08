@@ -429,8 +429,9 @@ OUTER:
 							return
 						}
 					}
+					c.GetContextLogger().Debugf("executing op %#v", r)
 					err = r.Run(c)
-					c.GetContextLogger().Debugf("execute op %#v err %v", r, err)
+					c.GetContextLogger().Debugf("executed op %#v err %v", r, err)
 					if err != nil {
 						if err == ErrDetach {
 							err = nil

@@ -112,6 +112,7 @@ func (c *ServerUDPConn) ReadLoop(fn func(c *net.UDPConn, addr *net.UDPAddr) *con
 			}
 		case msg.TYPE_FIN:
 			wrapForClient(cc, func() error {
+				cc.GetContextLogger().Debug("process fin")
 				return conn.ErrFin
 			})
 		default:

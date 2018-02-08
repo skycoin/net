@@ -129,7 +129,7 @@ const (
 )
 
 const (
-	_ Priority = iota
+	_               Priority = iota
 	Building
 	Connected
 	NotFound
@@ -314,7 +314,11 @@ func (req *forwardNodeConnResp) Execute(f *MessengerFactory, conn *Connection) (
 
 // run on node A, from manager
 func (req *forwardNodeConnResp) Run(conn *Connection) (err error) {
-	appConn, ok := conn.factory.Parent.GetConnection(req.FromApp)
+	factory := conn.factory.Parent
+	if factory == nil {
+		factory = conn.factory
+	}
+	appConn, ok := factory.GetConnection(req.FromApp)
 	if !ok {
 		conn.GetContextLogger().Debugf("forwardNodeConnResp app %x not found", req.FromApp)
 		return
