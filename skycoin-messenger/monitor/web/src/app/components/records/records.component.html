@@ -27,7 +27,7 @@
           <td>{{order?.created | date:'yyyy-mm-dd HH:mm a z'}}</td>
           <td>{{order?.updated | date:'yyyy-mm-dd HH:mm a z'}}</td>
         </tr>
-        <tr *ngIf="results?.length === 0">
+        <tr *ngIf="orders?.length === 0">
           <td colspan="3" class="no-found">No Service</td>
         </tr>
       </tbody>
@@ -36,5 +36,12 @@
 </div>
 
 <ng-template #tmp>
-  兑换窗口
+  <form class="withdraw-form">
+    <mat-form-field class="full-width">
+      <input matInput type="number" min="0" placeholder="Sky Coin Count">
+    </mat-form-field>
+    <p class="text-right">
+      <button mat-raised-button color="primary">OK</button>
+    </p>
+  </form>
 </ng-template>
