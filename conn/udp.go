@@ -571,7 +571,7 @@ func (c *UDPConn) GetNextSeq() uint32 {
 	return atomic.AddUint32(&c.seq, 1)
 }
 
-func (c *UDPConn) IsClose() (r bool) {
+func (c *UDPConn) IsClosed() (r bool) {
 	c.FieldsMutex.RLock()
 	r = c.closed
 	c.FieldsMutex.RUnlock()
@@ -581,6 +581,7 @@ func (c *UDPConn) IsClose() (r bool) {
 func (c *UDPConn) Close() {
 	c.FieldsMutex.Lock()
 	if c.closed {
+		c.FieldsMutex.Unlock()
 		return
 	}
 	c.closed = true

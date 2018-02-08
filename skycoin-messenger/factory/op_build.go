@@ -314,7 +314,7 @@ func (req *forwardNodeConnResp) Execute(f *MessengerFactory, conn *Connection) (
 
 // run on node A, from manager
 func (req *forwardNodeConnResp) Run(conn *Connection) (err error) {
-	appConn, ok := conn.factory.GetConnection(req.FromApp)
+	appConn, ok := conn.factory.Parent.GetConnection(req.FromApp)
 	if !ok {
 		conn.GetContextLogger().Debugf("forwardNodeConnResp app %x not found", req.FromApp)
 		return
