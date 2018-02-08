@@ -1,0 +1,40 @@
+<div class="record-page">
+  <div>
+    <span>Balance:</span>
+    <span>{{balance}}</span>
+    <button mat-raised-button color="primary" style="transform:scale(.7);" (click)="openWithdraw($event,tmp)">Withdraw</button>
+  </div>
+
+  <div class="record-box">
+    <h3 class="text-center">Withdraw Records</h3>
+    <table class="record-table">
+      <thead>
+        <tr>
+          <th>Index</th>
+          <th>Count</th>
+          <th>Dst Addr</th>
+          <th>Status</th>
+          <th>Created</th>
+          <th>Updated</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="record-row" *ngFor="let order of orders;let i=index;">
+          <td>{{i+1}}</td>
+          <td>{{order?.count}}</td>
+          <td>{{order?.dst}}</td>
+          <td>{{order?.status ? "confirm" : "unconfirmed"}}</td>
+          <td>{{order?.created | date:'yyyy-mm-dd HH:mm a z'}}</td>
+          <td>{{order?.updated | date:'yyyy-mm-dd HH:mm a z'}}</td>
+        </tr>
+        <tr *ngIf="results?.length === 0">
+          <td colspan="3" class="no-found">No Service</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<ng-template #tmp>
+  兑换窗口
+</ng-template>

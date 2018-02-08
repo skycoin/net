@@ -1,7 +1,7 @@
 <mat-card>
   <mat-card-title>
     <div class="left-box">
-      <span>Node Status</span>
+      <span>Status</span>
       <mat-icon (click)="refresh($event)">refresh</mat-icon>
     </div>
     <div class="toolBar text-right right-box">
@@ -15,9 +15,14 @@
       <p> Public Key:
         <strong>{{key}}</strong>
       </p>
-      <p *ngIf="!isProduction">Address:
+      <!-- <p>
+        <span>Balance:</span>
+        <span>{{balance}}</span>
+        <button mat-raised-button color="primary" style="transform:scale(.7);" (click)="OpenRecord()">Withdraw</button>
+      </p> -->
+      <!-- <p *ngIf="!isProduction">Address:
         <span style="color: red">{{status?.addr}}</span>
-      </p>
+      </p> -->
     </div>
     <mat-grid-list [cols]="cols" [rowHeight]="rowHeight">
       <mat-grid-tile>

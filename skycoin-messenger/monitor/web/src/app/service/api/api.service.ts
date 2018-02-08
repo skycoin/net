@@ -13,6 +13,7 @@ import { AlertService } from '../alert/alert.service';
 export class ApiService {
   private connUrl = '/conn/';
   private nodeUrl = '/node';
+  private reqUrl = '/req';
   private bankUrl = '127.0.0.1:8080/';
   private callbackParm = 'callback';
   private jsonHeader = { 'Content-Type': 'application/json' };
@@ -22,11 +23,22 @@ export class ApiService {
     private dialog: MatDialog,
     private alert: AlertService) { }
 
+  getBalance(data: FormData) {
+    return this.handleReq(this.bankUrl, 'skybank/node/get', data);
+  }
+  getNodeOrders(data: FormData) {
+    return this.handleReq(this.bankUrl, 'skybank/order/getNodeOrder', data);
+  }
+  getSig(addr: string, hash: string) {
+    const data = new FormData();
+    data.append('hash', hash);
+    return this.handleReq(addr, '/node/getSig', data);
+  }
   getServerInfo() {
     return this.handleGet(this.connUrl + 'getServerInfo', { responseType: 'text' });
   }
   closeApp(addr: string, data: FormData) {
-    return this.handleNodePost(addr, '/node/run/closeApp', data);
+    return this.handleReq(addr, '/node/run/closeApp', data);
   }
   login(data: FormData) {
     return this.handlePost('login', data);
@@ -47,53 +59,53 @@ export class ApiService {
     return this.handlePost(this.connUrl + 'setNodeConfig', data);
   }
   updateNodeConfig(addr: string) {
-    return this.handleNodePost(addr, '/node/run/updateNode');
+    return this.handleReq(addr, '/node/run/updateNode');
   }
   getMsgs(addr) {
-    return this.handleNodePost(addr, '/node/getMsgs');
+    return this.handleReq(addr, '/node/getMsgs');
   }
   getApps(addr: string) {
-    return this.handleNodePost(addr, '/node/getApps');
+    return this.handleReq(addr, '/node/getApps');
   }
 
   getNodeInfo(addr: string) {
-    return this.handleNodePost(addr, '/node/getInfo');
+    return this.handleReq(addr, '/node/getInfo');
   }
   reboot(addr: string) {
-    return this.handleNodePost(addr, '/node/reboot');
+    return this.handleReq(addr, '/node/reboot');
   }
   getAutoStart(addr: string, data: FormData) {
-    return this.handleNodePost(addr, '/node/run/getAutoStartConfig', data);
+    return this.handleReq(addr, '/node/run/getAutoStartConfig', data);
   }
   setAutoStart(addr: string, data?: FormData) {
-    return this.handleNodePost(addr, '/node/run/setAutoStartConfig', data);
+    return this.handleReq(addr, '/node/run/setAutoStartConfig', data);
   }
   checkAppMsg(addr: string, data?: FormData) {
-    return this.handleNodePost(addr, '/node/getMsg', data);
+    return this.handleReq(addr, '/node/getMsg', data);
   }
   searchServices(addr: string, data?: FormData) {
-    return this.handleNodePost(addr, '/node/run/searchServices', data);
+    return this.handleReq(addr, '/node/run/searchServices', data);
   }
   getServicesResult(addr: string, data?: FormData) {
-    return this.handleNodePost(addr, '/node/run/getSearchServicesResult', data);
+    return this.handleReq(addr, '/node/run/getSearchServicesResult', data);
   }
   connectSSHClient(addr: string, data?: FormData) {
-    return this.handleNodePost(addr, '/node/run/sshc', data);
+    return this.handleReq(addr, '/node/run/sshc', data);
   }
   connectSocketClicent(addr: string, data?: FormData) {
-    return this.handleNodePost(addr, '/node/run/socksc', data);
+    return this.handleReq(addr, '/node/run/socksc', data);
   }
   runSSHServer(addr: string, data?: FormData) {
-    return this.handleNodePost(addr, '/node/run/sshs', data);
+    return this.handleReq(addr, '/node/run/sshs', data);
   }
   runSockServer(addr: string, data?: FormData) {
-    return this.handleNodePost(addr, '/node/run/sockss', data);
+    return this.handleReq(addr, '/node/run/sockss', data);
   }
   runNodeupdate(addr: string) {
-    return this.handleNodePost(addr, '/node/run/update');
+    return this.handleReq(addr, '/node/run/update');
   }
   getDebugPage(addr: string) {
-    return this.handleNodePost(addr, '/debug/pprof');
+    return this.handleReq(addr, '/debug/pprof');
   }
   checkUpdate(channel, vesrion: string) {
     const data = new FormData();
@@ -117,10 +129,10 @@ export class ApiService {
   }
 
   getWalletNewAddress(data: FormData) {
-    return this.handleNodePost(this.bankUrl, 'skypay/tools/newAddress', data);
+    return this.handleReq(this.bankUrl, 'skypay/tools/newAddress', data);
   }
   getWalletInfo(data: FormData) {
-    return this.handleNodePost(this.bankUrl, 'skypay/node/get', data);
+    return this.handleReq(this.bankUrl, 'skypay/node/get', data);
   }
   jsonp(url: string) {
     if (url === '') {
@@ -134,16 +146,12 @@ export class ApiService {
     }
     return this.httpClient.get(url, opts).catch(err => this.handleError(err));
   }
-  handleNodePost(nodeAddr: string, api: string, data?: FormData, opts?: any) {
-    if (nodeAddr === '' || api === '') {
+  handleReq(addr: string, api: string, data?: FormData, opts?: any) {
+    if (addr === '' || api === '') {
       return Observable.throw('nodeAddr or api is empty.');
     }
-    nodeAddr = 'http://' + nodeAddr + api;
-    if (!data) {
-      data = new FormData();
-    }
-    data.append('addr', nodeAddr);
-    return this.handlePost(this.nodeUrl, data, opts);
+    addr = 'http://' + addr + api;
+    return this.handlePost(`${this.reqUrl}?addr=${addr}`, data, opts);
   }
   handlePost(url: string, data?: FormData, opts?: any) {
     if (url === '') {
@@ -254,4 +262,9 @@ export interface AutoStartConfig {
 export interface WalletAddress {
   code?: number;
   address?: string;
+}
+
+export interface HashSig {
+  pubkey?: string;
+  timestamp?: number;
 }

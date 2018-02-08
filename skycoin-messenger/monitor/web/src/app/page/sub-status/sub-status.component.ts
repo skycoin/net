@@ -1,4 +1,4 @@
-import { Component, OnInit, ViewEncapsulation, OnDestroy, AfterContentInit } from '@angular/core';
+import { Component, OnInit, ViewEncapsulation, OnDestroy } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { environment as env } from '../../../environments/environment';
 import {
@@ -28,7 +28,8 @@ import {
   TerminalComponent,
   SearchServiceComponent,
   WalletComponent,
-  AppsSettingComponent
+  AppsSettingComponent,
+  RecordsComponent,
 } from '../../components';
 import 'rxjs/add/observable/of';
 import 'rxjs/add/observable/timer';
@@ -41,7 +42,7 @@ import { BehaviorSubject } from 'rxjs/BehaviorSubject';
   styleUrls: ['./sub-status.component.scss'],
   encapsulation: ViewEncapsulation.None
 })
-export class SubStatusComponent implements OnInit, OnDestroy, AfterContentInit {
+export class SubStatusComponent implements OnInit, OnDestroy {
   cols = 6;
   rowHeight = '2:1';
   alertMsg = '';
@@ -111,6 +112,7 @@ export class SubStatusComponent implements OnInit, OnDestroy, AfterContentInit {
   appColor: Map<string, string> = new Map<string, string>();
   closeStatus = 'close-status';
   task = new Subject();
+  balance = '0.000000';
   constructor(
     private router: Router,
     private route: ActivatedRoute,
@@ -141,32 +143,6 @@ export class SubStatusComponent implements OnInit, OnDestroy, AfterContentInit {
       this.isManager = env.isManager;
     });
   }
-  ngAfterContentInit() {
-    // TODO socket auto start
-    // const data = new FormData();
-    // data.append('client', this.SocketClient);
-    // this.api.getClientConnection(data).subscribe((info: Array<ConnectServiceInfo>) => {
-    //   info.forEach(conn => {
-    //     if (conn.auto_start) {
-    //       data.delete('client');
-    //       data.append('toNode', conn.nodeKey);
-    //       data.append('toApp', conn.appKey);
-    //       this.api.connectSocketClicent(this.status.addr, data).subscribe(result => {
-    //         this.task.next();
-    //         const updateTask = setInterval(() => {
-    //           if (this.socketClientPort > 0 && this.socketClientPort <= 65535) {
-    //             clearInterval(updateTask);
-    //             this.alert.close();
-    //           } else if (this.socketClientPort === -1) {
-    //             this.alert.close();
-    //           }
-    //         }, 500);
-    //         this.alert.timer('connecting...', 15000);
-    //       });
-    //     }
-    //   });
-    // });
-  }
   ngOnDestroy() {
     this.close();
   }
@@ -179,7 +155,28 @@ export class SubStatusComponent implements OnInit, OnDestroy, AfterContentInit {
   getAppColor(key: string) {
 
   }
-
+  OpenRecord() {
+    const ref = this.dialog.open(RecordsComponent);
+    ref.componentInstance.nodeAddr = this.status.addr;
+    ref.componentInstance.nodeKey = this.key;
+  }
+  getBalance() {
+    if (!this.status || !this.status.addr) {
+      return;
+    }
+    const hash = JSON.stringify({
+      pubkey: this.key,
+      timestamp: new Date().getTime,
+    });
+    this.api.getSig(this.status.addr, hash).subscribe(s => {
+      const data = new FormData();
+      data.append('data', hash);
+      data.append('sig', s.sig);
+      this.api.getBalance(data).subscribe(resp => {
+        this.balance = resp.total;
+      });
+    });
+  }
   openAppsSetting(ev: Event) {
     const ref = this.dialog.open(AppsSettingComponent, {
       width: '600px'
@@ -334,6 +331,7 @@ export class SubStatusComponent implements OnInit, OnDestroy, AfterContentInit {
       data.append('toNode', this.socketClientForm.get('nodeKey').value);
       data.append('toApp', this.socketClientForm.get('appKey').value);
     }
+    this.alert.timer('connecting...', 15000);
     this.api.connectSocketClicent(this.status.addr, data).subscribe(result => {
       this.task.next();
       const updateTask = setInterval(() => {
@@ -344,7 +342,6 @@ export class SubStatusComponent implements OnInit, OnDestroy, AfterContentInit {
           this.alert.close();
         }
       }, 500);
-      this.alert.timer('connecting...', 15000);
     });
 
     this.dialog.closeAll();
@@ -386,6 +383,7 @@ export class SubStatusComponent implements OnInit, OnDestroy, AfterContentInit {
     //   this.alert.error('params failed');
     //   return;
     // }
+    this.alert.timer('connecting...', 15000);
     this.api.connectSSHClient(this.status.addr, data).subscribe(result => {
       this.task.next();
       const updateTask = setInterval(() => {
@@ -396,7 +394,6 @@ export class SubStatusComponent implements OnInit, OnDestroy, AfterContentInit {
           this.alert.close();
         }
       }, 500);
-      this.alert.timer('connecting...', 15000);
     });
     this.dialog.closeAll();
   }
@@ -924,6 +921,7 @@ export class SubStatusComponent implements OnInit, OnDestroy, AfterContentInit {
           this.fillApps();
         }
       });
+      this.getBalance();
     } else {
     }
   }

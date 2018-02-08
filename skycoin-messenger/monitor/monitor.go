@@ -110,7 +110,7 @@ func (m *Monitor) Start(webDir string) {
 	http.HandleFunc("/login", bundle(m.Login))
 	http.HandleFunc("/checkLogin", bundle(m.checkLogin))
 	http.HandleFunc("/updatePass", bundle(m.UpdatePass))
-	http.HandleFunc("/node", bundle(requestNode))
+	http.HandleFunc("/req", bundle(req))
 	http.HandleFunc("/term", m.handleNodeTerm)
 	go func() {
 		if err := m.srv.ListenAndServe(); err != nil {
@@ -135,7 +135,7 @@ func bundle(fn func(w http.ResponseWriter, r *http.Request) (result []byte, err 
 	}
 }
 
-func requestNode(w http.ResponseWriter, r *http.Request) (result []byte, err error, code int) {
+func req(w http.ResponseWriter, r *http.Request) (result []byte, err error, code int) {
 	if r.Method != "POST" {
 		code = BAD_REQUEST
 		err = errors.New("please use post method")
@@ -146,7 +146,19 @@ func requestNode(w http.ResponseWriter, r *http.Request) (result []byte, err err
 		err = errors.New("Node Address is Empty")
 		return
 	}
-	res, err := http.PostForm(addr, r.PostForm)
+	var res *http.Response
+	method := r.FormValue("method")
+	switch method {
+	case "post":
+		res, err = http.PostForm(addr, r.PostForm)
+		break
+	case "get":
+		res, err = http.Get(addr)
+		break
+	default:
+		res, err = http.PostForm(addr, r.PostForm)
+		break
+	}
 	if err != nil {
 		if res != nil {
 			return result, err, res.StatusCode
@@ -293,10 +305,10 @@ func (m *Monitor) getNodeConfig(w http.ResponseWriter, r *http.Request) (result 
 }
 
 type ClientConnection struct {
-	Label     string `json:"label"`
-	NodeKey   string `json:"nodeKey"`
-	AppKey    string `json:"appKey"`
-	Count     int    `json:"count"`
+	Label   string `json:"label"`
+	NodeKey string `json:"nodeKey"`
+	AppKey  string `json:"appKey"`
+	Count   int    `json:"count"`
 }
 type clientConnectionSlice []ClientConnection
 

@@ -1,0 +1,33 @@
+.record-page {
+  min-height: 800px;
+  .record-table {
+    width: 100%;
+    border-collapse: collapse;
+    .no-found {
+      text-align: center !important;
+    }
+    td,
+    th {
+      padding: 15px 5px;
+      display: table-cell;
+      text-align: left;
+      vertical-align: middle;
+      border-radius: 2px;
+    }
+    thead {
+      border-bottom: 1px solid #d0d0d0;
+    }
+    tbody {
+      tr {
+        border-bottom: 1px solid #d0d0d0;
+      }
+      .record-row {
+        font-size: small;
+        color: #505050;
+      }
+      .key {
+        font-size: xx-small;
+      }
+    }
+  }
+}

@@ -45,6 +45,7 @@ import {
   SearchServiceComponent,
   WalletComponent,
   AppsSettingComponent,
+  RecordsComponent,
 } from './components';
 import { AppRoutingModule } from './route/app-routing.module';
 
@@ -74,7 +75,8 @@ import { AppRoutingModule } from './route/app-routing.module';
     TerminalComponent,
     SearchServiceComponent,
     WalletComponent,
-    AppsSettingComponent
+    AppsSettingComponent,
+    RecordsComponent,
   ],
   entryComponents: [
     UpdateCardComponent,
@@ -83,7 +85,8 @@ import { AppRoutingModule } from './route/app-routing.module';
     TerminalComponent,
     SearchServiceComponent,
     WalletComponent,
-    AppsSettingComponent
+    AppsSettingComponent,
+    RecordsComponent,
   ],
   imports: [
     BrowserModule,
