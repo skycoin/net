@@ -9,6 +9,7 @@ import (
 	"github.com/skycoin/net/conn"
 	"github.com/skycoin/net/server"
 	"errors"
+	"fmt"
 )
 
 type UDPFactory struct {
@@ -83,7 +84,10 @@ func (factory *UDPFactory) createConn(c *net.UDPConn, addr *net.UDPAddr) *conn.U
 	factory.udpConnMap[addr.String()] = connection
 	factory.udpConnMapMutex.Unlock()
 
-	connection.SetContextLogger(connection.GetContextLogger().WithField("type", "udp").WithField("addr", addr.String()))
+	connection.SetContextLogger(connection.GetContextLogger().WithField("type", "udp").
+		WithField("addr", addr.String()).
+		WithField("udp_factory", fmt.Sprintf("%p", factory)).
+		WithField("dir", "in"))
 	factory.AddAcceptedConn(connection)
 	go factory.AcceptedCallback(connection)
 	return udpConn
@@ -152,7 +156,10 @@ func (factory *UDPFactory) Connect(address string) (conn *Connection, err error)
 	cn := client.NewClientUDPConn(udp, addr)
 	cn.SetStatusToConnected()
 	conn = newConnection(cn, factory)
-	conn.SetContextLogger(conn.GetContextLogger().WithField("type", "udp"))
+	conn.SetContextLogger(conn.GetContextLogger().
+		WithField("type", "udp").
+		WithField("udp_factory", fmt.Sprintf("%p", factory)).
+		WithField("dir", "out"))
 	factory.AddConn(conn)
 	return
 }
@@ -166,7 +173,10 @@ func (factory *UDPFactory) ConnectAfterListen(address string) (conn *Connection,
 	if !create {
 		return nil, nil
 	}
-	conn.SetContextLogger(conn.GetContextLogger().WithField("type", "udpe").WithField("addr", address))
+	conn.SetContextLogger(conn.GetContextLogger().
+		WithField("type", "udpe").
+		WithField("udp_factory", fmt.Sprintf("%p", factory)).
+		WithField("addr", address))
 	return
 }
 
