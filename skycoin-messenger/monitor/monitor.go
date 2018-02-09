@@ -300,7 +300,15 @@ func (m *Monitor) getNodeConfig(w http.ResponseWriter, r *http.Request) (result 
 	}
 	m.configsMutex.Lock()
 	defer m.configsMutex.Unlock()
-	result, err = json.Marshal(m.configs[key])
+	conf, ok := m.configs[key]
+	if !ok {
+		err = errors.New("no found")
+		return
+	}
+	result, err = json.Marshal(conf)
+	if err != nil {
+		return
+	}
 	return
 }
 

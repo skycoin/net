@@ -76,6 +76,9 @@ export class SearchServiceComponent implements OnInit, OnDestroy {
       ev.preventDefault();
     }
     this.status = 0;
+    setTimeout(() => {
+      this.status = 1;
+    }, 3000);
     this.search();
     // this.getResult();
   }
