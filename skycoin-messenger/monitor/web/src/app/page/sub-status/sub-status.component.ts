@@ -156,7 +156,9 @@ export class SubStatusComponent implements OnInit, OnDestroy {
 
   }
   OpenRecord() {
-    const ref = this.dialog.open(RecordsComponent);
+    const ref = this.dialog.open(RecordsComponent, {
+      width: '90%'
+    });
     ref.componentInstance.nodeAddr = this.status.addr;
     ref.componentInstance.nodeKey = this.key;
   }
@@ -166,7 +168,7 @@ export class SubStatusComponent implements OnInit, OnDestroy {
     }
     const hash = JSON.stringify({
       pubkey: this.key,
-      timestamp: new Date().getTime,
+      timestamp: new Date().getTime(),
     });
     this.api.getSig(this.status.addr, hash).subscribe(s => {
       const data = new FormData();

@@ -23,6 +23,12 @@ export class ApiService {
     private dialog: MatDialog,
     private alert: AlertService) { }
 
+  addOrder(data: FormData) {
+    return this.handleReq(this.bankUrl, 'skybank/order/addOrder', data);
+  }
+  getConvertible(data: FormData) {
+    return this.handleReq(this.bankUrl, 'skybank/node/getConvertible', data);
+  }
   getBalance(data: FormData) {
     return this.handleReq(this.bankUrl, 'skybank/node/get', data);
   }
@@ -177,6 +183,7 @@ export class ApiService {
     }
     return Observable.throw(err);
   }
+
 }
 export interface ConnectServiceInfo {
   label?: string;

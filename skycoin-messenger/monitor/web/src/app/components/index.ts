@@ -6,4 +6,5 @@ export * from './search-service/search-service.component';
 export * from './wallet/wallet.component';
 export * from './apps-setting/apps-setting.component';
 export * from './records/records.component';
+export * from './icon-refresh/icon-refresh.component';
 

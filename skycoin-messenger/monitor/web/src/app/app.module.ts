@@ -46,6 +46,7 @@ import {
   WalletComponent,
   AppsSettingComponent,
   RecordsComponent,
+  IconRefreshComponent,
 } from './components';
 import { AppRoutingModule } from './route/app-routing.module';
 
@@ -77,6 +78,7 @@ import { AppRoutingModule } from './route/app-routing.module';
     WalletComponent,
     AppsSettingComponent,
     RecordsComponent,
+    IconRefreshComponent,
   ],
   entryComponents: [
     UpdateCardComponent,
@@ -87,6 +89,7 @@ import { AppRoutingModule } from './route/app-routing.module';
     WalletComponent,
     AppsSettingComponent,
     RecordsComponent,
+    IconRefreshComponent,
   ],
   imports: [
     BrowserModule,
