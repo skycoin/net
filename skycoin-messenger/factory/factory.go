@@ -70,17 +70,17 @@ func (f *MessengerFactory) acceptedUDPCallback(connection *factory.Connection) {
 	c.SetContextLogger(c.GetContextLogger().
 		WithField("mf", fmt.Sprintf("%p", f)).
 		WithField("dir", "in"))
-	if !conn.DEV {
-		defer func() {
+	defer func() {
+		if !conn.DEV {
 			if e := recover(); e != nil {
 				c.GetContextLogger().Errorf("acceptedUDPCallback recover err %v", e)
 			}
-			if err != nil {
-				c.GetContextLogger().Errorf("acceptedUDPCallback err %v", err)
-			}
-			c.Close()
-		}()
-	}
+		}
+		if err != nil {
+			c.GetContextLogger().Errorf("acceptedUDPCallback err %v", err)
+		}
+		c.Close()
+	}()
 	if f.OnAcceptedUDPCallback != nil {
 		f.OnAcceptedUDPCallback(c)
 	}
@@ -158,18 +158,18 @@ func (f *MessengerFactory) acceptedCallback(connection *factory.Connection) {
 	c.SetContextLogger(c.GetContextLogger().
 		WithField("mf", fmt.Sprintf("%p", f)).
 		WithField("dir", "in"))
-	if !conn.DEV {
-		defer func() {
+	defer func() {
+		if !conn.DEV {
 			if e := recover(); e != nil {
 				c.GetContextLogger().Errorf("acceptedCallback recover err %v", e)
 			}
-			if err != nil {
-				c.GetContextLogger().Errorf("acceptedCallback err %v", err)
-			}
-			f.discoveryUnregister(c)
-			c.Close()
-		}()
-	}
+		}
+		if err != nil {
+			c.GetContextLogger().Errorf("acceptedCallback err %v", err)
+		}
+		f.discoveryUnregister(c)
+		c.Close()
+	}()
 	err = f.callbackLoop(c)
 }
 
