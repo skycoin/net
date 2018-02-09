@@ -236,6 +236,7 @@ type AttrNodesInfo struct {
 }
 
 type AttrNodeInfo struct {
+	Node     cipher.PubKey
 	Apps     []cipher.PubKey
 	Location string
 }
@@ -271,6 +272,7 @@ func (sd *serviceDiscovery) findByAttributes(attrs ...string) (result *AttrNodes
 			info, ok := nodes[k]
 			if !ok {
 				info = &AttrNodeInfo{
+					Node:     k,
 					Location: v.Location,
 				}
 				nodes[k] = info
