@@ -912,6 +912,7 @@ export class SubStatusComponent implements OnInit, OnDestroy {
   }
 
   init() {
+    this.initAppsStatus();
     this.startRequest = true;
     if (this.key) {
       const data = new FormData();
@@ -923,7 +924,7 @@ export class SubStatusComponent implements OnInit, OnDestroy {
           this.fillApps();
         }
       });
-      this.getBalance();
+      // this.getBalance();
     } else {
     }
   }

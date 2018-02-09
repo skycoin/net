@@ -24,7 +24,7 @@ export class SearchServiceComponent implements OnInit, OnDestroy {
   resultTask: Subscription = null;
   searchTask: Subscription = null;
   totalResults: Array<Search> = [];
-  results: Array<Search> = [];
+  results: Array<Search>;
   status = 0;
   SocketClient = 'socksc';
   private result: Subject<Array<Search>> = new BehaviorSubject<Array<Search>>([]);
@@ -82,25 +82,28 @@ export class SearchServiceComponent implements OnInit, OnDestroy {
   search() {
     const data = new FormData();
     data.append('key', this.searchStr);
-    this.searchTask = Observable.interval(1000).take(this.timeOut).subscribe(() => {
+    this.searchTask = Observable.interval(100).take(this.timeOut).subscribe(() => {
       this.api.searchServices(this.nodeAddr, data).subscribe(seq => {
         this.seqs = this.seqs.concat(seq);
         this.getResult();
       });
+    }, err => {
+      this.status = 1;
     });
   }
 
   getResult() {
-    this.resultTask = Observable.interval(1000).take(this.timeOut + 3).subscribe(() => {
+    this.resultTask = Observable.interval(500).take(this.timeOut + 3).subscribe(() => {
       this.api.getServicesResult(this.nodeAddr).subscribe(result => {
-        console.log('get search:', result);
         this.result.next(result);
+        this.status = 1;
       });
+    }, err => {
+      this.status = 1;
     });
   }
   handle() {
     this.result.subscribe((results: Array<Search>) => {
-      this.status = 1;
       const tmp = this.filterSeq(results);
       if (!tmp) {
         return;
@@ -157,10 +160,14 @@ export class SearchServiceComponent implements OnInit, OnDestroy {
 }
 
 export interface Search {
-  result?: Map<string, Array<string>>;
+  result?: Array<SearchResultApp>;
   seq?: number;
 }
-
+export interface SearchResultApp {
+  node_key?: string;
+  app_key?: string;
+  location?: string;
+}
 export interface SearchResult {
   node_key?: string;
   apps?: Array<string>;

@@ -33,7 +33,7 @@ export class RecordsComponent implements OnInit {
     this.getOrders();
     this.recordRefresh.stop();
   }
-  refresh(ev: Event, icon: any) {
+  refresh(ev: Event) {
     ev.stopImmediatePropagation();
     ev.stopPropagation();
     ev.preventDefault();

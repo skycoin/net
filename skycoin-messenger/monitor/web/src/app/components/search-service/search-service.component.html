@@ -3,32 +3,34 @@
     <span class="text-center text">Search {{searchStr}} Result</span>
     <mat-icon class="refresh" [class.refresh-process]="status === 0" (click)="refresh($event)">refresh</mat-icon>
   </p>
-  <table class="search-table">
+  <table class="search-table" *ngIf="results?.length > 0">
     <thead>
       <tr>
         <th>Node Key</th>
         <th>App Key</th>
+        <th>Location</th>
+
         <th>Operation</th>
       </tr>
     </thead>
 
     <tbody>
       <ng-container *ngFor="let result of results">
-        <ng-container *ngFor="let item of result?.result | iterable">
-          <tr *ngFor="let app of item?.value;trackBy: trackByKey">
-            <td class="key">{{item?.key}}</td>
-            <td class="key">{{app}}</td>
-            <td>
-              <button mat-raised-button color="primary" (click)="connectSocket(item?.key,app)">connect</button>
-            </td>
-          </tr>
-        </ng-container>
+        <tr *ngFor="let item of result?.result">
+          <td class="key">{{item?.node_key}}</td>
+          <td class="key">{{item?.app_key}}</td>
+          <td>{{item?.location}}</td>
+          <td>
+            <button mat-raised-button color="primary" (click)="connectSocket(item?.key,app)">connect</button>
+          </td>
+        </tr>
       </ng-container>
-      <tr *ngIf="results?.length === 0">
-        <td colspan="3" class="no-found">No Service</td>
-      </tr>
+      <!-- <tr *ngIf="results?.length === 0">
+        <td colspan="4" class="no-found">No Service</td>
+      </tr> -->
     </tbody>
   </table>
+  <!-- <div  class="no-found text-center">No Service</div> -->
 </div>
 <p class="search-foot text-right" *ngIf="results?.length > 10">
   <mat-paginator [length]="10" [pageSize]="10" [pageSizeOptions]="[5, 10, 25, 100]">
