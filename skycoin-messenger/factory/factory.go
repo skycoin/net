@@ -7,6 +7,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/skycoin/net/conn"
 	"github.com/skycoin/net/factory"
+	"github.com/skycoin/net/msg"
 	"github.com/skycoin/skycoin/src/cipher"
 	"io/ioutil"
 	"sync"
@@ -34,6 +35,9 @@ type MessengerFactory struct {
 	OnAcceptedUDPCallback func(connection *Connection)
 
 	fieldsMutex sync.RWMutex
+
+	BeforeReadOnConn func(m *msg.UDPMessage)
+	BeforeSendOnConn func(m *msg.UDPMessage)
 }
 
 func NewMessengerFactory() *MessengerFactory {
@@ -52,6 +56,8 @@ func (f *MessengerFactory) Listen(address string) (err error) {
 	}
 	if !f.Proxy {
 		udp := factory.NewUDPFactory()
+		udp.BeforeReadOnConn = f.BeforeReadOnConn
+		udp.BeforeSendOnConn = f.BeforeSendOnConn
 		udp.AcceptedCallback = f.acceptedUDPCallback
 		f.fieldsMutex.Lock()
 		f.udp = udp
@@ -348,6 +354,8 @@ func (f *MessengerFactory) listenForUDP() (err error) {
 	f.fieldsMutex.Lock()
 	if f.udp == nil {
 		ff := factory.NewUDPFactory()
+		ff.BeforeReadOnConn = f.BeforeReadOnConn
+		ff.BeforeSendOnConn = f.BeforeSendOnConn
 		ff.AcceptedCallback = f.acceptedUDPCallback
 		err = ff.Listen(":0")
 		if err != nil {

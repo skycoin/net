@@ -1,6 +1,9 @@
 package factory
 
 import (
+	"errors"
+	"fmt"
+	"github.com/skycoin/net/msg"
 	"net"
 	"sync"
 	"time"
@@ -8,8 +11,6 @@ import (
 	"github.com/skycoin/net/client"
 	"github.com/skycoin/net/conn"
 	"github.com/skycoin/net/server"
-	"errors"
-	"fmt"
 )
 
 type UDPFactory struct {
@@ -22,6 +23,9 @@ type UDPFactory struct {
 	udpConnMap      map[string]*Connection
 
 	stopGC chan struct{}
+
+	BeforeReadOnConn func(m *msg.UDPMessage)
+	BeforeSendOnConn func(m *msg.UDPMessage)
 }
 
 func NewUDPFactory() *UDPFactory {
@@ -79,6 +83,8 @@ func (factory *UDPFactory) createConn(c *net.UDPConn, addr *net.UDPAddr) *conn.U
 	}
 
 	udpConn := conn.NewUDPConn(c, addr)
+	udpConn.BeforeRead = factory.BeforeReadOnConn
+	udpConn.BeforeSend = factory.BeforeSendOnConn
 	udpConn.SetStatusToConnected()
 	connection := newConnection(udpConn, factory)
 	factory.udpConnMap[addr.String()] = connection
@@ -105,6 +111,8 @@ func (factory *UDPFactory) createConnAfterListen(addr *net.UDPAddr) (*Connection
 	factory.fieldsMutex.Unlock()
 
 	udpConn := conn.NewUDPConn(ln, addr)
+	udpConn.BeforeRead = factory.BeforeReadOnConn
+	udpConn.BeforeSend = factory.BeforeSendOnConn
 	udpConn.SendPing = true
 	udpConn.SetStatusToConnected()
 	connection := newConnection(udpConn, factory)

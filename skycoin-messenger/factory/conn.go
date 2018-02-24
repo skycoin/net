@@ -40,6 +40,8 @@ type Connection struct {
 	appTransports      map[cipher.PubKey]*Transport
 	appTransportsMutex sync.RWMutex
 
+	CreatedByTransport *Transport
+
 	connectTime int64
 
 	skipFactoryReg bool
@@ -489,14 +491,17 @@ func (c *Connection) Close() {
 		close(c.in)
 	}
 
-	c.appTransportsMutex.RLock()
-	defer c.appTransportsMutex.RUnlock()
+	if c.CreatedByTransport != nil {
+		c.CreatedByTransport.Close()
+	}
 
+	c.appTransportsMutex.RLock()
 	if len(c.appTransports) > 0 {
 		for _, v := range c.appTransports {
 			v.Close()
 		}
 	}
+	c.appTransportsMutex.RUnlock()
 
 	c.Connection.Close()
 }

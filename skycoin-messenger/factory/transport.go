@@ -1,11 +1,14 @@
 package factory
 
 import (
+	"crypto/hmac"
+	"crypto/sha256"
 	"encoding/binary"
 	"errors"
 	"fmt"
 	log "github.com/sirupsen/logrus"
 	cn "github.com/skycoin/net/conn"
+	"github.com/skycoin/net/msg"
 	"github.com/skycoin/skycoin/src/cipher"
 	"io"
 	"net"
@@ -41,8 +44,15 @@ type Transport struct {
 
 	connAcked bool
 
+	//pow
+	ticket        *workTicket
+	ticketMutex   sync.Mutex
+	discoveryConn *Connection
+
 	fieldsMutex sync.RWMutex
 }
+
+const ticketPerMsg = 100
 
 func NewTransport(creator *MessengerFactory, appConn *Connection, fromNode, toNode, fromApp, toApp cipher.PubKey) *Transport {
 	if appConn == nil {
@@ -64,6 +74,35 @@ func NewTransport(creator *MessengerFactory, appConn *Connection, fromNode, toNo
 		clientSide:    cs,
 		factory:       NewMessengerFactory(),
 		conns:         make(map[uint32]net.Conn),
+	}
+	var rc, sc uint32
+	t.factory.BeforeReadOnConn = func(m *msg.UDPMessage) {
+		c := atomic.AddUint32(&rc, 1)
+		seq := c % ticketPerMsg
+		if seq != 0 {
+			return
+		}
+		mac := hmac.New(sha256.New, t.FromNode[:])
+		mac.Write(m.Body)
+		code := mac.Sum(nil)
+		t.discoveryConn.writeOP(OP_POW, &workTicket{
+			Seq:  seq,
+			Code: code,
+		})
+	}
+	t.factory.BeforeSendOnConn = func(m *msg.UDPMessage) {
+		c := atomic.AddUint32(&sc, 1)
+		seq := c % ticketPerMsg
+		if seq != 0 {
+			return
+		}
+		mac := hmac.New(sha256.New, t.FromNode[:])
+		mac.Write(m.Body)
+		code := mac.Sum(nil)
+		t.discoveryConn.writeOP(OP_POW, &workTicket{
+			Seq:  seq,
+			Code: code,
+		})
 	}
 	t.factory.Parent = creator
 	t.factory.SetDefaultSeedConfig(creator.GetDefaultSeedConfig())
@@ -89,6 +128,8 @@ func (t *Transport) ListenAndConnect(address string, key cipher.PubKey) (conn *C
 		UseCrypto: RegWithKeyAndEncryptionVersion,
 		TargetKey: key,
 	})
+	conn.CreatedByTransport = t
+	t.discoveryConn = conn
 	return
 }
 
@@ -101,8 +142,7 @@ func (t *Transport) clientSideConnect(address string, sc *SeedConfig, iv []byte)
 	}
 	t.connAcked = true
 	t.fieldsMutex.Unlock()
-	conn, err := t.factory.acceptUDPWithConfig(address, &ConnConfig{
-	})
+	conn, err := t.factory.acceptUDPWithConfig(address, &ConnConfig{})
 	if err != nil {
 		return
 	}
@@ -110,6 +150,7 @@ func (t *Transport) clientSideConnect(address string, sc *SeedConfig, iv []byte)
 		err = errors.New("clientSideConnect acceptUDPWithConfig return nil conn")
 		return
 	}
+	conn.CreatedByTransport = t
 	err = conn.SetCrypto(sc.publicKey, sc.secKey, t.ToNode, iv)
 	if err != nil {
 		return
@@ -126,11 +167,11 @@ func (t *Transport) connAck() {
 
 // Connect to node A and server app
 func (t *Transport) serverSiceConnect(address, appAddress string, sc *SeedConfig, iv []byte) (err error) {
-	conn, err := t.factory.connectUDPWithConfig(address, &ConnConfig{
-	})
+	conn, err := t.factory.connectUDPWithConfig(address, &ConnConfig{})
 	if err != nil {
 		return
 	}
+	conn.CreatedByTransport = t
 	conn.SetKey(t.FromNode)
 	err = conn.SetCrypto(sc.publicKey, sc.secKey, t.FromNode, iv)
 	if err != nil {
@@ -520,4 +561,25 @@ func (t *Transport) GetUploadTotal() uint {
 
 func (t *Transport) GetDownloadTotal() uint {
 	return t.downloadBW.getTotal()
+}
+
+func (t *Transport) submitTicket(ticket *workTicket) (ok bool, err error) {
+	t.ticketMutex.Lock()
+	defer t.ticketMutex.Unlock()
+	if t.ticket == nil {
+		t.ticket = ticket
+		return
+	}
+
+	if t.ticket.Seq != ticket.Seq {
+		err = errors.New("ticket seq is not valid")
+		return
+	}
+
+	if !hmac.Equal(t.ticket.Code, ticket.Code) {
+		err = errors.New("ticket code is not valid")
+		return
+	}
+	ok = true
+	return
 }

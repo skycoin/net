@@ -89,6 +89,7 @@ func (req *appConn) Execute(f *MessengerFactory, conn *Connection) (r resp, err 
 		}
 		tr := NewTransport(f, conn, fromNode, req.Node, fromApp, req.App)
 		tr.SetOnAcceptedUDPCallback(func(connection *Connection) {
+			connection.CreatedByTransport = tr
 			sc := f.GetDefaultSeedConfig()
 			connection.GetContextLogger().Debugf("set crypto sc %v", sc)
 			if sc == nil {
@@ -129,7 +130,7 @@ const (
 )
 
 const (
-	_               Priority = iota
+	_ Priority = iota
 	Building
 	Connected
 	NotFound

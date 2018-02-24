@@ -53,6 +53,10 @@ type UDPConn struct {
 	*fecDecoder
 
 	closed bool
+
+	// callbacks
+	BeforeSend func(m *msg.UDPMessage)
+	BeforeRead func(m *msg.UDPMessage)
 }
 
 const (
@@ -276,6 +280,9 @@ func (c *UDPConn) writePendingMsgs() (err error) {
 		tx := !m.IsTransmitted()
 		if tx {
 			m.SetSeq(c.GetNextSeq())
+			if c.BeforeSend != nil {
+				c.BeforeSend(m)
+			}
 			c.GetContextLogger().Debugf("new msg seq %d", m.GetSeq())
 		} else {
 			c.GetContextLogger().Debugf("resend msg seq %d", m.GetSeq())
@@ -439,6 +446,9 @@ func (c *UDPConn) process(t byte, seq uint32, m []byte) (err error) {
 				if err != nil {
 					return
 				}
+			}
+			if c.BeforeRead != nil {
+				c.BeforeRead(m)
 			}
 			c.In <- m.Body
 		}
