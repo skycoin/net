@@ -22,12 +22,13 @@ func (wt *workTicket) Execute(f *MessengerFactory, conn *Connection) (r resp, er
 	if f.Proxy {
 		return
 	}
-	if conn.CreatedByTransport == nil {
-		err = errors.New("CreatedByTransport == nil")
+	pair := conn.GetTransportPair()
+	if pair == nil {
+		err = errors.New("GetTransportPair == nil")
 		return
 	}
 
-	ok, err := conn.CreatedByTransport.submitTicket(wt)
+	ok, err := pair.submitTicket(wt)
 	conn.GetContextLogger().Debugf("pow ticket %#v valid %t", wt, err == nil)
 	if !ok || err != nil {
 		return

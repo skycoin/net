@@ -41,6 +41,7 @@ type Connection struct {
 	appTransportsMutex sync.RWMutex
 
 	CreatedByTransport *Transport
+	transportPair      *transportPair
 
 	connectTime int64
 
@@ -468,12 +469,6 @@ func (c *Connection) GetChanIn() <-chan []byte {
 }
 
 func (c *Connection) Close() {
-	if c.reconnect != nil {
-		go c.reconnect()
-	}
-	if c.onDisconnected != nil {
-		c.onDisconnected(c)
-	}
 	c.keySetCond.Broadcast()
 	c.fieldsMutex.Lock()
 	defer c.fieldsMutex.Unlock()
@@ -481,6 +476,12 @@ func (c *Connection) Close() {
 		return
 	}
 	c.closed = true
+	if c.reconnect != nil {
+		go c.reconnect()
+	}
+	if c.onDisconnected != nil {
+		c.onDisconnected(c)
+	}
 	if c.keySet {
 		if !c.skipFactoryReg {
 			c.factory.unregister(c.key, c)
@@ -491,8 +492,8 @@ func (c *Connection) Close() {
 		close(c.in)
 	}
 
-	if c.CreatedByTransport != nil {
-		c.CreatedByTransport.Close()
+	if c.transportPair != nil {
+		c.transportPair.close()
 	}
 
 	c.appTransportsMutex.RLock()
@@ -664,5 +665,18 @@ func (c *Connection) SetCrypto(pk cipher.PubKey, sk cipher.SecKey, target cipher
 		}
 	}
 	c.Connection.SetCrypto(crypto)
+	return
+}
+
+func (c *Connection) SetTransportPair(pair *transportPair) {
+	c.fieldsMutex.Lock()
+	c.transportPair = pair
+	c.fieldsMutex.Unlock()
+}
+
+func (c *Connection) GetTransportPair() (pair *transportPair) {
+	c.fieldsMutex.RLock()
+	pair = c.transportPair
+	c.fieldsMutex.RUnlock()
 	return
 }

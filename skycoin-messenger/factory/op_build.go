@@ -277,6 +277,12 @@ func (req *forwardNodeConn) Execute(f *MessengerFactory, conn *Connection) (r re
 	}
 
 	conn.GetContextLogger().Debugf("conn remote addr %v", conn.GetRemoteAddr())
+	p, ok := globalTransportPairManagerInstance.create(req.FromApp, req.FromNode, req.Node, req.App)
+	if ok {
+		err = fmt.Errorf("conn transport pair have been created !? %#v", req)
+		return
+	}
+	conn.SetTransportPair(p)
 	err = c.writeOP(OP_BUILD_NODE_CONN|RESP_PREFIX,
 		&buildConn{
 			Address:  conn.GetRemoteAddr().String(),
@@ -308,7 +314,18 @@ func (req *forwardNodeConnResp) Execute(f *MessengerFactory, conn *Connection) (
 		return
 	}
 
-	req.Address = conn.GetRemoteAddr().String()
+	if conn.IsUDP() {
+		req.Address = conn.GetRemoteAddr().String()
+		if !req.Failed {
+			p, ok := globalTransportPairManagerInstance.create(req.FromApp, req.FromNode, req.Node, req.App)
+			if !ok {
+				err = fmt.Errorf("conn transport pair not exists!? %#v", req)
+				return
+			}
+			p.ok()
+			conn.SetTransportPair(p)
+		}
+	}
 	err = c.writeOP(OP_FORWARD_NODE_CONN_RESP|RESP_PREFIX, req)
 	return
 }

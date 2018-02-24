@@ -44,12 +44,96 @@ type Transport struct {
 
 	connAcked bool
 
-	//pow
-	ticket        *workTicket
-	ticketMutex   sync.Mutex
 	discoveryConn *Connection
 
 	fieldsMutex sync.RWMutex
+}
+
+type transportPair struct {
+	fromApp, fromNode, toNode, toApp cipher.PubKey
+
+	ticket       *workTicket
+	ticketMutex  sync.Mutex
+	timeoutTimer *time.Timer
+	fieldsMutex  sync.RWMutex
+}
+
+func (p *transportPair) ok() {
+	p.fieldsMutex.Lock()
+	if p.timeoutTimer == nil {
+		p.fieldsMutex.Unlock()
+		return
+	}
+	p.timeoutTimer.Stop()
+	p.timeoutTimer = nil
+	p.fieldsMutex.Unlock()
+}
+
+func (p *transportPair) close() {
+	keys := p.fromApp.Hex() + p.fromNode.Hex() + p.toNode.Hex() + p.toApp.Hex()
+	globalTransportPairManagerInstance.del(keys)
+}
+
+func (p *transportPair) submitTicket(ticket *workTicket) (ok bool, err error) {
+	p.ticketMutex.Lock()
+	defer p.ticketMutex.Unlock()
+	if p.ticket == nil {
+		p.ticket = ticket
+		return
+	}
+
+	if p.ticket.Seq != ticket.Seq {
+		err = errors.New("ticket seq is not valid")
+		return
+	}
+
+	if !hmac.Equal(p.ticket.Code, ticket.Code) {
+		err = errors.New("ticket code is not valid")
+		return
+	}
+	ok = true
+	return
+}
+
+var globalTransportPairManagerInstance = newTransportPairManager()
+
+type transportPairManager struct {
+	pairs      map[string]*transportPair
+	pairsMutex sync.RWMutex
+}
+
+func newTransportPairManager() *transportPairManager {
+	return &transportPairManager{
+		pairs: make(map[string]*transportPair),
+	}
+}
+
+func (m *transportPairManager) create(fromApp, fromNode, toNode, toApp cipher.PubKey) (p *transportPair, ok bool) {
+	keys := fromApp.Hex() + fromNode.Hex() + toNode.Hex() + toApp.Hex()
+	m.pairsMutex.Lock()
+	p, ok = m.pairs[keys]
+	if ok {
+		m.pairsMutex.Unlock()
+		return
+	}
+	p = &transportPair{
+		fromApp:  fromApp,
+		fromNode: fromNode,
+		toNode:   toNode,
+		toApp:    toApp,
+		timeoutTimer: time.AfterFunc(120*time.Second, func() {
+			m.del(keys)
+		}),
+	}
+	m.pairs[keys] = p
+	m.pairsMutex.Unlock()
+	return
+}
+
+func (m *transportPairManager) del(keys string) {
+	m.pairsMutex.Lock()
+	delete(m.pairs, keys)
+	m.pairsMutex.Unlock()
 }
 
 const ticketPerMsg = 100
@@ -561,25 +645,4 @@ func (t *Transport) GetUploadTotal() uint {
 
 func (t *Transport) GetDownloadTotal() uint {
 	return t.downloadBW.getTotal()
-}
-
-func (t *Transport) submitTicket(ticket *workTicket) (ok bool, err error) {
-	t.ticketMutex.Lock()
-	defer t.ticketMutex.Unlock()
-	if t.ticket == nil {
-		t.ticket = ticket
-		return
-	}
-
-	if t.ticket.Seq != ticket.Seq {
-		err = errors.New("ticket seq is not valid")
-		return
-	}
-
-	if !hmac.Equal(t.ticket.Code, ticket.Code) {
-		err = errors.New("ticket code is not valid")
-		return
-	}
-	ok = true
-	return
 }
