@@ -551,14 +551,18 @@ func (c *Connection) writeOPSyn(op byte, object interface{}) error {
 	return c.WriteSyn(data)
 }
 
-func (c *Connection) setTransport(to cipher.PubKey, tr *Transport) {
+func (c *Connection) setTransport(to cipher.PubKey, tr *Transport) (exists bool) {
 	c.appTransportsMutex.Lock()
 	if tr == nil {
 		delete(c.appTransports, to)
 	} else {
-		c.appTransports[to] = tr
+		_, exists = c.appTransports[to]
+		if !exists {
+			c.appTransports[to] = tr
+		}
 	}
 	c.appTransportsMutex.Unlock()
+	return
 }
 
 func (c *Connection) getTransport(to cipher.PubKey) (tr *Transport, ok bool) {

@@ -36,11 +36,6 @@ func init() {
 			return new(forwardNodeConnResp)
 		},
 	}
-	resps[OP_FORWARD_NODE_CONN] = &sync.Pool{
-		New: func() interface{} {
-			return new(buildConnResp)
-		},
-	}
 	ops[OP_BUILD_APP_CONN_OK] = &sync.Pool{
 		New: func() interface{} {
 			return new(buildConnResp)
@@ -115,7 +110,6 @@ func (req *appConn) Execute(f *MessengerFactory, conn *Connection) (r resp, err 
 			Num:      iv,
 		}
 		c.writeOP(OP_FORWARD_NODE_CONN, nodeConn)
-		conn.setTransport(req.App, tr)
 		tr.SetupTimeout()
 	})
 	return
@@ -201,12 +195,18 @@ func (req *buildConnResp) Execute(f *MessengerFactory, conn *Connection) (r resp
 	conn.GetContextLogger().Debugf("buildConnResp %#v", req)
 	appConn, ok := f.Parent.GetConnection(req.FromApp)
 	if !ok {
-		conn.GetContextLogger().Debugf("buildConnResp app %x not found", req.FromApp)
+		err = fmt.Errorf("buildConnResp app %x not found", req.FromApp)
 		return
 	}
-	tr, ok := appConn.getTransport(req.App)
-	if !ok {
-		conn.GetContextLogger().Debugf("buildConnResp tr %x not found", req.App)
+	tr := conn.CreatedByTransport
+	if tr == nil {
+		err = fmt.Errorf("buildConnResp tr %x not found", req.App)
+		return
+	}
+	exists := appConn.setTransport(req.App, tr)
+	if exists {
+		tr.Close()
+		conn.GetContextLogger().Debugf("buildConnResp transport exists")
 		return
 	}
 	tr.setUDPConn(conn)
@@ -222,7 +222,7 @@ func (req *buildConnResp) Execute(f *MessengerFactory, conn *Connection) (r resp
 	}
 	err = tr.ListenForApp(fnOK)
 	if err != nil {
-		conn.GetContextLogger().Debugf("ListenForApp err %v", err)
+		err = fmt.Errorf("ListenForApp err %v", err)
 		return
 	}
 	tr.connAck()
@@ -231,22 +231,11 @@ func (req *buildConnResp) Execute(f *MessengerFactory, conn *Connection) (r resp
 		App:     req.App,
 	})
 	if err != nil {
-		conn.GetContextLogger().Debugf("buildConnResp err %v", err)
+		err = fmt.Errorf("buildConnResp err %v", err)
 		return
 	}
 	conn.GetContextLogger().Debugf("buildConnResp detach")
 	err = ErrDetach
-	return
-}
-
-// run on node A, from manager udp
-func (req *buildConnResp) Run(conn *Connection) (err error) {
-	tr, ok := conn.getTransport(req.App)
-	if !ok {
-		conn.GetContextLogger().Debugf("buildConnResp run tr %#v not found", req)
-		return
-	}
-	conn.GetContextLogger().Debugf("recv %#v tr %#v", req, tr)
 	return
 }
 
@@ -342,22 +331,20 @@ func (req *forwardNodeConnResp) Run(conn *Connection) (err error) {
 		return
 	}
 	appConn.PutMessage(req.Msg)
-	tr, ok := appConn.getTransport(req.App)
-	if !ok {
-		conn.GetContextLogger().Debugf("forwardNodeConnResp tr %s not found", req.App.Hex())
-		return
-	}
+	tr := conn.CreatedByTransport
 	if req.Failed {
 		appConn.writeOP(OP_BUILD_APP_CONN|RESP_PREFIX, &AppConnResp{
 			App:    req.App,
 			Failed: req.Failed,
 			Msg:    req.Msg,
 		})
-		tr.Close()
+		if tr != nil {
+			tr.Close()
+		}
 		appConn.setTransport(req.App, nil)
 		return
 	}
-	if len(req.Address) > 0 {
+	if len(req.Address) > 0 && tr != nil {
 		e := tr.clientSideConnect(req.Address, conn.factory.GetDefaultSeedConfig(), req.Num)
 		if e != nil {
 			conn.GetContextLogger().Debugf("forwardNodeConnResp clientSideConnect %v", e)
@@ -449,7 +436,6 @@ func (req *buildConn) Run(conn *Connection) (err error) {
 		return
 	}
 	err = tr.serverSiceConnect(req.Address, s.Address, conn.factory.GetDefaultSeedConfig(), req.Num)
-	appConn.setTransport(req.FromApp, tr)
 	tr.SetupTimeout()
 	return
 }
@@ -461,14 +447,9 @@ type connAck struct {
 // run on node b from node a udp
 func (req *connAck) Run(conn *Connection) (err error) {
 	conn.GetContextLogger().Debugf("recv conn ack %s", req.App.Hex())
-	appConn, ok := conn.factory.Parent.GetConnection(req.App)
-	if !ok {
-		conn.GetContextLogger().Debugf("app %x not exists", req.App)
-		return
-	}
-	tr, ok := appConn.getTransport(req.FromApp)
-	if !ok {
-		conn.GetContextLogger().Debugf("tr %x not exists", tr)
+	tr := conn.CreatedByTransport
+	if tr == nil {
+		err = fmt.Errorf("tr %x not exists", tr)
 		return
 	}
 	tr.StopTimeout()
