@@ -46,14 +46,19 @@ type Transport struct {
 
 	discoveryConn *Connection
 
+	ticketSeqCounter  uint32
+	unChargeMsgs      []*msg.UDPMessage
+	unChargeMsgsMutex sync.Mutex
+
 	fieldsMutex sync.RWMutex
 }
 
 type transportPair struct {
 	fromApp, fromNode, toNode, toApp cipher.PubKey
 
-	ticket       *workTicket
-	ticketMutex  sync.Mutex
+	tickets      map[uint32]*workTicket
+	lastTicket   *workTicket
+	ticketsMutex sync.Mutex
 	timeoutTimer *time.Timer
 	fieldsMutex  sync.RWMutex
 }
@@ -74,24 +79,38 @@ func (p *transportPair) close() {
 	globalTransportPairManagerInstance.del(keys)
 }
 
-func (p *transportPair) submitTicket(ticket *workTicket) (ok bool, err error) {
-	p.ticketMutex.Lock()
-	defer p.ticketMutex.Unlock()
-	if p.ticket == nil {
-		p.ticket = ticket
+func (p *transportPair) submitTicket(ticket *workTicket) (ok uint, err error) {
+	p.ticketsMutex.Lock()
+	defer p.ticketsMutex.Unlock()
+
+	if len(ticket.Codes) > 0 {
+		if p.lastTicket == nil {
+			p.lastTicket = ticket
+			return
+		}
+		t := p.lastTicket
+		p.lastTicket = nil
+		for i, c := range ticket.Codes {
+			if hmac.Equal(t.Codes[i], c) {
+				ok++
+			} else {
+				return
+			}
+		}
 		return
 	}
 
-	if p.ticket.Seq != ticket.Seq {
-		err = errors.New("ticket seq is not valid")
+	t, o := p.tickets[ticket.Seq]
+	if !o {
+		p.tickets[ticket.Seq] = ticket
 		return
 	}
-
-	if !hmac.Equal(p.ticket.Code, ticket.Code) {
+	delete(p.tickets, ticket.Seq)
+	if !hmac.Equal(t.Code, ticket.Code) {
 		err = errors.New("ticket code is not valid")
 		return
 	}
-	ok = true
+	ok = ticketPerMsg
 	return
 }
 
@@ -124,6 +143,7 @@ func (m *transportPairManager) create(fromApp, fromNode, toNode, toApp cipher.Pu
 		timeoutTimer: time.AfterFunc(120*time.Second, func() {
 			m.del(keys)
 		}),
+		tickets: make(map[uint32]*workTicket),
 	}
 	m.pairs[keys] = p
 	m.pairsMutex.Unlock()
@@ -158,39 +178,56 @@ func NewTransport(creator *MessengerFactory, appConn *Connection, fromNode, toNo
 		clientSide:    cs,
 		factory:       NewMessengerFactory(),
 		conns:         make(map[uint32]net.Conn),
+		unChargeMsgs:  make([]*msg.UDPMessage, 0, ticketPerMsg-1),
 	}
-	var rc, sc uint32
-	t.factory.BeforeReadOnConn = func(m *msg.UDPMessage) {
-		c := atomic.AddUint32(&rc, 1)
-		seq := c % ticketPerMsg
-		if seq != 0 {
+	ticketFunc := func(m *msg.UDPMessage) {
+		c := atomic.AddUint32(&t.ticketSeqCounter, 1)
+		if c%ticketPerMsg != 0 {
+			t.unChargeMsgsMutex.Lock()
+			t.unChargeMsgs = append(t.unChargeMsgs, m)
+			t.unChargeMsgsMutex.Unlock()
 			return
 		}
-		mac := hmac.New(sha256.New, t.FromNode[:])
-		mac.Write(m.Body)
-		code := mac.Sum(nil)
-		t.discoveryConn.writeOP(OP_POW, &workTicket{
-			Seq:  seq,
-			Code: code,
-		})
+		t.unChargeMsgsMutex.Lock()
+		t.unChargeMsgs = t.unChargeMsgs[:0]
+		t.unChargeMsgsMutex.Unlock()
+		t.sendTicket(c/ticketPerMsg, m)
 	}
-	t.factory.BeforeSendOnConn = func(m *msg.UDPMessage) {
-		c := atomic.AddUint32(&sc, 1)
-		seq := c % ticketPerMsg
-		if seq != 0 {
-			return
-		}
-		mac := hmac.New(sha256.New, t.FromNode[:])
-		mac.Write(m.Body)
-		code := mac.Sum(nil)
-		t.discoveryConn.writeOP(OP_POW, &workTicket{
-			Seq:  seq,
-			Code: code,
-		})
+	log.Infof("nyf is client: %v", cs)
+	if cs {
+		t.factory.BeforeSendOnConn = ticketFunc
+	} else {
+		t.factory.BeforeReadOnConn = ticketFunc
 	}
 	t.factory.Parent = creator
 	t.factory.SetDefaultSeedConfig(creator.GetDefaultSeedConfig())
 	return t
+}
+
+func (t *Transport) sendTicket(seq uint32, m *msg.UDPMessage) {
+	mac := hmac.New(sha256.New, t.FromNode[:])
+	log.Errorf("nyf test1 seq %d send: %x", seq, m.Body)
+	mac.Write(m.Body)
+	code := mac.Sum(nil)
+	t.discoveryConn.writeOP(OP_POW, &workTicket{
+		Seq:  seq,
+		Code: code,
+	})
+}
+
+func (t *Transport) sendLastTicket() {
+	t.unChargeMsgsMutex.Lock()
+	codes := make([][]byte, len(t.unChargeMsgs))
+	for i, m := range t.unChargeMsgs {
+		mac := hmac.New(sha256.New, t.FromNode[:])
+		mac.Write(m.Body)
+		code := mac.Sum(nil)
+		codes[i] = code
+	}
+	t.unChargeMsgsMutex.Unlock()
+	t.discoveryConn.writeOP(OP_POW, &workTicket{
+		Codes: codes,
+	})
 }
 
 func (t *Transport) SetOnAcceptedUDPCallback(fn func(connection *Connection)) {
@@ -209,8 +246,9 @@ func (t *Transport) ListenAndConnect(address string, key cipher.PubKey) (conn *C
 		return
 	}
 	conn, err = t.factory.connectUDPWithConfig(address, &ConnConfig{
-		UseCrypto: RegWithKeyAndEncryptionVersion,
-		TargetKey: key,
+		UseCrypto:           RegWithKeyAndEncryptionVersion,
+		TargetKey:           key,
+		SkipBeforeCallbacks: true,
 	})
 	conn.CreatedByTransport = t
 	t.discoveryConn = conn
@@ -499,6 +537,7 @@ func (t *Transport) Close() {
 	if t.factory == nil {
 		return
 	}
+	t.sendLastTicket()
 
 	msg := PriorityMsg{Priority: TransportClosed, Msg: "Transport closed", Type: Failed}
 	t.appConnHolder.PutMessage(msg)

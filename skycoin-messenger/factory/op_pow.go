@@ -14,8 +14,9 @@ func init() {
 }
 
 type workTicket struct {
-	Seq  uint32
-	Code []byte
+	Seq   uint32
+	Code  []byte
+	Codes [][]byte
 }
 
 func (wt *workTicket) Execute(f *MessengerFactory, conn *Connection) (r resp, err error) {
@@ -30,7 +31,7 @@ func (wt *workTicket) Execute(f *MessengerFactory, conn *Connection) (r resp, er
 
 	ok, err := pair.submitTicket(wt)
 	conn.GetContextLogger().Debugf("pow ticket %#v valid %t", wt, err == nil)
-	if !ok || err != nil {
+	if ok == 0 || err != nil {
 		return
 	}
 

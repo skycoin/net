@@ -29,6 +29,8 @@ type ConnConfig struct {
 
 	TargetKey cipher.PubKey
 
+	SkipBeforeCallbacks bool
+
 	// callbacks
 
 	FindServiceNodesByKeysCallback func(resp *QueryResp)
