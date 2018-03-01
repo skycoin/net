@@ -197,9 +197,9 @@ func (m *transportPairManager) create(fromApp, fromNode, toNode, toApp cipher.Pu
 
 func (m *transportPairManager) get(fromApp, fromNode, toNode, toApp cipher.PubKey) (p *transportPair, ok bool) {
 	keys := fromApp.Hex() + fromNode.Hex() + toNode.Hex() + toApp.Hex()
-	m.pairsMutex.Lock()
+	m.pairsMutex.RLock()
 	p, ok = m.pairs[keys]
-	m.pairsMutex.Unlock()
+	m.pairsMutex.RUnlock()
 	return
 }
 
