@@ -113,7 +113,7 @@ func (p *transportPair) submitTicket(ticket *workTicket) (ok uint, err error) {
 		err = errors.New("ticket code is not valid")
 		return
 	}
-	ok = ticketPerMsg
+	ok = msgsEveryTicket
 	return
 }
 
@@ -209,7 +209,7 @@ func (m *transportPairManager) del(keys string) {
 	m.pairsMutex.Unlock()
 }
 
-const ticketPerMsg = 100
+const msgsEveryTicket = 100
 
 func NewTransport(creator *MessengerFactory, appConn *Connection, fromNode, toNode, fromApp, toApp cipher.PubKey) *Transport {
 	if appConn == nil {
@@ -231,11 +231,11 @@ func NewTransport(creator *MessengerFactory, appConn *Connection, fromNode, toNo
 		clientSide:    cs,
 		factory:       NewMessengerFactory(),
 		conns:         make(map[uint32]net.Conn),
-		unChargeMsgs:  make([]*msg.UDPMessage, 0, ticketPerMsg-1),
+		unChargeMsgs:  make([]*msg.UDPMessage, 0, msgsEveryTicket-1),
 	}
 	ticketFunc := func(m *msg.UDPMessage) {
 		c := atomic.AddUint32(&t.ticketSeqCounter, 1)
-		if c%ticketPerMsg != 0 {
+		if c%msgsEveryTicket != 0 {
 			t.unChargeMsgsMutex.Lock()
 			t.unChargeMsgs = append(t.unChargeMsgs, m)
 			t.unChargeMsgsMutex.Unlock()
@@ -244,7 +244,7 @@ func NewTransport(creator *MessengerFactory, appConn *Connection, fromNode, toNo
 		t.unChargeMsgsMutex.Lock()
 		t.unChargeMsgs = t.unChargeMsgs[:0]
 		t.unChargeMsgsMutex.Unlock()
-		t.sendTicket(c/ticketPerMsg, m)
+		t.sendTicket(c/msgsEveryTicket, m)
 	}
 	if cs {
 		t.factory.BeforeSendOnConn = ticketFunc
@@ -267,6 +267,10 @@ func (t *Transport) sendTicket(seq uint32, m *msg.UDPMessage) {
 }
 
 func (t *Transport) sendLastTicket() {
+	c := atomic.AddUint32(&t.ticketSeqCounter, 1)
+	if c < msgsEveryTicket {
+		return
+	}
 	t.unChargeMsgsMutex.Lock()
 	codes := make([][]byte, len(t.unChargeMsgs))
 	for i, m := range t.unChargeMsgs {
