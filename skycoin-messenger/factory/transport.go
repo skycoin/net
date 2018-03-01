@@ -4,6 +4,7 @@ import (
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/binary"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	log "github.com/sirupsen/logrus"
@@ -16,7 +17,6 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
-	"encoding/hex"
 )
 
 type Transport struct {
@@ -119,10 +119,13 @@ func (p *transportPair) submitTicket(ticket *workTicket) (ok uint, err error) {
 
 func (p *transportPair) setFromConn(fromConn *Connection) (err error) {
 	p.fieldsMutex.Lock()
-	p.fromConn = fromConn
-
 	addr := fromConn.GetRemoteAddr().String()
 	fromIp, _, err := net.SplitHostPort(addr)
+	if err != nil {
+		p.fieldsMutex.Unlock()
+		return
+	}
+	p.fromConn = fromConn
 	hash := sha256.New()
 	hash.Write([]byte(addr))
 	p.fromHostPort = hex.EncodeToString(hash.Sum(nil))
@@ -136,9 +139,13 @@ func (p *transportPair) setFromConn(fromConn *Connection) (err error) {
 
 func (p *transportPair) setToConn(toConn *Connection) (err error) {
 	p.fieldsMutex.Lock()
-	p.toConn = toConn
 	addr := toConn.GetRemoteAddr().String()
 	toIp, _, err := net.SplitHostPort(addr)
+	if err != nil {
+		p.fieldsMutex.Unlock()
+		return
+	}
+	p.toConn = toConn
 	hash := sha256.New()
 	hash.Write([]byte(addr))
 	p.toHostPort = hex.EncodeToString(hash.Sum(nil))
@@ -536,11 +543,11 @@ const (
 	PKG_HEADER_ID_SIZE = 4
 	PKG_HEADER_OP_SIZE = 1
 
-	PKG_HEADER_BEGIN    = 0
+	PKG_HEADER_BEGIN = 0
 	PKG_HEADER_OP_BEGIN
-	PKG_HEADER_OP_END   = PKG_HEADER_OP_BEGIN + PKG_HEADER_OP_SIZE
+	PKG_HEADER_OP_END = PKG_HEADER_OP_BEGIN + PKG_HEADER_OP_SIZE
 	PKG_HEADER_ID_BEGIN
-	PKG_HEADER_ID_END   = PKG_HEADER_ID_BEGIN + PKG_HEADER_ID_SIZE
+	PKG_HEADER_ID_END = PKG_HEADER_ID_BEGIN + PKG_HEADER_ID_SIZE
 	PKG_HEADER_END
 )
 

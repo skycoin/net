@@ -2,8 +2,8 @@ package factory
 
 import (
 	"github.com/pkg/errors"
-	"sync"
 	"github.com/skycoin/net/util/producer"
+	"sync"
 )
 
 func init() {

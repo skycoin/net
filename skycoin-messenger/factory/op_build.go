@@ -267,7 +267,10 @@ func (req *forwardNodeConn) Execute(f *MessengerFactory, conn *Connection) (r re
 
 	conn.GetContextLogger().Debugf("conn remote addr %v", conn.GetRemoteAddr())
 	p := globalTransportPairManagerInstance.create(req.FromApp, req.FromNode, req.Node, req.App)
-	p.setFromConn(conn)
+	err = p.setFromConn(conn)
+	if err != nil {
+		return
+	}
 	conn.SetTransportPair(p)
 	err = c.writeOP(OP_BUILD_NODE_CONN|RESP_PREFIX,
 		&buildConn{
@@ -309,7 +312,10 @@ func (req *forwardNodeConnResp) Execute(f *MessengerFactory, conn *Connection) (
 				return
 			}
 			p.ok()
-			p.setToConn(conn)
+			err = p.setToConn(conn)
+			if err != nil {
+				return
+			}
 			conn.SetTransportPair(p)
 		}
 	}
