@@ -45,6 +45,8 @@ export class SearchServiceComponent implements OnInit, OnDestroy {
     }
   }
   connectSocket(nodeKey: string, appKey: string) {
+    console.log('connect nodeKey:', nodeKey);
+    console.log('connect appKey:', appKey);
     if (!nodeKey || !appKey) {
       return;
     }

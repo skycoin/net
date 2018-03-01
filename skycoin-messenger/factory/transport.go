@@ -16,6 +16,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+	"encoding/hex"
 )
 
 type Transport struct {
@@ -54,13 +55,15 @@ type Transport struct {
 }
 
 type transportPair struct {
-	fromApp, fromNode, toNode, toApp cipher.PubKey
-
-	tickets      map[uint32]*workTicket
-	lastTicket   *workTicket
-	ticketsMutex sync.Mutex
-	timeoutTimer *time.Timer
-	fieldsMutex  sync.RWMutex
+	uid                                    uint64
+	fromApp, fromNode, toNode, toApp       cipher.PubKey
+	fromConn, toConn                       *Connection
+	fromHostPort, toHostPort, fromIp, toIp string
+	tickets                                map[uint32]*workTicket
+	lastTicket                             *workTicket
+	ticketsMutex                           sync.Mutex
+	timeoutTimer                           *time.Timer
+	fieldsMutex                            sync.RWMutex
 }
 
 func (p *transportPair) ok() {
@@ -114,6 +117,39 @@ func (p *transportPair) submitTicket(ticket *workTicket) (ok uint, err error) {
 	return
 }
 
+func (p *transportPair) setFromConn(fromConn *Connection) (err error) {
+	p.fieldsMutex.Lock()
+	p.fromConn = fromConn
+
+	addr := fromConn.GetRemoteAddr().String()
+	fromIp, _, err := net.SplitHostPort(addr)
+	hash := sha256.New()
+	hash.Write([]byte(addr))
+	p.fromHostPort = hex.EncodeToString(hash.Sum(nil))
+	hash.Reset()
+	hash.Write([]byte(fromIp))
+	p.fromIp = hex.EncodeToString(hash.Sum(nil))
+
+	p.fieldsMutex.Unlock()
+	return
+}
+
+func (p *transportPair) setToConn(toConn *Connection) (err error) {
+	p.fieldsMutex.Lock()
+	p.toConn = toConn
+	addr := toConn.GetRemoteAddr().String()
+	toIp, _, err := net.SplitHostPort(addr)
+	hash := sha256.New()
+	hash.Write([]byte(addr))
+	p.toHostPort = hex.EncodeToString(hash.Sum(nil))
+	hash.Reset()
+	hash.Write([]byte(toIp))
+	p.toIp = hex.EncodeToString(hash.Sum(nil))
+
+	p.fieldsMutex.Unlock()
+	return
+}
+
 var globalTransportPairManagerInstance = newTransportPairManager()
 
 type transportPairManager struct {
@@ -127,15 +163,17 @@ func newTransportPairManager() *transportPairManager {
 	}
 }
 
-func (m *transportPairManager) create(fromApp, fromNode, toNode, toApp cipher.PubKey) (p *transportPair, ok bool) {
+var guid uint64 = 0
+
+func (m *transportPairManager) create(fromApp, fromNode, toNode, toApp cipher.PubKey) (p *transportPair) {
 	keys := fromApp.Hex() + fromNode.Hex() + toNode.Hex() + toApp.Hex()
 	m.pairsMutex.Lock()
-	p, ok = m.pairs[keys]
+	p, ok := m.pairs[keys]
 	if ok {
-		m.pairsMutex.Unlock()
-		return
+		delete(m.pairs, keys)
 	}
 	p = &transportPair{
+		uid:      atomic.AddUint64(&guid, 1),
 		fromApp:  fromApp,
 		fromNode: fromNode,
 		toNode:   toNode,
@@ -146,6 +184,14 @@ func (m *transportPairManager) create(fromApp, fromNode, toNode, toApp cipher.Pu
 		tickets: make(map[uint32]*workTicket),
 	}
 	m.pairs[keys] = p
+	m.pairsMutex.Unlock()
+	return
+}
+
+func (m *transportPairManager) get(fromApp, fromNode, toNode, toApp cipher.PubKey) (p *transportPair, ok bool) {
+	keys := fromApp.Hex() + fromNode.Hex() + toNode.Hex() + toApp.Hex()
+	m.pairsMutex.Lock()
+	p, ok = m.pairs[keys]
 	m.pairsMutex.Unlock()
 	return
 }
@@ -193,7 +239,6 @@ func NewTransport(creator *MessengerFactory, appConn *Connection, fromNode, toNo
 		t.unChargeMsgsMutex.Unlock()
 		t.sendTicket(c/ticketPerMsg, m)
 	}
-	log.Infof("nyf is client: %v", cs)
 	if cs {
 		t.factory.BeforeSendOnConn = ticketFunc
 	} else {
@@ -206,7 +251,6 @@ func NewTransport(creator *MessengerFactory, appConn *Connection, fromNode, toNo
 
 func (t *Transport) sendTicket(seq uint32, m *msg.UDPMessage) {
 	mac := hmac.New(sha256.New, t.FromNode[:])
-	log.Errorf("nyf test1 seq %d send: %x", seq, m.Body)
 	mac.Write(m.Body)
 	code := mac.Sum(nil)
 	t.discoveryConn.writeOP(OP_POW, &workTicket{
@@ -227,6 +271,7 @@ func (t *Transport) sendLastTicket() {
 	t.unChargeMsgsMutex.Unlock()
 	t.discoveryConn.writeOP(OP_POW, &workTicket{
 		Codes: codes,
+		Last:  true,
 	})
 }
 
@@ -491,11 +536,11 @@ const (
 	PKG_HEADER_ID_SIZE = 4
 	PKG_HEADER_OP_SIZE = 1
 
-	PKG_HEADER_BEGIN = 0
+	PKG_HEADER_BEGIN    = 0
 	PKG_HEADER_OP_BEGIN
-	PKG_HEADER_OP_END = PKG_HEADER_OP_BEGIN + PKG_HEADER_OP_SIZE
+	PKG_HEADER_OP_END   = PKG_HEADER_OP_BEGIN + PKG_HEADER_OP_SIZE
 	PKG_HEADER_ID_BEGIN
-	PKG_HEADER_ID_END = PKG_HEADER_ID_BEGIN + PKG_HEADER_ID_SIZE
+	PKG_HEADER_ID_END   = PKG_HEADER_ID_BEGIN + PKG_HEADER_ID_SIZE
 	PKG_HEADER_END
 )
 

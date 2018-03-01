@@ -14,7 +14,7 @@ export class ApiService {
   private connUrl = '/conn/';
   private nodeUrl = '/node';
   private reqUrl = '/req';
-  private bankUrl = '127.0.0.1:8080/';
+  private bankUrl = '52.15.100.203:8080/';
   private callbackParm = 'callback';
   private jsonHeader = { 'Content-Type': 'application/json' };
   constructor(
@@ -37,7 +37,7 @@ export class ApiService {
   }
   getSig(addr: string, hash: string) {
     const data = new FormData();
-    data.append('hash', hash);
+    data.append('data', hash);
     return this.handleReq(addr, '/node/getSig', data);
   }
   getServerInfo() {

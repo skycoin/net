@@ -155,13 +155,13 @@ export class SubStatusComponent implements OnInit, OnDestroy {
   getAppColor(key: string) {
 
   }
-  OpenRecord() {
-    const ref = this.dialog.open(RecordsComponent, {
-      width: '90%'
-    });
-    ref.componentInstance.nodeAddr = this.status.addr;
-    ref.componentInstance.nodeKey = this.key;
-  }
+  // OpenRecord() {
+  //   const ref = this.dialog.open(RecordsComponent, {
+  //     width: '90%'
+  //   });
+  //   ref.componentInstance.nodeAddr = this.status.addr;
+  //   ref.componentInstance.nodeKey = this.key;
+  // }
   getBalance() {
     if (!this.status || !this.status.addr) {
       return;

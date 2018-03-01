@@ -21,7 +21,7 @@
           <td class="key">{{item?.app_key}}</td>
           <td>{{item?.location}}</td>
           <td>
-            <button mat-raised-button color="primary" (click)="connectSocket(item?.key,app)">connect</button>
+            <button mat-raised-button color="primary" (click)="connectSocket(item?.node_key,item?.app_key)">connect</button>
           </td>
         </tr>
       </ng-container>

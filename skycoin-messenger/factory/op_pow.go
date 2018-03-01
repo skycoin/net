@@ -3,6 +3,7 @@ package factory
 import (
 	"github.com/pkg/errors"
 	"sync"
+	"github.com/skycoin/net/util/producer"
 )
 
 func init() {
@@ -17,6 +18,7 @@ type workTicket struct {
 	Seq   uint32
 	Code  []byte
 	Codes [][]byte
+	Last  bool
 }
 
 func (wt *workTicket) Execute(f *MessengerFactory, conn *Connection) (r resp, err error) {
@@ -35,5 +37,18 @@ func (wt *workTicket) Execute(f *MessengerFactory, conn *Connection) (r resp, er
 		return
 	}
 
+	producer.Send(producer.MqBody{
+		Uid:          pair.uid,
+		FromApp:      pair.fromApp.Hex(),
+		FromNode:     pair.fromNode.Hex(),
+		ToNode:       pair.fromNode.Hex(),
+		ToApp:        pair.fromApp.Hex(),
+		FromHostPort: pair.fromHostPort,
+		ToHostPort:   pair.toHostPort,
+		FromIp:       pair.fromIp,
+		ToIp:         pair.toIp,
+		Count:        uint64(ok),
+		IsEnd:        wt.Last,
+	})
 	return
 }

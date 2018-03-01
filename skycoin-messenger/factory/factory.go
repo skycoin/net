@@ -376,7 +376,11 @@ func (f *MessengerFactory) connectUDPWithConfig(address string, config *ConnConf
 		return
 	}
 	f.fieldsMutex.Unlock()
-	c, err := f.udp.ConnectAfterListen(address)
+	if config == nil {
+		err = errors.New("config is nil")
+		return
+	}
+	c, err := f.udp.ConnectAfterListen(address, config.SkipBeforeCallbacks)
 	if err != nil {
 		return
 	}
@@ -416,7 +420,11 @@ func (f *MessengerFactory) acceptUDPWithConfig(address string, config *ConnConfi
 		return
 	}
 	f.fieldsMutex.Unlock()
-	c, err := f.udp.ConnectAfterListen(address)
+	if config == nil {
+		err = errors.New("config is nil")
+		return
+	}
+	c, err := f.udp.ConnectAfterListen(address, config.SkipBeforeCallbacks)
 	if err != nil {
 		return nil, err
 	}
