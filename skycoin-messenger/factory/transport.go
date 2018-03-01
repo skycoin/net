@@ -123,6 +123,9 @@ func (p *transportPair) setFromConn(fromConn *Connection) (err error) {
 
 	addr := fromConn.GetRemoteAddr().String()
 	fromIp, _, err := net.SplitHostPort(addr)
+	if err != nil {
+		return
+	}
 	hash := sha256.New()
 	hash.Write([]byte(addr))
 	p.fromHostPort = hex.EncodeToString(hash.Sum(nil))
@@ -139,6 +142,9 @@ func (p *transportPair) setToConn(toConn *Connection) (err error) {
 	p.toConn = toConn
 	addr := toConn.GetRemoteAddr().String()
 	toIp, _, err := net.SplitHostPort(addr)
+	if err != nil {
+		return
+	}
 	hash := sha256.New()
 	hash.Write([]byte(addr))
 	p.toHostPort = hex.EncodeToString(hash.Sum(nil))

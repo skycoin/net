@@ -6,11 +6,16 @@ import (
 	"github.com/aws/aws-sdk-go/service/sqs"
 	"encoding/json"
 	"github.com/aws/aws-sdk-go/aws/credentials"
+	"sync/atomic"
+	"time"
+	"math/rand"
+	"encoding/hex"
 )
 
 var conf *Config
 var sess *session.Session
-var seq int64 = 1
+var seq uint64 = 0
+var discoveryName string
 
 func Init(path string) (err error) {
 	conf = &Config{}
@@ -28,15 +33,18 @@ func Init(path string) (err error) {
 	if err != nil {
 		return
 	}
-	return
-	if err != nil {
-		return
-	}
+	discoveryName = getRandomString()
 	return
 }
 
+func Close() {
+	conf = nil
+	sess = nil
+}
+
 type MqBody struct {
-	Seq          int64  `json:"seq"`
+	Key          string `json:"key"`
+	Seq          uint64 `json:"seq"`
 	FromApp      string `json:"from_app"`
 	FromNode     string `json:"from_node"`
 	ToNode       string `json:"to_node"`
@@ -53,7 +61,8 @@ type MqBody struct {
 // from add , to reduce
 func Send(body MqBody) (err error) {
 	svc := sqs.New(sess)
-	body.Seq = seq
+	body.Key = discoveryName
+	body.Seq = atomic.AddUint64(&seq, 1)
 	b, err := json.Marshal(&body)
 	if err != nil {
 		return
@@ -65,6 +74,12 @@ func Send(body MqBody) (err error) {
 	if err != nil {
 		return
 	}
-	seq++
 	return
+}
+
+func getRandomString() string {
+	bytes := make([]byte, 128)
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+	r.Read(bytes)
+	return hex.EncodeToString(bytes)
 }
