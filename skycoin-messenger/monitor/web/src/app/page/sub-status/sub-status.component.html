@@ -15,12 +15,11 @@
       <p> Public Key:
         <strong>{{key}}</strong>
       </p>
-      <p style="margin-top:1em;">
+      <!-- <p style="margin-top:1em;">
         <span>Balance:</span>
         <strong style="color:red">{{balance}}</strong>
         <span>Coin Hours</span>
-        <!-- <button mat-raised-button color="primary" style="transform:scale(.7);" (click)="OpenRecord()">Withdraw</button> -->
-      </p>
+      </p> -->
       <!-- <p *ngIf="!isProduction">Address:
         <span style="color: red">{{status?.addr}}</span>
       </p> -->
@@ -144,7 +143,7 @@
           </button>
         </p>
       </mat-grid-tile>
-      <mat-grid-tile>
+      <!-- <mat-grid-tile>
         <p class="status-box-item-title status-item">
           <small>Shadowsocks</small>
           <button class="icon-pointer" mat-icon-button [matMenuTriggerFor]="socketServermenu" [class.unread]="isUnread(SocketServer) > 0">
@@ -167,7 +166,7 @@
           </button>
         </p>
         <p class="status-item"></p>
-      </mat-grid-tile>
+      </mat-grid-tile> -->
       <mat-grid-tile>
         <p class="status-box-item-title status-item">
           <small style="margin-left: 1.5rem;">SSH</small>
@@ -194,7 +193,7 @@
       </mat-grid-tile>
       <mat-grid-tile>
         <p class="status-box-item-title status-item">
-          <small>Shadowsocks Client</small>
+          <small>Connect to Node</small>
           <button class="icon-pointer" mat-icon-button [matMenuTriggerFor]="socketClientmenu" [class.unread]="isUnread(SocketClient) > 0">
             <!--  -->
             <mat-icon aria-label="more">more_vert</mat-icon>
@@ -208,7 +207,7 @@
         </p>
         <p class="status-box-item-content status-item">
           <button mat-icon-button (click)="inputKeys($event,SocketClient,socketClientDialog)" [ngClass]="appColor?.get(SocketClient)">
-            <mat-icon aria-label="Shadowsocks">near_me</mat-icon>
+            <mat-icon aria-label="node">near_me</mat-icon>
           </button>
         </p>
         <p class="status-item">
@@ -309,7 +308,7 @@
       <mat-header-cell *matHeaderCellDef> app </mat-header-cell>
       <mat-cell *matCellDef="let data">
         <mat-chip-list>
-          <mat-chip class="chip-success" *ngFor="let app of data?.attributes">{{app}}</mat-chip>
+          <mat-chip class="chip-success" *ngFor="let app of data?.attributes">{{app === 'sockss' ? 'node' : app}}</mat-chip>
         </mat-chip-list>
       </mat-cell>
     </ng-container>
@@ -397,7 +396,7 @@
 <!-- Socket Server Setting -->
 <ng-template #sockSettings>
   <h1 mat-dialog-title>
-    <span>Socks Settings</span>
+    <span>Node Settings</span>
     <mat-icon>settings</mat-icon>
   </h1>
   <div mat-dialog-content class="setting-dialog">
@@ -500,7 +499,7 @@
 <!-- Socket Client Modal -->
 <ng-template #socketClientDialog>
   <h1 mat-dialog-title>
-    <span>Socket Service keys</span>
+    <span>Node Service keys</span>
     <mat-icon>network_locked </mat-icon>
   </h1>
   <p class="dialog-sub-title" *ngIf="dialogMode !== ''">

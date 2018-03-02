@@ -3,16 +3,16 @@
     <mat-list>
       <h3 mat-subheader>Automatic start configuration</h3>
       <mat-list-item>
-        <h4 mat-line>ShadowSocks Server</h4>
+        <h4 mat-line>Node Server</h4>
         <mat-slide-toggle formControlName="sockss"></mat-slide-toggle>
       </mat-list-item>
       <mat-list-item>
-        <h4 mat-line>ShadowSocks Client</h4>
+        <h4 mat-line>Node Client</h4>
         <mat-slide-toggle formControlName="socksc"></mat-slide-toggle>
       </mat-list-item>
       <mat-list-item>
-        <h4 mat-line>ShadowSocks Client Config</h4>
-        <mat-select placeholder="Select ShadowSocks Client App" formControlName="socksc_conf" (change)="setKey(socksc)">
+        <h4 mat-line>Node Client Config</h4>
+        <mat-select placeholder="Select Node Server Client App" formControlName="socksc_conf" (change)="setKey(socksc)">
           <mat-option *ngFor="let opt of socksc_opts" [value]="opt">
             {{opt?.nodeKey | ellipsis:'center':8}}---{{opt?.appKey | ellipsis:'center':8}}
           </mat-option>
