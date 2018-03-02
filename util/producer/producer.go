@@ -6,16 +6,17 @@ import (
 	"github.com/aws/aws-sdk-go/service/sqs"
 	"encoding/json"
 	"github.com/aws/aws-sdk-go/aws/credentials"
-	"sync/atomic"
 	"time"
 	"math/rand"
 	"encoding/hex"
+	"sync"
 )
 
 var conf *Config
 var sess *session.Session
 var seq uint64 = 0
 var discoveryName string
+var fieldMutex sync.RWMutex
 
 func Init(path string) (err error) {
 	conf = &Config{}
@@ -58,11 +59,17 @@ type MqBody struct {
 	IsEnd        bool   `json:"is_end"`
 }
 
-// from add , to reduce
-func Send(body MqBody) (err error) {
-	svc := sqs.New(sess)
+func Send(body *MqBody) (err error) {
+	fieldMutex.Lock()
+	seq++
+	if seq == 0 {
+		discoveryName = getRandomString()
+		seq++
+	}
 	body.Key = discoveryName
-	body.Seq = atomic.AddUint64(&seq, 1)
+	body.Seq = seq
+	fieldMutex.Unlock()
+	svc := sqs.New(sess)
 	b, err := json.Marshal(&body)
 	if err != nil {
 		return

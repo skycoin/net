@@ -37,7 +37,7 @@ func (wt *workTicket) Execute(f *MessengerFactory, conn *Connection) (r resp, er
 		return
 	}
 
-	producer.Send(producer.MqBody{
+	producer.Send(&producer.MqBody{
 		Uid:          pair.uid,
 		FromApp:      pair.fromApp.Hex(),
 		FromNode:     pair.fromNode.Hex(),
