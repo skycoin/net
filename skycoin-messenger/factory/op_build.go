@@ -269,6 +269,7 @@ func (req *forwardNodeConn) Execute(f *MessengerFactory, conn *Connection) (r re
 	p := globalTransportPairManagerInstance.create(req.FromApp, req.FromNode, req.Node, req.App)
 	err = p.setFromConn(conn)
 	if err != nil {
+		err = fmt.Errorf("set from Conn err: %s", err)
 		return
 	}
 	conn.SetTransportPair(p)
@@ -314,6 +315,7 @@ func (req *forwardNodeConnResp) Execute(f *MessengerFactory, conn *Connection) (
 			p.ok()
 			err = p.setToConn(conn)
 			if err != nil {
+				err = fmt.Errorf("set to Conn: %s", err)
 				return
 			}
 			conn.SetTransportPair(p)

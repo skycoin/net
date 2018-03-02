@@ -1,16 +1,22 @@
 package producer
 
 import (
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/service/sqs"
+	"encoding/hex"
 	"encoding/json"
+	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/sqs"
+	"math/rand"
+	"sync"
+	"time"
 )
 
 var conf *Config
 var sess *session.Session
-var seq int64 = 1
+var seq uint64 = 0
+var discoveryName string
+var fieldMutex sync.RWMutex
 
 func Init(path string) (err error) {
 	conf = &Config{}
@@ -28,15 +34,18 @@ func Init(path string) (err error) {
 	if err != nil {
 		return
 	}
-	return
-	if err != nil {
-		return
-	}
+	discoveryName = getRandomString()
 	return
 }
 
+func Close() {
+	conf = nil
+	sess = nil
+}
+
 type MqBody struct {
-	Seq          int64  `json:"seq"`
+	Key          string `json:"key"`
+	Seq          uint64 `json:"seq"`
 	FromApp      string `json:"from_app"`
 	FromNode     string `json:"from_node"`
 	ToNode       string `json:"to_node"`
@@ -50,10 +59,17 @@ type MqBody struct {
 	IsEnd        bool   `json:"is_end"`
 }
 
-// from add , to reduce
-func Send(body MqBody) (err error) {
-	svc := sqs.New(sess)
+func Send(body *MqBody) (err error) {
+	fieldMutex.Lock()
+	seq++
+	if seq == 0 {
+		discoveryName = getRandomString()
+		seq++
+	}
+	body.Key = discoveryName
 	body.Seq = seq
+	fieldMutex.Unlock()
+	svc := sqs.New(sess)
 	b, err := json.Marshal(&body)
 	if err != nil {
 		return
@@ -65,6 +81,12 @@ func Send(body MqBody) (err error) {
 	if err != nil {
 		return
 	}
-	seq++
 	return
+}
+
+func getRandomString() string {
+	bytes := make([]byte, 128)
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+	r.Read(bytes)
+	return hex.EncodeToString(bytes)
 }
