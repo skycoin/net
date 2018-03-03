@@ -626,9 +626,9 @@ func (t *Transport) Close() {
 	t.factory = nil
 
 	if t.clientSide {
-		t.appConnHolder.setTransport(t.ToApp, nil)
+		t.appConnHolder.deleteTransport(t.ToApp)
 	} else {
-		t.appConnHolder.setTransport(t.FromApp, nil)
+		t.appConnHolder.deleteTransport(t.FromApp)
 	}
 }
 

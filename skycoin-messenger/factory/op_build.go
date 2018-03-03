@@ -111,6 +111,7 @@ func (req *appConn) Execute(f *MessengerFactory, conn *Connection) (r resp, err 
 		}
 		c.writeOP(OP_FORWARD_NODE_CONN, nodeConn)
 		tr.SetupTimeout()
+		conn.setTransport(connection.GetTargetKey(), tr)
 	})
 	return
 }
@@ -203,7 +204,7 @@ func (req *buildConnResp) Execute(f *MessengerFactory, conn *Connection) (r resp
 		err = fmt.Errorf("buildConnResp tr %x not found", req.App)
 		return
 	}
-	exists := appConn.setTransport(req.App, tr)
+	exists := appConn.setTransportIfNotExists(req.App, tr)
 	if exists {
 		tr.Close()
 		conn.GetContextLogger().Debugf("buildConnResp transport exists")
@@ -337,20 +338,22 @@ func (req *forwardNodeConnResp) Run(conn *Connection) (err error) {
 		return
 	}
 	appConn.PutMessage(req.Msg)
-	tr := conn.CreatedByTransport
+	tr, ok := appConn.getTransport(conn.GetTargetKey())
+	if !ok {
+		conn.GetContextLogger().Debugf("forwardNodeConnResp tr %s not found", req.App.Hex())
+		return
+	}
+	appConn.deleteTransport(conn.GetTargetKey())
 	if req.Failed {
 		appConn.writeOP(OP_BUILD_APP_CONN|RESP_PREFIX, &AppConnResp{
 			App:    req.App,
 			Failed: req.Failed,
 			Msg:    req.Msg,
 		})
-		if tr != nil {
-			tr.Close()
-		}
-		appConn.setTransport(req.App, nil)
+		tr.Close()
 		return
 	}
-	if len(req.Address) > 0 && tr != nil {
+	if len(req.Address) > 0 {
 		e := tr.clientSideConnect(req.Address, conn.factory.GetDefaultSeedConfig(), req.Num)
 		if e != nil {
 			conn.GetContextLogger().Debugf("forwardNodeConnResp clientSideConnect %v", e)

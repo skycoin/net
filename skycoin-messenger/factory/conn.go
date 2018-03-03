@@ -551,23 +551,38 @@ func (c *Connection) writeOPSyn(op byte, object interface{}) error {
 	return c.WriteSyn(data)
 }
 
-func (c *Connection) setTransport(to cipher.PubKey, tr *Transport) (exists bool) {
+// Set transport if key is not exists. Delete the transport of the key if tr is nil
+func (c *Connection) setTransportIfNotExists(key cipher.PubKey, tr *Transport) (exists bool) {
 	c.appTransportsMutex.Lock()
 	if tr == nil {
-		delete(c.appTransports, to)
+		delete(c.appTransports, key)
 	} else {
-		_, exists = c.appTransports[to]
+		_, exists = c.appTransports[key]
 		if !exists {
-			c.appTransports[to] = tr
+			c.appTransports[key] = tr
 		}
 	}
 	c.appTransportsMutex.Unlock()
 	return
 }
 
-func (c *Connection) getTransport(to cipher.PubKey) (tr *Transport, ok bool) {
+func (c *Connection) deleteTransport(key cipher.PubKey) {
+	c.appTransportsMutex.Lock()
+	delete(c.appTransports, key)
+	c.appTransportsMutex.Unlock()
+	return
+}
+
+func (c *Connection) setTransport(key cipher.PubKey, tr *Transport) {
+	c.appTransportsMutex.Lock()
+	c.appTransports[key] = tr
+	c.appTransportsMutex.Unlock()
+	return
+}
+
+func (c *Connection) getTransport(key cipher.PubKey) (tr *Transport, ok bool) {
 	c.appTransportsMutex.RLock()
-	tr, ok = c.appTransports[to]
+	tr, ok = c.appTransports[key]
 	c.appTransportsMutex.RUnlock()
 	return
 }
