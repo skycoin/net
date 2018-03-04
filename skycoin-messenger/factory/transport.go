@@ -314,12 +314,16 @@ func (t *Transport) ListenAndConnect(address string, key cipher.PubKey) (conn *C
 // Connect to node B
 func (t *Transport) clientSideConnect(address string, sc *SeedConfig, iv []byte) (err error) {
 	t.fieldsMutex.Lock()
+	defer t.fieldsMutex.Unlock()
 	if t.connAcked {
-		t.fieldsMutex.Unlock()
 		return
 	}
 	t.connAcked = true
-	t.fieldsMutex.Unlock()
+	if t.factory == nil {
+		err = errors.New("transport has been closed")
+		return
+	}
+
 	conn, err := t.factory.acceptUDPWithConfig(address, &ConnConfig{})
 	if err != nil {
 		return
@@ -594,13 +598,23 @@ func (t *Transport) Close() {
 	}
 	t.sendLastTicket()
 
-	msg := PriorityMsg{Priority: TransportClosed, Msg: "Transport closed", Type: Failed}
-	t.appConnHolder.PutMessage(msg)
-	t.appConnHolder.SetAppFeedback(&AppFeedback{
-		App:    t.ToApp,
-		Failed: true,
-		Msg:    msg,
-	})
+	var key cipher.PubKey
+	if t.clientSide {
+		key = t.ToApp
+	} else {
+		key = t.FromApp
+	}
+	tr, ok := t.appConnHolder.getTransport(key)
+	if !ok || tr == t {
+		msg := PriorityMsg{Priority: TransportClosed, Msg: "Transport closed", Type: Failed}
+		t.appConnHolder.PutMessage(msg)
+		t.appConnHolder.SetAppFeedback(&AppFeedback{
+			App:    key,
+			Failed: true,
+			Msg:    msg,
+		})
+		t.appConnHolder.deleteTransport(key)
+	}
 
 	if t.timeoutTimer != nil {
 		t.timeoutTimer.Stop()
@@ -623,12 +637,6 @@ func (t *Transport) Close() {
 	}
 	t.factory.Close()
 	t.factory = nil
-
-	if t.clientSide {
-		t.appConnHolder.deleteTransport(t.ToApp)
-	} else {
-		t.appConnHolder.deleteTransport(t.FromApp)
-	}
 }
 
 func (t *Transport) IsClientSide() bool {
