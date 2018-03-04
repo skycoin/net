@@ -127,10 +127,10 @@ const (
 const (
 	_ Priority = iota
 	Building
-	Connected
 	NotFound
 	NotAllowed
 	Timeout
+	Connected
 	TransportClosed
 )
 
@@ -183,9 +183,6 @@ func (req *AppFeedback) Execute(f *MessengerFactory, conn *Connection) (r resp, 
 		return
 	}
 	tr.StopTimeout()
-	if req.Failed {
-		tr.Close()
-	}
 	return
 }
 
@@ -337,13 +334,17 @@ func (req *forwardNodeConnResp) Run(conn *Connection) (err error) {
 		conn.GetContextLogger().Debugf("forwardNodeConnResp app %x not found", req.FromApp)
 		return
 	}
-	appConn.PutMessage(req.Msg)
 	tr, ok := appConn.getTransport(conn.GetTargetKey())
 	if !ok {
 		conn.GetContextLogger().Debugf("forwardNodeConnResp tr %s not found", req.App.Hex())
 		return
 	}
 	appConn.deleteTransport(conn.GetTargetKey())
+	ok = appConn.PutMessage(req.Msg)
+	if !ok {
+		conn.GetContextLogger().Debugf("forwardNodeConnResp put message !ok %v", req)
+		return
+	}
 	if req.Failed {
 		appConn.writeOP(OP_BUILD_APP_CONN|RESP_PREFIX, &AppConnResp{
 			App:    req.App,
