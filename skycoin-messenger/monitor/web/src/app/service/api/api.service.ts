@@ -114,9 +114,7 @@ export class ApiService {
     return this.handleReq(addr, '/debug/pprof');
   }
   checkUpdate(channel, vesrion: string) {
-    const data = new FormData();
-    data.append('addr', `http://messenger.skycoin.net:8100/api/version?c=${channel}&v=${vesrion}`);
-    return this.handlePost(this.nodeUrl, data);
+    return this.handleReqOutside(`http://messenger.skycoin.net:8100/api/version?c=${channel}&v=${vesrion}`);
   }
   saveClientConnection(data: FormData) {
     return this.handlePost(this.connUrl + 'saveClientConnection', data);
@@ -151,6 +149,12 @@ export class ApiService {
       return Observable.throw('Url is empty.');
     }
     return this.httpClient.get(url, opts).catch(err => this.handleError(err));
+  }
+  handleReqOutside(url: string) {
+    if (url === '') {
+      return Observable.throw('url is empty.');
+    }
+    return this.handlePost(`${this.reqUrl}?addr=${url}`);
   }
   handleReq(addr: string, api: string, data?: FormData, opts?: any) {
     if (addr === '' || api === '') {

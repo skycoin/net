@@ -44,6 +44,9 @@ export class DiscoveryHomeComponent implements OnInit, OnDestroy {
       this.nodes = resp;
     });
   }
+  trackByKey(index, app) {
+    return app ? app.key : undefined;
+  }
   ngOnInit() {
     this.init();
     this.task = setInterval(() => {

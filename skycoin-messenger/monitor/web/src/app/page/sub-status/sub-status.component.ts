@@ -162,6 +162,22 @@ export class SubStatusComponent implements OnInit, OnDestroy {
   //   ref.componentInstance.nodeAddr = this.status.addr;
   //   ref.componentInstance.nodeKey = this.key;
   // }
+  changeAppName(app: string) {
+    if (!app) {
+      return app;
+    }
+    switch (app) {
+      case 'sockss':
+        app = 'node';
+        break;
+      case 'socksc':
+        app = 'node client';
+        break;
+      default:
+        break;
+    }
+    return app;
+  }
   getBalance() {
     if (!this.status || !this.status.addr) {
       return;
@@ -322,6 +338,7 @@ export class SubStatusComponent implements OnInit, OnDestroy {
     }
     data.append('client', action);
     data.append('data', JSON.stringify(jsonStr));
+    this.alert.timer('connecting...', 30000);
     this.api.saveClientConnection(data).subscribe(res => {
       data.delete('data');
       data.delete('client');
@@ -333,14 +350,11 @@ export class SubStatusComponent implements OnInit, OnDestroy {
       data.append('toNode', this.socketClientForm.get('nodeKey').value);
       data.append('toApp', this.socketClientForm.get('appKey').value);
     }
-    this.alert.timer('connecting...', 15000);
     this.api.connectSocketClicent(this.status.addr, data).subscribe(result => {
       this.task.next();
       const updateTask = setInterval(() => {
         if (this.socketClientPort > 0 && this.socketClientPort <= 65535) {
           clearInterval(updateTask);
-          this.alert.close();
-        } else if (this.socketClientPort === -1) {
           this.alert.close();
         }
       }, 500);
@@ -487,7 +501,7 @@ export class SubStatusComponent implements OnInit, OnDestroy {
       disableClose: true,
       data: {
         version: this.nodeVersion,
-        tag: this.nodeTag
+        tag: this.nodeTag,
       }
     });
     ref.componentInstance.nodeUrl = this.status.addr;
@@ -504,9 +518,11 @@ export class SubStatusComponent implements OnInit, OnDestroy {
     });
   }
   refresh(ev: Event) {
-    ev.stopImmediatePropagation();
-    ev.stopPropagation();
-    ev.preventDefault();
+    if (ev) {
+      ev.stopImmediatePropagation();
+      ev.stopPropagation();
+      ev.preventDefault();
+    }
     this.task.next();
     this.snackBar.open('Refreshed', 'Dismiss', {
       duration: 3000,
@@ -533,6 +549,7 @@ export class SubStatusComponent implements OnInit, OnDestroy {
       if (isOk) {
         console.log('start ssh server');
         this.task.next();
+        this.refresh(null);
       }
     });
   }
@@ -858,14 +875,12 @@ export class SubStatusComponent implements OnInit, OnDestroy {
     ref.afterClosed().subscribe(result => {
       if (result) {
         this.init();
-        this.dialog.closeAll();
         const updateTask = setInterval(() => {
           if (this.socketClientPort > 0 && this.socketClientPort <= 65535) {
             clearInterval(updateTask);
             this.alert.close();
           }
         }, 500);
-        this.alert.timer('connecting...', 15000);
       }
     });
   }

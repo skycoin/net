@@ -1,10 +1,10 @@
 import { Component, OnInit, ViewEncapsulation, OnDestroy } from '@angular/core';
-import { ApiService } from '../../service';
+import { ApiService, AlertService } from '../../service';
 import { Observable } from 'rxjs/Observable';
 import { BehaviorSubject } from 'rxjs/BehaviorSubject';
 import { Subject } from 'rxjs/Subject';
 import { Subscription } from 'rxjs/Subscription';
-import { MatDialogRef } from '@angular/material';
+import { MatDialogRef, MatDialog } from '@angular/material';
 
 import 'rxjs/add/operator/take';
 import 'rxjs/add/observable/interval';
@@ -23,12 +23,16 @@ export class SearchServiceComponent implements OnInit, OnDestroy {
   timeOut = 1;
   resultTask: Subscription = null;
   searchTask: Subscription = null;
-  totalResults: Array<Search> = [];
-  results: Array<Search>;
+  totalResults: Array<SearchResultApp> = [];
+  results: Array<SearchResultApp>;
   status = 0;
   SocketClient = 'socksc';
   private result: Subject<Array<Search>> = new BehaviorSubject<Array<Search>>([]);
-  constructor(private api: ApiService, private dialogRef: MatDialogRef<SearchServiceComponent>) { }
+  constructor(
+    private api: ApiService,
+    private alert: AlertService,
+    private dialog: MatDialog,
+    private dialogRef: MatDialogRef<SearchServiceComponent>) { }
   ngOnInit() {
     this.handle();
     this.refresh();
@@ -45,8 +49,6 @@ export class SearchServiceComponent implements OnInit, OnDestroy {
     }
   }
   connectSocket(nodeKey: string, appKey: string) {
-    console.log('connect nodeKey:', nodeKey);
-    console.log('connect appKey:', appKey);
     if (!nodeKey || !appKey) {
       return;
     }
@@ -58,6 +60,8 @@ export class SearchServiceComponent implements OnInit, OnDestroy {
       count: 1,
       auto_start: false,
     };
+    this.dialog.closeAll();
+    this.alert.timer('connecting...', 30000);
     data.append('client', this.SocketClient);
     data.append('data', JSON.stringify(jsonStr));
     this.api.saveClientConnection(data).subscribe(res => {
@@ -119,47 +123,57 @@ export class SearchServiceComponent implements OnInit, OnDestroy {
     });
   }
   sortByKey() {
-    for (let index = 0; index < this.totalResults.length; index++) {
-      Object.keys(this.totalResults[index].result).sort(
-        function (a, b) {
-          return a.localeCompare(b);
-        });
-    }
+    this.totalResults.sort(
+      function (a, b) {
+        return a.node_key.localeCompare(b.node_key);
+      });
   }
   trackByKey(index, app) {
     return app ? app.key : undefined;
   }
-  sort() {
-    this.totalResults.sort((v1, v2) => {
-      if (v1.seq < v2.seq) {
-        return -1;
-      }
-      if (v1.seq > v2.seq) {
-        return 1;
-      }
-      return 0;
-    });
-  }
   filterSeq(results: Array<Search>) {
-    let tmpResults: Array<Search> = [];
+    const tmpResults: Array<Search> = [];
     if (!results) {
       return;
     }
     results.forEach(result => {
       const seqIndex = this.seqs.indexOf(result.seq);
-      if (seqIndex > - 1) {
-        this.seqs = this.seqs.splice(seqIndex, 1);
-        tmpResults = [];
+      if (seqIndex > -1) {
         tmpResults.push(result);
       }
     });
     return tmpResults;
   }
+  uniqueStep(results: Array<SearchResultApp>) {
+    const res: Array<SearchResultApp> = [];
+    const len = results.length;
+    for (let i = 0; i < len; i++) {
+      const item = results[i];
+      let j = 0;
+      let jLen = 0;
+      for (j = 0, jLen = res.length; j < jLen; j++) {
+        if (res[j].app_key === item.app_key && res[j].node_key === item.node_key) {
+          break;
+        }
+      }
+      if (j === jLen) {
+        res.push(item);
+      }
+    }
+    return res;
+  }
   unique(results: Array<Search>) {
-    if (!results) {
+    if (results.length === 0) {
       return;
     }
-    this.totalResults = results;
+    const apps: Array<SearchResultApp> = [];
+    results.forEach(r => {
+      r.result.forEach(app => {
+        apps.push(app);
+      });
+    });
+    this.seqs = [];
+    this.totalResults = this.uniqueStep(apps);
     return;
   }
 }

@@ -15,16 +15,14 @@
     </thead>
 
     <tbody>
-      <ng-container *ngFor="let result of results">
-        <tr *ngFor="let item of result?.result">
-          <td class="key">{{item?.node_key}}</td>
-          <td class="key">{{item?.app_key}}</td>
-          <td>{{item?.location}}</td>
-          <td>
-            <button mat-raised-button color="primary" (click)="connectSocket(item?.node_key,item?.app_key)">connect</button>
-          </td>
-        </tr>
-      </ng-container>
+      <tr *ngFor="let item of results">
+        <td class="key">{{item?.node_key}}</td>
+        <td class="key">{{item?.app_key}}</td>
+        <td>{{item?.location}}</td>
+        <td>
+          <button mat-raised-button color="primary" (click)="connectSocket(item?.node_key,item?.app_key)">connect</button>
+        </td>
+      </tr>
       <!-- <tr *ngIf="results?.length === 0">
         <td colspan="4" class="no-found">No Service</td>
       </tr> -->
