@@ -30,6 +30,8 @@ const (
 	MTU = 1500
 
 	MIN_RTO = 50 * time.Millisecond
+
+	MAX_CWND = 300
 )
 
 const (

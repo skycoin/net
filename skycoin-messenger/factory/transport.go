@@ -328,7 +328,6 @@ func (t *Transport) clientSideConnect(address string, sc *SeedConfig, iv []byte)
 		err = errors.New("clientSideConnect acceptUDPWithConfig return nil conn")
 		return
 	}
-	conn.CreatedByTransport = t
 	err = conn.SetCrypto(sc.publicKey, sc.secKey, t.ToNode, iv)
 	if err != nil {
 		return

@@ -1155,8 +1155,8 @@ func (ca *ca) isCwndFull() (r bool) {
 func (ca *ca) setCwnd(cwnd uint32) {
 	if cwnd < 4 {
 		cwnd = 4
-	} else if cwnd > 200 {
-		cwnd = 200
+	} else if cwnd > MAX_CWND {
+		cwnd = MAX_CWND
 	}
 
 	ca.cwndMtx.Lock()
