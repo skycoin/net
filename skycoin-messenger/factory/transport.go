@@ -209,7 +209,7 @@ func (m *transportPairManager) del(keys string) {
 	m.pairsMutex.Unlock()
 }
 
-const msgsEveryTicket = 100
+const msgsEveryTicket = 1000
 
 func NewTransport(creator *MessengerFactory, appConn *Connection, fromNode, toNode, fromApp, toApp cipher.PubKey) *Transport {
 	if appConn == nil {
@@ -247,9 +247,9 @@ func NewTransport(creator *MessengerFactory, appConn *Connection, fromNode, toNo
 		t.sendTicket(c/msgsEveryTicket, m)
 	}
 	if cs {
-		t.factory.BeforeSendOnConn = ticketFunc
-	} else {
 		t.factory.BeforeReadOnConn = ticketFunc
+	} else {
+		t.factory.BeforeSendOnConn = ticketFunc
 	}
 	t.factory.Parent = creator
 	t.factory.SetDefaultSeedConfig(creator.GetDefaultSeedConfig())
