@@ -74,20 +74,20 @@ type Monitor struct {
 	address       string
 	srv           *http.Server
 
-	code    string
+	tag     string
 	version string
 
 	configs      map[string]*Config
 	configsMutex sync.RWMutex
 }
 
-func New(f *factory.MessengerFactory, serverAddress, webAddr, code, version string) *Monitor {
+func New(f *factory.MessengerFactory, serverAddress, webAddr, tag, version string) *Monitor {
 	return &Monitor{
 		factory:       f,
 		serverAddress: serverAddress,
 		address:       webAddr,
 		srv:           &http.Server{Addr: webAddr},
-		code:          code,
+		tag:           tag,
 		version:       version,
 		configs:       make(map[string]*Config),
 	}

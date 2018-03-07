@@ -29,6 +29,9 @@
   -webkit-font-feature-settings: 'liga';
   -webkit-font-smoothing: antialiased;
 }
+app-root {
+  min-width: 1250px;
+}
 
 .mat-icon {
   vertical-align: middle;

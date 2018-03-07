@@ -61,8 +61,8 @@ export class ApiService {
   getNodeStatus(data: FormData) {
     return this.handlePost(this.connUrl + 'getNode', data);
   }
-  setNodeConfig(data: FormData) {
-    return this.handlePost(this.connUrl + 'setNodeConfig', data);
+  setNodeConfig(addr: string, data: FormData) {
+    return this.handleReq(addr, '/node/run/setNodeConfig', data);
   }
   updateNodeConfig(addr: string) {
     return this.handleReq(addr, '/node/run/updateNode');
@@ -110,11 +110,14 @@ export class ApiService {
   runNodeupdate(addr: string) {
     return this.handleReq(addr, '/node/run/update');
   }
+  getNodeupdateProcess(addr: string) {
+    return this.handleReq(addr, '/node/run/updateProcess');
+  }
   getDebugPage(addr: string) {
     return this.handleReq(addr, '/debug/pprof');
   }
-  checkUpdate(channel, vesrion: string) {
-    return this.handleReqOutside(`http://messenger.skycoin.net:8100/api/version?c=${channel}&v=${vesrion}`);
+  checkUpdate(url, channel, vesrion: string) {
+    return this.handleReqOutside(`${url}?c=${channel}&v=${vesrion}`);
   }
   saveClientConnection(data: FormData) {
     return this.handlePost(this.connUrl + 'saveClientConnection', data);

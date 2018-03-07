@@ -195,10 +195,11 @@ export class SubStatusComponent implements OnInit, OnDestroy {
       });
     });
   }
-  openAppsSetting(ev: Event) {
+  openAppsSetting(ev: Event, client: string) {
     const ref = this.dialog.open(AppsSettingComponent, {
       width: '600px'
     });
+    ref.componentInstance.client = client;
     ref.componentInstance.addr = this.status.addr;
     ref.componentInstance.key = this.key;
   }
@@ -765,18 +766,48 @@ export class SubStatusComponent implements OnInit, OnDestroy {
   }
   openConfigSettings(ev: Event, content: any) {
     this.configForm.reset();
-    const data = new FormData();
-    data.append('key', this.key);
-    this.api.getAutoStart(this.status.addr, data).subscribe((config: AutoStartConfig) => {
-      this.autoStart = config;
-      this.configForm.patchValue({ 'socksServer': config.socks_server });
-      this.configForm.patchValue({ 'sshServer': config.ssh_server });
-    });
     this.dialog.open(content, {
       width: '800px'
     });
   }
-
+  updateSettings(ev: Event) {
+    this.dialog.closeAll();
+    const tmp = this.configForm.get('DiscoveryAddresses').value;
+    const jsonStr = {};
+    if (tmp) {
+      const addresses: Array<string> = tmp.split(',');
+      if (!this.checkDiscoveryAddress(addresses)) {
+        this.alert.error('addresses is faild');
+        return;
+      }
+      for (let index = 0; index < addresses.length; index++) {
+        addresses[index] = addresses[index].replace(/[\r\n]/g, '');
+      }
+      jsonStr['discovery_addresses'] = addresses;
+    }
+    if (!this.key) {
+      this.alert.error('node key is empty!');
+      return;
+    }
+    const data = new FormData();
+    data.append('data', JSON.stringify(jsonStr));
+    data.append('key', this.key);
+    if (tmp) {
+      this.api.setNodeConfig(this.status.addr, data).subscribe(result => {
+        if (result) {
+          this.alert.confirm('Info', 'Do you restart node immediately?', 'info').then(result => {
+            if (result) {
+              this.api.updateNodeConfig(this.status.addr).subscribe(isSuccess => {
+                if (isSuccess) {
+                  this.alert.timer('connecting...', 20000);
+                }
+              });
+            }
+          });
+        }
+      });
+    }
+  }
   checkDiscoveryAddress(addresses: Array<string>) {
     let isok = false;
     for (let index = 0; index < addresses.length; index++) {
@@ -798,7 +829,8 @@ export class SubStatusComponent implements OnInit, OnDestroy {
       if (!address[1]) {
         return isok;
       }
-      if (this.hexStringToByte(address[1]).length !== 33) {
+      const addr = this.hexStringToByte(address[1]);
+      if (addr.length !== 33) {
         return isok;
       }
     }
@@ -816,58 +848,9 @@ export class SubStatusComponent implements OnInit, OnDestroy {
     return new Uint8Array(a);
   }
 
-  updateSettings(ev: Event) {
-    this.dialog.closeAll();
-    const jsonStr = {};
-    const tmp = this.configForm.get('DiscoveryAddresses').value;
-    if (tmp) {
-      const addresses = tmp.split(',');
-      if (!this.checkDiscoveryAddress(addresses)) {
-        this.alert.error('addresses is faild');
-        return;
-      }
-      jsonStr['DiscoveryAddresses'] = addresses;
-    }
-    if (!this.key) {
-      this.alert.error('node key is empty!');
-      return;
-    }
-    const data = new FormData();
-    data.append('key', this.key);
-    data.append('data', JSON.stringify(jsonStr));
-    if (tmp) {
-      console.log('update discovery address');
-      this.api.setNodeConfig(data).subscribe(result => {
-        if (result) {
-          this.dialog.open(AlertComponent, {
-            width: '45rem',
-            panelClass: 'alert',
-            data: {
-              msg: 'Do you restart node immediately?',
-              confirm: true
-            }
-          }).afterClosed().subscribe(isRestart => {
-            if (isRestart) {
-              this.api.updateNodeConfig(this.status.addr).subscribe(isSuccess => {
-                if (isSuccess) {
-                  this.dialog.open(LoadingComponent, {
-                    panelClass: 'loading',
-                    disableClose: true,
-                    data: {
-                      taskTime: 30,
-                    }
-                  });
-                }
-              });
-            }
-          });
-        }
-      });
-    }
-  }
   search(ev: Event, searchStr: string) {
     const ref = this.dialog.open(SearchServiceComponent, {
-      minWidth: '1200px',
+      minWidth: '1230px',
       height: '800px'
     });
     ref.componentInstance.nodeAddr = this.status.addr;

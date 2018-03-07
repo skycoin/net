@@ -5,6 +5,9 @@ import swal from 'sweetalert2';
 export class AlertService {
   task = null;
   constructor() { }
+  success(message: string) {
+    return swal('Success', message, 'success');
+  }
   error(message: string) {
     return swal('Error', message, 'error');
   }

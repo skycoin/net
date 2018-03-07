@@ -132,17 +132,6 @@
   <mat-card-content>
 
     <mat-grid-list [cols]="cols" [rowHeight]="rowHeight">
-      <mat-grid-tile>
-        <p class="status-box-item-title">
-          <small>Apps Setting</small>
-          <!-- <mat-icon class="icon-pointer" (click)="discoveriesStatus($event,discoveryStatus)">info</mat-icon> -->
-        </p>
-        <p class="status-box-item-content">
-          <button mat-icon-button color="primary" (click)="openAppsSetting($event)">
-            <mat-icon aria-label="settings">settings</mat-icon>
-          </button>
-        </p>
-      </mat-grid-tile>
       <!-- <mat-grid-tile>
         <p class="status-box-item-title status-item">
           <small>Shadowsocks</small>
@@ -175,8 +164,12 @@
           </button>
           <mat-menu #sshServermenu="matMenu">
             <button mat-menu-item (click)="openSettings($event,sshSettings,'SSH')" [class.unread]="isUnread(SshServer) > 0">
+              <mat-icon>receipt</mat-icon>
+              <span>White List</span>
+            </button>
+            <button mat-menu-item (click)="openAppsSetting($event,'ssh')" [class.unread]="isUnread(SshServer) > 0">
               <mat-icon>settings</mat-icon>
-              <span>Setting</span>
+              <span>Startup</span>
             </button>
             <button mat-menu-item (click)="openLog(SshServer,logDialog)">
               <mat-icon>description</mat-icon>
@@ -199,6 +192,10 @@
             <mat-icon aria-label="more">more_vert</mat-icon>
           </button>
           <mat-menu #socketClientmenu="matMenu">
+            <button mat-menu-item (click)="openAppsSetting($event,'sock')" [class.unread]="isUnread(SshServer) > 0">
+              <mat-icon>settings</mat-icon>
+              <span>Startup</span>
+            </button>
             <button mat-menu-item (click)="openLog(SocketClient,logDialog)" [class.unread]="isUnread(SocketClient) > 0">
               <mat-icon>description</mat-icon>
               <span>Messages</span>
@@ -356,7 +353,7 @@
 <!-- SSH Server Setting Box -->
 <ng-template #sshSettings>
   <h1 mat-dialog-title>
-    <span>SSH Settings</span>
+    <span>SSH White list</span>
     <mat-icon>settings</mat-icon>
   </h1>
   <div mat-dialog-content class="setting-dialog">
@@ -467,7 +464,7 @@
   <div class="quick-box" *ngIf="clientConnectionInfo?.length > 0 ">
     <!-- SSH Client -->
     <mat-list class="record-list">
-      
+
       <mat-list-item class="record-list-item" *ngFor="let info of clientConnectionInfo;let i=index;">
         <!-- <mat-checkbox style="margin-right:1em;" matTooltip="Automatic startup" [(ngModel)]="info.auto_start" (click)="setClientAuto(SshClient,!info.auto_start,i)"></mat-checkbox> -->
         <input class="label" type="text" appLabel [text]="info?.label" [info]="info" [index]="i" [client]="SshClient">
@@ -560,7 +557,7 @@
       <span class="opertaions">opertations</span>
     </div>
     <mat-list class="record-list">
-        
+
       <mat-list-item class="record-list-item" *ngFor="let info of clientConnectionInfo;let i=index;">
         <!-- <mat-checkbox style="margin-right:1em;" matTooltip="Automatic startup" [(ngModel)]="info.auto_start" (click)="setClientAuto(SocketClient,!info.auto_start,i)"></mat-checkbox> -->
         <input class="label" type="text" appLabel [text]="info?.label" [info]="info" [index]="i" [client]="SocketClient">

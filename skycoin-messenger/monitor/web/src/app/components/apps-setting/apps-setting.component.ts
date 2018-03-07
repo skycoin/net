@@ -34,6 +34,7 @@ export class AppsSettingComponent implements OnInit {
   addr = '';
   key = '';
   version = '';
+  client = '';
   constructor(private api: ApiService, private dialogRef: MatDialogRef<AppsSettingComponent>, private alert: AlertService) { }
 
   ngOnInit() {

@@ -2,6 +2,7 @@
 .root {
   width: 100vw;
   height: 100vh;
+  min-width: 1250px;
   .nav {
     width: 20%;
     height: 100%;
@@ -13,7 +14,7 @@
       margin: 12.5%;
     }
     .mat-nav-list {
-      .active{
+      .active {
         background-color: $nav-list-item-focus;
         border-right: .3rem solid #78abea;
       }
