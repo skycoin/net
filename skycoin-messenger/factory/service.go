@@ -12,12 +12,14 @@ type Service struct {
 	Address           string   `json:",omitempty"`
 	HideFromDiscovery bool     `json:",omitempty"`
 	AllowNodes        []string `json:",omitempty"`
+	Version           string   `json:",omitempty"`
 }
 
 type NodeServices struct {
 	Services       []*Service
-	ServiceAddress string `json:",omitempty"`
-	Location       string `json:",omitempty"`
+	ServiceAddress string   `json:",omitempty"`
+	Location       string   `json:",omitempty"`
+	Version        []string `json:",omitempty"`
 }
 
 type ServiceNodes struct {
@@ -237,8 +239,14 @@ type AttrNodesInfo struct {
 
 type AttrNodeInfo struct {
 	Node     cipher.PubKey
-	Apps     []cipher.PubKey
+	Apps     []*AttrAppInfo
 	Location string
+	Version  []string
+}
+
+type AttrAppInfo struct {
+	Key     cipher.PubKey
+	Version string
 }
 
 // find public keys of nodes by subscription attrs
@@ -274,11 +282,15 @@ func (sd *serviceDiscovery) findByAttributes(attrs ...string) (result *AttrNodes
 				info = &AttrNodeInfo{
 					Node:     k,
 					Location: v.Location,
+					Version:  v.Version,
 				}
 				nodes[k] = info
 				result.Nodes = append(result.Nodes, info)
 			}
-			info.Apps = append(info.Apps, key)
+			info.Apps = append(info.Apps, &AttrAppInfo{
+				Key:     key,
+				Version: m.Service.Version,
+			})
 		}
 	}
 	return

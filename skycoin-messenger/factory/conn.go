@@ -240,9 +240,12 @@ func (c *Connection) RegWithKeys(key, target cipher.PubKey, context map[string]s
 
 // register services to discovery
 func (c *Connection) UpdateServices(ns *NodeServices) (err error) {
-	if ns != nil && !checkNodeServices(ns) {
-		err = fmt.Errorf("invalid NodeServices %#v", ns)
-		return
+	if ns != nil {
+		if !checkNodeServices(ns) {
+			err = fmt.Errorf("invalid NodeServices %#v", ns)
+			return
+		}
+		ns.Version = []string{c.factory.GetAppVersion(), VERSION, conn.VERSION}
 	}
 	c.setServices(ns)
 	if ns == nil {
@@ -339,12 +342,17 @@ func (c *Connection) OfferService(attrs ...string) error {
 }
 
 // register a service to discovery
-func (c *Connection) OfferServiceWithAddress(address string, attrs ...string) error {
-	return c.UpdateServices(&NodeServices{Services: []*Service{{Key: c.GetKey(), Attributes: attrs, Address: address}}})
+func (c *Connection) OfferServiceWithAddress(address, version string, attrs ...string) error {
+	return c.UpdateServices(&NodeServices{
+		Services: []*Service{{Key: c.GetKey(),
+			Attributes: attrs,
+			Address:    address,
+			Version:    version,
+		}}})
 }
 
 // register a service to discovery
-func (c *Connection) OfferPrivateServiceWithAddress(address string, allowNodes []string, attrs ...string) error {
+func (c *Connection) OfferPrivateServiceWithAddress(address, version string, allowNodes []string, attrs ...string) error {
 	return c.UpdateServices(&NodeServices{
 		Services: []*Service{{
 			Key:               c.GetKey(),
@@ -352,17 +360,8 @@ func (c *Connection) OfferPrivateServiceWithAddress(address string, allowNodes [
 			Address:           address,
 			HideFromDiscovery: true,
 			AllowNodes:        allowNodes,
+			Version:           version,
 		}}})
-}
-
-// register a service to discovery
-func (c *Connection) OfferStaticServiceWithAddress(address string, attrs ...string) (err error) {
-	ns := &NodeServices{Services: []*Service{{Key: c.GetKey(), Attributes: attrs, Address: address}}}
-	err = c.factory.discoveryRegister(c, ns)
-	if err != nil {
-		return
-	}
-	return c.UpdateServices(ns)
 }
 
 // find services by attributes

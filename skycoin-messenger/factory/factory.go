@@ -21,9 +21,6 @@ type MessengerFactory struct {
 	regConnections      map[cipher.PubKey]*Connection
 	regConnectionsMutex sync.RWMutex
 
-	// custom msg callback
-	CustomMsgHandler func(*Connection, []byte)
-
 	// will deliver the services data to server if true
 	Proxy bool
 	serviceDiscovery
@@ -31,10 +28,16 @@ type MessengerFactory struct {
 	defaultSeedConfig *SeedConfig
 
 	Parent *MessengerFactory
-	// on accepted callback
-	OnAcceptedUDPCallback func(connection *Connection)
+
+	appVersion string
 
 	fieldsMutex sync.RWMutex
+
+	// custom msg callback
+	CustomMsgHandler func(*Connection, []byte)
+
+	// on accepted callback
+	OnAcceptedUDPCallback func(connection *Connection)
 
 	BeforeReadOnConn func(m *msg.UDPMessage)
 	BeforeSendOnConn func(m *msg.UDPMessage)
@@ -545,4 +548,17 @@ type Level log.Level
 
 func (f *MessengerFactory) SetLoggerLevel(level Level) {
 	log.SetLevel(log.Level(level))
+}
+
+func (f *MessengerFactory) SetAppVersion(v string) {
+	f.fieldsMutex.Lock()
+	f.appVersion = v
+	f.fieldsMutex.Unlock()
+}
+
+func (f *MessengerFactory) GetAppVersion() (v string) {
+	f.fieldsMutex.RLock()
+	v = f.appVersion
+	f.fieldsMutex.RUnlock()
+	return
 }

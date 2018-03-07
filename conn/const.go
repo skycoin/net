@@ -5,6 +5,8 @@ import (
 	"time"
 )
 
+const VERSION = "0.1.0"
+
 const (
 	DEV            = false
 	DEBUG_DATA_HEX = false
