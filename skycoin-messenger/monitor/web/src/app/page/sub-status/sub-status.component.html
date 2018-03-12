@@ -186,6 +186,32 @@
       </mat-grid-tile>
       <mat-grid-tile>
         <p class="status-box-item-title status-item">
+          <small>SSH Client</small>
+          <button class="icon-pointer" mat-icon-button [matMenuTriggerFor]="sshtClientmenu" [class.unread]="isUnread(SshClient) > 0">
+            <mat-icon aria-label="more">more_vert</mat-icon>
+          </button>
+          <mat-menu #sshtClientmenu="matMenu">
+            <button mat-menu-item (click)="openLog(SshClient,logDialog)" [class.unread]="isUnread(SshClient) > 0">
+              <mat-icon>description</mat-icon>
+              <span>Messages</span>
+            </button>
+          </mat-menu>
+        </p>
+        <p class="status-box-item-content status-item">
+          <button mat-icon-button (click)="inputKeys($event,SshClient,sshClientDialog)" [ngClass]="appColor?.get(SshClient)">
+            <mat-icon aria-label="SSH">computer</mat-icon>
+          </button>
+        </p>
+        <p class="status-item">
+          <span style="vertical-align: sub">
+            <span *ngIf="sshClientPort > 0"> Port: {{sshClientPort}}</span>
+            <span *ngIf="sshClientPort === -1" class="port-fail" (click)="openLog(SshClient,logDialog)">
+              <mat-icon class="icon">cancel</mat-icon>fail</span>
+          </span>
+        </p>
+      </mat-grid-tile>
+      <mat-grid-tile>
+        <p class="status-box-item-title status-item">
           <small>Connect to Node</small>
           <button class="icon-pointer" mat-icon-button [matMenuTriggerFor]="socketClientmenu" [class.unread]="isUnread(SocketClient) > 0">
             <!--  -->
@@ -211,32 +237,6 @@
           <span style="vertical-align: sub">
             <span *ngIf="socketClientPort > 0">Port: {{socketClientPort}}</span>
             <span *ngIf="socketClientPort === -1" class="port-fail" (click)="openLog(SocketClient,logDialog)">
-              <mat-icon class="icon">cancel</mat-icon>fail</span>
-          </span>
-        </p>
-      </mat-grid-tile>
-      <mat-grid-tile>
-        <p class="status-box-item-title status-item">
-          <small>SSH Client</small>
-          <button class="icon-pointer" mat-icon-button [matMenuTriggerFor]="sshtClientmenu" [class.unread]="isUnread(SshClient) > 0">
-            <mat-icon aria-label="more">more_vert</mat-icon>
-          </button>
-          <mat-menu #sshtClientmenu="matMenu">
-            <button mat-menu-item (click)="openLog(SshClient,logDialog)" [class.unread]="isUnread(SshClient) > 0">
-              <mat-icon>description</mat-icon>
-              <span>Messages</span>
-            </button>
-          </mat-menu>
-        </p>
-        <p class="status-box-item-content status-item">
-          <button mat-icon-button (click)="inputKeys($event,SshClient,sshClientDialog)" [ngClass]="appColor?.get(SshClient)">
-            <mat-icon aria-label="SSH">computer</mat-icon>
-          </button>
-        </p>
-        <p class="status-item">
-          <span style="vertical-align: sub">
-            <span *ngIf="sshClientPort > 0"> Port: {{sshClientPort}}</span>
-            <span *ngIf="sshClientPort === -1" class="port-fail" (click)="openLog(SshClient,logDialog)">
               <mat-icon class="icon">cancel</mat-icon>fail</span>
           </span>
         </p>
@@ -600,7 +600,7 @@
     <section class="discovery-address-box">
       <p class="title">Discovery Addresses Status</p>
       <ul class="discovery-status-list">
-        <li *ngFor="let kv of discoveries | iterable">
+        <li *ngFor="let kv of discoveries | iterable;trackBy: discoveryTrackBy">
           <div class="content">
             <div class="url">{{kv?.key}}</div>
             <div class="status">

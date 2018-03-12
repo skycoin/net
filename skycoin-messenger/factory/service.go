@@ -2,7 +2,6 @@ package factory
 
 import (
 	"sync"
-
 	"github.com/skycoin/skycoin/src/cipher"
 )
 
@@ -30,6 +29,8 @@ type serviceDiscovery struct {
 	subscription2Subscriber      map[cipher.PubKey]*NodeServices
 	subscription2SubscriberMutex sync.RWMutex
 
+	RegisterService      func(key cipher.PubKey, ns *NodeServices) (err error)
+	UnRegisterService    func(key cipher.PubKey) (err error)
 	FindServiceAddresses func(keys []cipher.PubKey, exclude cipher.PubKey) (result []*ServiceInfo)
 	FindByAttributes     func(attrs ...string) (result *AttrNodesInfo)
 }
@@ -64,7 +65,7 @@ func (sd *serviceDiscovery) register(conn *Connection, ns *NodeServices) {
 	for _, service := range ns.Services {
 		filter[service.Key] = service
 	}
-	ns.Services = make([]*Service, len(filter))
+	ns.Services = make([]*Service, 0, len(filter))
 	for _, s := range filter {
 		ns.Services = append(ns.Services, s)
 	}
@@ -80,6 +81,47 @@ func (sd *serviceDiscovery) register(conn *Connection, ns *NodeServices) {
 	sd.subscription2Subscriber[conn.GetKey()] = ns
 	conn.setServices(ns)
 	sd.subscription2SubscriberMutex.Unlock()
+}
+
+func (sd *serviceDiscovery) discoveryRegister(conn *Connection, ns *NodeServices) () {
+	if !conn.IsKeySet() {
+		return
+	}
+	filter := make(map[cipher.PubKey]*Service)
+	for _, service := range ns.Services {
+		filter[service.Key] = service
+	}
+	ns.Services = make([]*Service, 0, len(filter))
+	for _, s := range filter {
+		ns.Services = append(ns.Services, s)
+	}
+	if len(ns.Services) < 1 {
+		sd.subscription2SubscriberMutex.Lock()
+		sd._unregister(conn)
+		sd.subscription2SubscriberMutex.Unlock()
+		conn.setServices(nil)
+		return
+	}
+	sd.subscription2SubscriberMutex.Lock()
+	sd._discoveryUnregister(conn)
+	err := sd.registerService(conn.GetKey(), ns)
+	if err != nil {
+		conn.GetContextLogger().Errorf("set service: %s", err)
+	}
+	conn.setServices(ns)
+	sd.subscription2SubscriberMutex.Unlock()
+}
+
+func (sd *serviceDiscovery) _discoveryUnregister(conn *Connection) {
+	ns := conn.GetServices()
+	if ns == nil || !conn.IsKeySet() {
+		return
+	}
+	err := sd.unRegisterService(conn.GetKey())
+	if err != nil {
+		conn.GetContextLogger().Errorf("set service: %s", err)
+	}
+	conn.setServices(nil)
 }
 
 func (sd *serviceDiscovery) _unregister(conn *Connection) {
@@ -114,6 +156,8 @@ type ServiceInfo struct {
 }
 
 // find service address of nodes by subscription key
+// keys is app keys
+// exclude is node key
 func (sd *serviceDiscovery) findServiceAddresses(keys []cipher.PubKey, exclude cipher.PubKey) (result []*ServiceInfo) {
 	if sd.FindServiceAddresses != nil {
 		return sd.FindServiceAddresses(keys, exclude)
@@ -142,6 +186,20 @@ type AttrAppInfo struct {
 func (sd *serviceDiscovery) findByAttributes(attrs ...string) (result *AttrNodesInfo) {
 	if sd.FindByAttributes != nil {
 		return sd.FindByAttributes(attrs...)
+	}
+	return
+}
+
+func (sd *serviceDiscovery) registerService(key cipher.PubKey, ns *NodeServices) (err error) {
+	if sd.RegisterService != nil {
+		return sd.RegisterService(key, ns)
+	}
+	return
+}
+
+func (sd *serviceDiscovery) unRegisterService(key cipher.PubKey) (err error) {
+	if sd.UnRegisterService != nil {
+		return sd.UnRegisterService(key)
 	}
 	return
 }

@@ -113,6 +113,7 @@ export class SubStatusComponent implements OnInit, OnDestroy {
   closeStatus = 'close-status';
   task = new Subject();
   balance = '0.000000';
+  checkPortTask = null;
   constructor(
     private router: Router,
     private route: ActivatedRoute,
@@ -310,7 +311,9 @@ export class SubStatusComponent implements OnInit, OnDestroy {
     }
     return 0;
   }
-
+  discoveryTrackBy(index, ds) {
+    return ds ? ds.key : undefined;
+  }
   transportsTrackBy(index, transport) {
     return transport ? transport.from_node : undefined;
   }
@@ -343,25 +346,19 @@ export class SubStatusComponent implements OnInit, OnDestroy {
     this.api.saveClientConnection(data).subscribe(res => {
       data.delete('data');
       data.delete('client');
+      if (info) {
+        data.append('toNode', info.nodeKey);
+        data.append('toApp', info.appKey);
+      } else if (this.socketClientForm.valid) {
+        data.append('toNode', this.socketClientForm.get('nodeKey').value);
+        data.append('toApp', this.socketClientForm.get('appKey').value);
+      }
+      this.api.connectSocketClicent(this.status.addr, data).subscribe(result => {
+        this.task.next();
+        this.checkPort();
+      });
+      this.dialog.closeAll();
     });
-    if (info) {
-      data.append('toNode', info.nodeKey);
-      data.append('toApp', info.appKey);
-    } else if (this.socketClientForm.valid) {
-      data.append('toNode', this.socketClientForm.get('nodeKey').value);
-      data.append('toApp', this.socketClientForm.get('appKey').value);
-    }
-    this.api.connectSocketClicent(this.status.addr, data).subscribe(result => {
-      this.task.next();
-      const updateTask = setInterval(() => {
-        if (this.socketClientPort > 0 && this.socketClientPort <= 65535) {
-          clearInterval(updateTask);
-          this.alert.close();
-        }
-      }, 500);
-    });
-
-    this.dialog.closeAll();
   }
   connectSSH(ev: Event, action: string, info?: ConnectServiceInfo, ) {
     ev.stopImmediatePropagation();
@@ -654,6 +651,7 @@ export class SubStatusComponent implements OnInit, OnDestroy {
     });
   }
   close() {
+    clearInterval(this.checkPortTask);
     this.timer.unsubscribe();
   }
   isExist(search: string) {
@@ -793,8 +791,8 @@ export class SubStatusComponent implements OnInit, OnDestroy {
     data.append('data', JSON.stringify(jsonStr));
     data.append('key', this.key);
     if (tmp) {
-      this.api.setNodeConfig(this.status.addr, data).subscribe(result => {
-        if (result) {
+      this.api.setNodeConfig(this.status.addr, data).subscribe(r => {
+        if (r) {
           this.alert.confirm('Info', 'Do you restart node immediately?', 'info').then(result => {
             if (result) {
               this.api.updateNodeConfig(this.status.addr).subscribe(isSuccess => {
@@ -848,6 +846,19 @@ export class SubStatusComponent implements OnInit, OnDestroy {
     return new Uint8Array(a);
   }
 
+  checkPort() {
+    this.checkPortTask = setInterval(() => {
+      if (this.socketClientPort > 0 && this.socketClientPort <= 65535) {
+        this.closeCheckPort();
+      } else if (this.socketClientPort === -1) {
+        this.closeCheckPort();
+      }
+    }, 500);
+  }
+  closeCheckPort() {
+    clearInterval(this.checkPortTask);
+    this.alert.close();
+  }
   search(ev: Event, searchStr: string) {
     const ref = this.dialog.open(SearchServiceComponent, {
       minWidth: '1230px',
@@ -858,36 +869,11 @@ export class SubStatusComponent implements OnInit, OnDestroy {
     ref.afterClosed().subscribe(result => {
       if (result) {
         this.init();
-        const updateTask = setInterval(() => {
-          if (this.socketClientPort > 0 && this.socketClientPort <= 65535) {
-            clearInterval(updateTask);
-            this.alert.close();
-          }
-        }, 500);
+        this.checkPort();
       }
     });
   }
-  // setClientAuto(action: string, auto: boolean, index: number) {
-  //   const data = new FormData();
-  //   if (!action) {
-  //     this.alert.error('client label is empty!');
-  //     return;
-  //   }
-  //   if (index < 0) {
-  //     this.alert.error('index is faild!');
-  //     return;
-  //   }
-  //   data.append('client', action);
-  //   data.append('index', String(index));
-  //   data.append('auto', String(auto));
-  //   this.api.SetClientAutoStart(data).subscribe((result) => {
-  //     if (result) {
-  //       this.api.getClientConnection(data).subscribe((info: Array<ConnectServiceInfo>) => {
-  //         this.clientConnectionInfo = info;
-  //       });
-  //     }
-  //   });
-  // }
+
   removeClientConnection(action: string, index: number) {
     const data = new FormData();
     if (!action) {

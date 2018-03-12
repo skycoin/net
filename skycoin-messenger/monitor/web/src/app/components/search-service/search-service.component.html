@@ -16,13 +16,20 @@
 
     <tbody>
       <tr *ngFor="let item of results">
-        <td class="key">{{item?.node_key}}</td>
-        <td class="key">{{item?.app_key}}</td>
+        <td class="key">
+          <span style="color:red;">(v{{item?.node_version[0]}})</span>
+          <span>{{item?.node_key}}</span>
+        </td>
+        <td class="key">
+          <span style="color:red;">(v1.0.0)</span>
+          <span>{{item?.app_key}}</span>
+        </td>
         <td>{{item?.location}}</td>
         <td>
           <button mat-raised-button color="primary" (click)="connectSocket(item?.node_key,item?.app_key)">connect</button>
         </td>
       </tr>
+      
       <!-- <tr *ngIf="results?.length === 0">
         <td colspan="4" class="no-found">No Service</td>
       </tr> -->
@@ -30,7 +37,7 @@
   </table>
   <!-- <div  class="no-found text-center">No Service</div> -->
 </div>
-<p class="search-foot text-right" *ngIf="results?.length > 10">
+<!-- <p class="search-foot text-right" *ngIf="results?.length > 10">
   <mat-paginator [length]="10" [pageSize]="10" [pageSizeOptions]="[5, 10, 25, 100]">
   </mat-paginator>
-</p>
+</p> -->

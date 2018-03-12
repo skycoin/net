@@ -116,8 +116,8 @@ export class ApiService {
   getDebugPage(addr: string) {
     return this.handleReq(addr, '/debug/pprof');
   }
-  checkUpdate(url, channel, vesrion: string) {
-    return this.handleReqOutside(`${url}?c=${channel}&v=${vesrion}`);
+  checkUpdate(addr: string) {
+    return this.handleReq(addr, '/node/run/checkUpdate');
   }
   saveClientConnection(data: FormData) {
     return this.handlePost(this.connUrl + 'saveClientConnection', data);

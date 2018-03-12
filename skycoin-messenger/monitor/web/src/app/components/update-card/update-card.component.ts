@@ -20,7 +20,6 @@ export class UpdateCardComponent implements OnInit {
   updateStatus = NOUPGRADE;
   hasUpdate = false;
   nodeUrl = '';
-  checkUrl = 'http://messenger.skycoin.net:8100/api/version';
   dialogRef: MatDialogRef<UpdateCardComponent>;
   constructor(
     private api: ApiService,
@@ -30,8 +29,9 @@ export class UpdateCardComponent implements OnInit {
   ) { }
 
   ngOnInit() {
-    this.api.checkUpdate(this.checkUrl, this.data.tag, this.data.version).subscribe((res: Update) => {
-      this.hasUpdate = res.Update;
+    this.updateStatus = 'Checking...';
+    this.api.checkUpdate(this.nodeUrl).subscribe(result => {
+      this.hasUpdate = result;
       if (this.hasUpdate) {
         this.updateStatus = UPGRADE;
       } else {

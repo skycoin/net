@@ -186,6 +186,8 @@ export interface SearchResultApp {
   node_key?: string;
   app_key?: string;
   location?: string;
+  node_version?: Array<string>;
+  version?: string;
 }
 export interface SearchResult {
   node_key?: string;

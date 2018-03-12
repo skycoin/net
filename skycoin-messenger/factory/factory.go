@@ -481,8 +481,8 @@ func (f *MessengerFactory) discoveryRegister(conn *Connection, ns *NodeServices)
 		err = fmt.Errorf("invalid NodeServices %#v", ns)
 		return
 	}
-	f.serviceDiscovery.register(conn, ns)
 	if f.Proxy {
+		f.serviceDiscovery.register(conn, ns)
 		nodeServices := f.pack()
 		f.ForEachConn(func(connection *Connection) {
 			err := connection.UpdateServices(nodeServices)
@@ -490,6 +490,8 @@ func (f *MessengerFactory) discoveryRegister(conn *Connection, ns *NodeServices)
 				connection.GetContextLogger().Errorf("discoveryRegister err %v", err)
 			}
 		})
+	} else {
+		f.serviceDiscovery.discoveryRegister(conn, ns)
 	}
 	return
 }
