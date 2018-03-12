@@ -1,8 +1,8 @@
 package factory
 
 import (
-	"sync"
 	"github.com/skycoin/skycoin/src/cipher"
+	"sync"
 )
 
 type Service struct {
@@ -83,7 +83,7 @@ func (sd *serviceDiscovery) register(conn *Connection, ns *NodeServices) {
 	sd.subscription2SubscriberMutex.Unlock()
 }
 
-func (sd *serviceDiscovery) discoveryRegister(conn *Connection, ns *NodeServices) () {
+func (sd *serviceDiscovery) discoveryRegister(conn *Connection, ns *NodeServices) {
 	if !conn.IsKeySet() {
 		return
 	}
