@@ -862,8 +862,9 @@ export class SubStatusComponent implements OnInit, OnDestroy {
   }
   search(ev: Event, searchStr: string) {
     const ref = this.dialog.open(SearchServiceComponent, {
-      width: '1230px',
+      width: '1430px',
       height: '800px',
+      maxWidth: '95vw',
       panelClass: 'radius-dialog',
     });
     ref.componentInstance.nodeAddr = this.status.addr;
