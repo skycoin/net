@@ -378,7 +378,7 @@ func (c *Connection) FindServiceNodesWithSeqByAttributes(attrs ...string) (seq u
 }
 
 // find services by attributes
-func (c *Connection) FindNewServiceNodesWithSeqByAttributes(pages, limit uint, attrs ...string) (seq uint32, err error) {
+func (c *Connection) FindServiceNodesWithSeqByAttributesAndPaging(pages, limit int, attrs ...string) (seq uint32, err error) {
 	q := newQueryByAttrsAndPage(pages, limit, attrs)
 	seq = q.Seq
 	err = c.writeOP(OP_QUERY_BY_ATTRS, q)

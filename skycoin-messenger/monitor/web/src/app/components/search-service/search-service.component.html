@@ -1,6 +1,6 @@
 <div class="search-page">
   <p class="text-center search-title">
-    <span class="text-center text">Search Node Server Result</span>
+    <span class="text">Search Node Server Result</span>
     <mat-icon class="refresh" [class.refresh-process]="status === 0" (click)="refresh($event)">refresh</mat-icon>
   </p>
   <table class="search-table" *ngIf="results?.length > 0">
@@ -17,19 +17,19 @@
     <tbody>
       <tr *ngFor="let item of results">
         <td class="key">
-          <span style="color:red;">(v{{item?.node_version[0]}})</span>
-          <span>{{item?.node_key}}</span>
+          <p>{{item?.node_key}}</p>
+          <p class="text-right" style="color:#999;">{{getNodeVersion(item?.node_version)}}</p>
         </td>
         <td class="key">
-          <span style="color:red;">(v1.0.0)</span>
-          <span>{{item?.app_key}}</span>
+          <p>{{item?.app_key}}</p>
+          <p class="text-right" style="color:#999;">{{getAppVersion(item?.version)}}</p>
         </td>
-        <td>{{item?.location}}</td>
+        <td class="location">{{item?.location}}</td>
         <td>
-          <button mat-raised-button color="primary" (click)="connectSocket(item?.node_key,item?.app_key)">connect</button>
+          <button mat-raised-button style="background-color:#87bf17;color:#fff;" (click)="connectSocket(item?.node_key,item?.app_key)">connect</button>
         </td>
       </tr>
-      
+
       <!-- <tr *ngIf="results?.length === 0">
         <td colspan="4" class="no-found">No Service</td>
       </tr> -->
@@ -37,7 +37,7 @@
   </table>
   <!-- <div  class="no-found text-center">No Service</div> -->
 </div>
-<!-- <p class="search-foot text-right" *ngIf="results?.length > 10">
-  <mat-paginator [length]="10" [pageSize]="10" [pageSizeOptions]="[5, 10, 25, 100]">
+<p class="search-foot text-right">
+  <mat-paginator [length]="total" [pageSize]="limit" [pageSizeOptions]="[1,2]" (page)="page($event)">
   </mat-paginator>
-</p> -->
+</p>

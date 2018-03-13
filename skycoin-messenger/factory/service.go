@@ -33,7 +33,7 @@ type serviceDiscovery struct {
 	UnRegisterService       func(key cipher.PubKey) (err error)
 	FindServiceAddresses    func(keys []cipher.PubKey, exclude cipher.PubKey) (result []*ServiceInfo)
 	FindByAttributes        func(attrs ...string) (result *AttrNodesInfo)
-	FindByAttributesAndPage func(page, limit uint, attrs ...string) (result *AttrNodesInfo)
+	FindByAttributesAndPaging func(page, limit int, attrs ...string) (result *AttrNodesInfo)
 }
 
 func newServiceDiscovery() serviceDiscovery {
@@ -170,6 +170,7 @@ func (sd *serviceDiscovery) findServiceAddresses(keys []cipher.PubKey, exclude c
 
 type AttrNodesInfo struct {
 	Nodes []*AttrNodeInfo
+	Count int64
 }
 
 type AttrNodeInfo struct {
@@ -194,9 +195,9 @@ func (sd *serviceDiscovery) findByAttributes(attrs ...string) (result *AttrNodes
 	return
 }
 
-func (sd *serviceDiscovery) findByAttributesAndPage(page, limit uint, attrs ...string) (result *AttrNodesInfo) {
+func (sd *serviceDiscovery) findByAttributesAndPaging(page, limit int, attrs ...string) (result *AttrNodesInfo) {
 	if sd.FindByAttributes != nil {
-		return sd.FindByAttributesAndPage(page, limit, attrs...)
+		return sd.FindByAttributesAndPaging(page, limit, attrs...)
 	}
 	return
 }

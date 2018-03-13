@@ -27,6 +27,9 @@ export class SearchServiceComponent implements OnInit, OnDestroy {
   results: Array<SearchResultApp>;
   status = 0;
   SocketClient = 'socksc';
+  pages = 1;
+  limit = 2;
+  total = 0;
   private result: Subject<Array<Search>> = new BehaviorSubject<Array<Search>>([]);
   constructor(
     private api: ApiService,
@@ -34,8 +37,10 @@ export class SearchServiceComponent implements OnInit, OnDestroy {
     private dialog: MatDialog,
     private dialogRef: MatDialogRef<SearchServiceComponent>) { }
   ngOnInit() {
-    this.handle();
-    this.refresh();
+    setTimeout(() => {
+      this.handle();
+      this.refresh();
+    }, 100);
   }
   ngOnDestroy() {
     if (this.searchTask) {
@@ -91,6 +96,8 @@ export class SearchServiceComponent implements OnInit, OnDestroy {
   search() {
     const data = new FormData();
     data.append('key', this.searchStr);
+    data.append('pages', this.pages.toString());
+    data.append('limit', this.limit.toString());
     this.searchTask = Observable.interval(100).take(this.timeOut).subscribe(() => {
       this.api.searchServices(this.nodeAddr, data).subscribe(seq => {
         this.seqs = this.seqs.concat(seq);
@@ -100,9 +107,14 @@ export class SearchServiceComponent implements OnInit, OnDestroy {
       this.status = 1;
     });
   }
-
+  page(ev) {
+    console.log('page:', ev);
+    this.pages = ev.pageIndex + 1;
+    this.limit = ev.pageSize;
+    this.search();
+  }
   getResult() {
-    this.resultTask = Observable.interval(500).take(this.timeOut + 3).subscribe(() => {
+    this.resultTask = Observable.interval(500).take(this.timeOut + 2).subscribe(() => {
       this.api.getServicesResult(this.nodeAddr).subscribe(result => {
         this.result.next(result);
         this.status = 1;
@@ -113,6 +125,15 @@ export class SearchServiceComponent implements OnInit, OnDestroy {
   }
   handle() {
     this.result.subscribe((results: Array<Search>) => {
+      if (results === null) {
+        return;
+      }
+      if (results.length > 0) {
+        this.total = 0;
+        results.forEach((value) => {
+          this.total += value.count;
+        });
+      }
       const tmp = this.filterSeq(results);
       if (!tmp) {
         return;
@@ -162,6 +183,18 @@ export class SearchServiceComponent implements OnInit, OnDestroy {
     }
     return res;
   }
+  getAppVersion(appVersion: any) {
+    if (!appVersion) {
+      return '(v1.0.0)';
+    }
+    return `(v${appVersion})`;
+  }
+  getNodeVersion(nodeVersion: Array<any>) {
+    if (!nodeVersion || nodeVersion.length <= 0) {
+      return 'unknown';
+    }
+    return `(v${nodeVersion[0]})`;
+  }
   unique(results: Array<Search>) {
     if (results.length === 0) {
       return;
@@ -181,6 +214,7 @@ export class SearchServiceComponent implements OnInit, OnDestroy {
 export interface Search {
   result?: Array<SearchResultApp>;
   seq?: number;
+  count?; number;
 }
 export interface SearchResultApp {
   node_key?: string;

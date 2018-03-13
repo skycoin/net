@@ -108,7 +108,7 @@ export class SubStatusComponent implements OnInit, OnDestroy {
   SshServer = 'sshs';
   SocketClient = 'socksc';
   SocketServer = 'sockss';
-  isWindowsOs = navigator.platform.toLowerCase().indexOf('win');
+  nodeOs = '';
   appColor: Map<string, string> = new Map<string, string>();
   closeStatus = 'close-status';
   task = new Subject();
@@ -695,6 +695,7 @@ export class SubStatusComponent implements OnInit, OnDestroy {
           this.nodeVersion = info.version;
           this.nodeTag = info.tag;
           this.transports = info.transports;
+          this.nodeOs = info.os;
           if (this.transports) {
             this.transports.sort((a1: Transports, a2: Transports) => {
               return a1.from_app.localeCompare(a2.from_app);
@@ -861,8 +862,9 @@ export class SubStatusComponent implements OnInit, OnDestroy {
   }
   search(ev: Event, searchStr: string) {
     const ref = this.dialog.open(SearchServiceComponent, {
-      minWidth: '1230px',
-      height: '800px'
+      width: '1230px',
+      height: '800px',
+      panelClass: 'radius-dialog',
     });
     ref.componentInstance.nodeAddr = this.status.addr;
     ref.componentInstance.searchStr = searchStr;

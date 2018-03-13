@@ -250,6 +250,7 @@ export interface FeedBackItem {
 export interface NodeInfo {
   version?: string;
   tag?: string;
+  os?: string;
   discoveries?: Map<string, boolean>;
   transports?: Array<Transports>;
   messages?: Array<Message>;

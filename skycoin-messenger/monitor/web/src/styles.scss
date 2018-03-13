@@ -203,3 +203,10 @@ snack-bar-container {
   cursor: pointer;
   user-select: none;
 }
+
+.radius-dialog {
+  .mat-dialog-container{
+    padding: 24px 0;
+    border-radius: .5rem;
+  }
+}
