@@ -1,8 +1,8 @@
 package factory
 
 import (
-	"sync"
 	"github.com/skycoin/skycoin/src/cipher"
+	"sync"
 )
 
 type Service struct {
@@ -29,10 +29,11 @@ type serviceDiscovery struct {
 	subscription2Subscriber      map[cipher.PubKey]*NodeServices
 	subscription2SubscriberMutex sync.RWMutex
 
-	RegisterService      func(key cipher.PubKey, ns *NodeServices) (err error)
-	UnRegisterService    func(key cipher.PubKey) (err error)
-	FindServiceAddresses func(keys []cipher.PubKey, exclude cipher.PubKey) (result []*ServiceInfo)
-	FindByAttributes     func(attrs ...string) (result *AttrNodesInfo)
+	RegisterService         func(key cipher.PubKey, ns *NodeServices) (err error)
+	UnRegisterService       func(key cipher.PubKey) (err error)
+	FindServiceAddresses    func(keys []cipher.PubKey, exclude cipher.PubKey) (result []*ServiceInfo)
+	FindByAttributes        func(attrs ...string) (result *AttrNodesInfo)
+	FindByAttributesAndPage func(page, limit uint, attrs ...string) (result *AttrNodesInfo)
 }
 
 func newServiceDiscovery() serviceDiscovery {
@@ -53,7 +54,9 @@ func (sd *serviceDiscovery) pack() *NodeServices {
 			ss = append(ss, service)
 		}
 	}
-	ns := &NodeServices{Services: ss}
+	ns := &NodeServices{
+		Services: ss,
+	}
 	return ns
 }
 
@@ -83,7 +86,7 @@ func (sd *serviceDiscovery) register(conn *Connection, ns *NodeServices) {
 	sd.subscription2SubscriberMutex.Unlock()
 }
 
-func (sd *serviceDiscovery) discoveryRegister(conn *Connection, ns *NodeServices) () {
+func (sd *serviceDiscovery) discoveryRegister(conn *Connection, ns *NodeServices) {
 	if !conn.IsKeySet() {
 		return
 	}
@@ -171,9 +174,10 @@ type AttrNodesInfo struct {
 
 type AttrNodeInfo struct {
 	Node     cipher.PubKey
-	Apps     []*AttrAppInfo
+	Apps     []cipher.PubKey
 	Location string
 	Version  []string
+	AppInfos []*AttrAppInfo
 }
 
 type AttrAppInfo struct {
@@ -186,6 +190,13 @@ type AttrAppInfo struct {
 func (sd *serviceDiscovery) findByAttributes(attrs ...string) (result *AttrNodesInfo) {
 	if sd.FindByAttributes != nil {
 		return sd.FindByAttributes(attrs...)
+	}
+	return
+}
+
+func (sd *serviceDiscovery) findByAttributesAndPage(page, limit uint, attrs ...string) (result *AttrNodesInfo) {
+	if sd.FindByAttributes != nil {
+		return sd.FindByAttributesAndPage(page, limit, attrs...)
 	}
 	return
 }
