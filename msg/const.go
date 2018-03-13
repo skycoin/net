@@ -16,8 +16,6 @@ const (
 	UDP_TYPE_SIZE = 1
 	MSG_SEQ_SIZE  = 4
 	MSG_LEN_SIZE  = 4
-
-	MAX_MESSAGE_SIZE = 10240
 )
 
 const (
