@@ -512,12 +512,14 @@ func (f *MessengerFactory) ResyncToDiscovery(connection *Connection) (err error)
 }
 
 func (f *MessengerFactory) discoveryUnregister(conn *Connection) {
-	f.serviceDiscovery.unregister(conn)
 	if f.Proxy {
+		f.serviceDiscovery.unregister(conn)
 		nodeServices := f.pack()
 		f.ForEachConn(func(connection *Connection) {
 			connection.UpdateServices(nodeServices)
 		})
+	}else {
+		f.serviceDiscovery.unDiscoveryregister(conn)
 	}
 }
 

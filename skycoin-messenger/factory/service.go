@@ -122,7 +122,7 @@ func (sd *serviceDiscovery) _discoveryUnregister(conn *Connection) {
 	}
 	err := sd.unRegisterService(conn.GetKey())
 	if err != nil {
-		conn.GetContextLogger().Errorf("set service: %s", err)
+		conn.GetContextLogger().Errorf("unRegister service: %s", err)
 	}
 	conn.setServices(nil)
 }
@@ -134,6 +134,10 @@ func (sd *serviceDiscovery) _unregister(conn *Connection) {
 	}
 	delete(sd.subscription2Subscriber, conn.GetKey())
 	conn.setServices(nil)
+}
+
+func (sd *serviceDiscovery) unDiscoveryregister(conn *Connection) {
+	sd._discoveryUnregister(conn)
 }
 
 func (sd *serviceDiscovery) unregister(conn *Connection) {
