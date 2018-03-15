@@ -52,6 +52,11 @@ export class ApiService {
   updatePass(data: FormData) {
     return this.handlePost('updatePass', data);
   }
+
+  getManagerPort() {
+    return this.handlePost('getPort');
+  }
+
   checkLogin() {
     return this.handlePost('checkLogin', null, { responseType: 'text' });
   }

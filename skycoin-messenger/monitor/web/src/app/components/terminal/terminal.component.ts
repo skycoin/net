@@ -1,5 +1,6 @@
 import { Component, OnInit, ViewChild, ElementRef, OnDestroy, HostListener, Renderer } from '@angular/core';
 import { ApiService } from '../../service/api/api.service';
+import { AlertService } from '../../service/alert/alert.service';
 import { Observable } from 'rxjs/Observable';
 import { Subscription } from 'rxjs/Subscription';
 import { MatDialogRef } from '@angular/material';
@@ -38,10 +39,16 @@ export class TerminalComponent implements OnInit, OnDestroy {
     private api: ApiService,
     private dialogRef: MatDialogRef<TerminalComponent>,
     private el: ElementRef,
-    private render: Renderer
+    private render: Renderer,
+    private alert: AlertService,
   ) { }
   ngOnInit() {
+    this.setUrl();
     this.api.checkLogin().subscribe(id => {
+      if (!this.url.length) {
+        this.alert.error('Temporarily unable to connect, please try again later.');
+        return;
+      }
       this.ws = new WebSocket(`${this.url}?url=ws://${this.addr}/node/run/term&token=${id}`);
       this.ws.binaryType = 'arraybuffer';
       this.ws.onopen = (ev) => {
@@ -61,6 +68,21 @@ export class TerminalComponent implements OnInit, OnDestroy {
           this.xterm.writeln('Connection interrupted...');
         }
       };
+    });
+  }
+  setUrl() {
+    this.api.getManagerPort().subscribe(port => {
+      const localhost = 'localhost';
+      this.url = window.location.host;
+      this.url = this.url.replace(localhost, '127.0.0.1');
+      const tmp = this.url.split(':');
+      if (tmp.length === 2) {
+        this.url = tmp[0];
+      }
+      this.url = `ws://${this.url}:${port}/term`;
+    }, err => {
+      console.error('get port error:', err);
+      this.url = '';
     });
   }
   ngOnDestroy() {

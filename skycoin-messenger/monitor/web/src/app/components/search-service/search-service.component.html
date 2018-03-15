@@ -4,7 +4,7 @@
     <mat-icon class="refresh" [class.refresh-process]="status === 0" (click)="refresh($event)">refresh</mat-icon>
   </p>
   <mat-tab-group (selectedTabChange)="tab($event)" backgroundColor="#000">
-    <mat-tab label="Tab {{i + 1}}" *ngFor="let d of discoveries;let i=index;">
+    <mat-tab label="Discovery {{i + 1}}" *ngFor="let d of discoveries;let i=index;">
       <div class="table-container">
         <div class="table-content">
           <table class="search-table" *ngIf="results?.length > 0">
