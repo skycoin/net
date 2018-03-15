@@ -47,27 +47,33 @@ export class TerminalComponent implements OnInit, OnDestroy {
     this.api.checkLogin().subscribe(id => {
       if (!this.url.length) {
         this.alert.error('Temporarily unable to connect, please try again later.');
-        return;
+      } else {
+        this.ws = new WebSocket(`${this.url}?url=ws://${this.addr}/node/run/term&token=${id}`);
+        this.ws.binaryType = 'arraybuffer';
+        this.ws.onopen = (ev) => {
+          this.start();
+        };
+        this.ws.onclose = (ev: CloseEvent) => {
+          this.isWrite = false;
+          console.log('onclose:', ev);
+          if (this.xterm) {
+            this.xterm.writeln('The Connection interrupted... Close the terminal automatically after 3 seconds.');
+            setTimeout(() => {
+              this._close();
+            }, 3000);
+          }
+        };
+        this.ws.onerror = (ev: Event) => {
+          this.isWrite = false;
+          console.log('onerror:', ev);
+          if (this.xterm) {
+            this.xterm.writeln('The Connection interrupted... Close the terminal automatically after 3 seconds.');
+            setTimeout(() => {
+              this._close();
+            }, 3000);
+          }
+        };
       }
-      this.ws = new WebSocket(`${this.url}?url=ws://${this.addr}/node/run/term&token=${id}`);
-      this.ws.binaryType = 'arraybuffer';
-      this.ws.onopen = (ev) => {
-        this.start();
-      };
-      this.ws.onclose = (ev: CloseEvent) => {
-        this.isWrite = false;
-        console.log('onclose:', ev);
-        if (this.xterm) {
-          this.xterm.writeln('Connection interrupted...');
-        }
-      };
-      this.ws.onerror = (ev: Event) => {
-        this.isWrite = false;
-        console.log('onerror:', ev);
-        if (this.xterm) {
-          this.xterm.writeln('Connection interrupted...');
-        }
-      };
     });
   }
   setUrl() {
