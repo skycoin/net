@@ -112,6 +112,7 @@ func (m *Monitor) Start(webDir string) {
 	http.HandleFunc("/updatePass", bundle(m.UpdatePass))
 	http.HandleFunc("/req", bundle(req))
 	http.HandleFunc("/term", m.handleNodeTerm)
+	http.HandleFunc("/getPort", bundle(m.getPort))
 	go func() {
 		if err := m.srv.ListenAndServe(); err != nil {
 			log.Printf("http server: ListenAndServe() error: %s", err)
@@ -133,6 +134,15 @@ func bundle(fn func(w http.ResponseWriter, r *http.Request) (result []byte, err 
 		w.Header().Set("Content-Type", "application/json")
 		w.Write(result)
 	}
+}
+
+func (m *Monitor) getPort(w http.ResponseWriter, r *http.Request) (result []byte, err error, code int) {
+	_, port, err := net.SplitHostPort(m.address)
+	if err != nil {
+		return
+	}
+	result = []byte(port)
+	return
 }
 
 func req(w http.ResponseWriter, r *http.Request) (result []byte, err error, code int) {
