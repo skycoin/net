@@ -64,8 +64,9 @@ func init() {
 }
 
 type appConn struct {
-	Node cipher.PubKey
-	App  cipher.PubKey
+	Node      cipher.PubKey
+	App       cipher.PubKey
+	Discovery cipher.PubKey
 }
 
 // run on node A
@@ -74,7 +75,11 @@ func (req *appConn) Execute(f *MessengerFactory, conn *Connection) (r resp, err 
 		return
 	}
 
+	tmp := cipher.PubKey{}
 	f.ForEachConn(func(connection *Connection) {
+		if connection.GetTargetKey() != req.Discovery && req.Discovery != tmp {
+			return
+		}
 		fromNode := connection.GetKey()
 		fromApp := conn.GetKey()
 		iv := make([]byte, aes.BlockSize)

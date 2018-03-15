@@ -600,7 +600,7 @@
     <section class="discovery-address-box">
       <p class="title">Discovery Addresses Status</p>
       <ul class="discovery-status-list">
-        <li *ngFor="let kv of discoveries | iterable;trackBy: discoveryTrackBy">
+        <li *ngFor="let kv of showDiscoveries | iterable;trackBy: discoveryTrackBy">
           <div class="content">
             <div class="url">{{kv?.key}}</div>
             <div class="status">

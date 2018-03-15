@@ -390,8 +390,8 @@ func (c *Connection) FindServiceNodesByKeys(keys []cipher.PubKey) error {
 	return c.writeOP(OP_QUERY_SERVICE_NODES, newQuery(keys))
 }
 
-func (c *Connection) BuildAppConnection(node, app cipher.PubKey) error {
-	return c.writeOP(OP_BUILD_APP_CONN, &appConn{Node: node, App: app})
+func (c *Connection) BuildAppConnection(node, app, discovery cipher.PubKey) error {
+	return c.writeOP(OP_BUILD_APP_CONN, &appConn{Node: node, App: app, Discovery: discovery})
 }
 
 func (c *Connection) Send(to cipher.PubKey, msg []byte) error {
