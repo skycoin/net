@@ -442,6 +442,9 @@ func (t *Transport) nodeReadLoop(conn *Connection, getAppConn func(id uint32) ne
 				appConn.Close()
 				continue
 			}
+		case <-t.discoveryConn.GetDisconnectedChan():
+			conn.GetContextLogger().Debugf("transport discovery conn closed")
+			return
 		}
 	}
 }
