@@ -35,6 +35,7 @@ import 'rxjs/add/observable/of';
 import 'rxjs/add/observable/timer';
 import 'rxjs/add/operator/debounceTime';
 import { BehaviorSubject } from 'rxjs/BehaviorSubject';
+import * as _ from 'underscore';
 
 @Component({
   selector: 'app-sub-status',
@@ -97,7 +98,7 @@ export class SubStatusComponent implements OnInit, OnDestroy {
   isProduction = env.production;
   clientConnectionInfo: Array<ConnectServiceInfo> | null;
   // socketClientConnectionInfo: ConnectServiceInfo | null;
-  discoveries: Map<string, boolean>;
+  showDiscoveries: Map<string, boolean>;
   debugData = '';
   messages: Array<Message> = [];
   showMsgs: Array<MessageItem> = [];
@@ -114,6 +115,7 @@ export class SubStatusComponent implements OnInit, OnDestroy {
   task = new Subject();
   balance = '0.000000';
   checkPortTask = null;
+  discoveries = [];
   constructor(
     private router: Router,
     private route: ActivatedRoute,
@@ -515,18 +517,20 @@ export class SubStatusComponent implements OnInit, OnDestroy {
       }
     });
   }
-  refresh(ev: Event) {
+  refresh(ev: Event, showTip: boolean = true) {
     if (ev) {
       ev.stopImmediatePropagation();
       ev.stopPropagation();
       ev.preventDefault();
     }
     this.task.next();
-    this.snackBar.open('Refreshed', 'Dismiss', {
-      duration: 3000,
-      verticalPosition: 'top',
-      extraClasses: ['bg-success']
-    });
+    if (showTip) {
+      this.snackBar.open('Refreshed', 'Dismiss', {
+        duration: 3000,
+        verticalPosition: 'top',
+        extraClasses: ['bg-success']
+      });
+    }
   }
   runSocketServer(ev: Event) {
     ev.stopImmediatePropagation();
@@ -687,6 +691,22 @@ export class SubStatusComponent implements OnInit, OnDestroy {
       }
     }
   }
+  setDiscoveries(info: Map<string, boolean>) {
+    if (!info) {
+      return;
+    }
+    this.showDiscoveries = info;
+    this.discoveries = [];
+    for (const key in info) {
+      if (info.hasOwnProperty(key)) {
+        const connected = info[key];
+        if (connected) {
+          this.discoveries.push(key.split('-')[1]);
+        }
+      }
+    }
+  }
+
   fillTransport() {
     if (env.isManager && this.status.addr) {
       this.transports = [];
@@ -703,7 +723,7 @@ export class SubStatusComponent implements OnInit, OnDestroy {
           }
           this._transportData.push(this.transports);
           this.feedBacks = info.app_feedbacks;
-          this.discoveries = info.discoveries;
+          this.setDiscoveries(info.discoveries);
         }
       }, err => {
         this._transportData.push(null);
@@ -849,6 +869,7 @@ export class SubStatusComponent implements OnInit, OnDestroy {
 
   checkPort() {
     this.checkPortTask = setInterval(() => {
+      this.refresh(null, false);
       if (this.socketClientPort > 0 && this.socketClientPort <= 65535) {
         this.closeCheckPort();
       } else if (this.socketClientPort === -1) {
@@ -863,12 +884,13 @@ export class SubStatusComponent implements OnInit, OnDestroy {
   search(ev: Event, searchStr: string) {
     const ref = this.dialog.open(SearchServiceComponent, {
       width: '1430px',
-      height: '800px',
+      height: '600px',
       maxWidth: '95vw',
       panelClass: 'radius-dialog',
     });
     ref.componentInstance.nodeAddr = this.status.addr;
     ref.componentInstance.searchStr = searchStr;
+    ref.componentInstance.discoveries = this.discoveries;
     ref.afterClosed().subscribe(result => {
       if (result) {
         this.init();
