@@ -48,7 +48,6 @@ type Connection struct {
 	skipFactoryReg bool
 
 	appMessages        []PriorityMsg
-	appMessagesPty     Priority
 	appMessagesReadCnt int
 	appMessagesMutex   sync.RWMutex
 	appFeedback        atomic.Value
@@ -631,17 +630,11 @@ func (c *Connection) LoadContext(key interface{}) (value interface{}, ok bool) {
 	return c.context.Load(key)
 }
 
-func (c *Connection) PutMessage(v PriorityMsg) bool {
+func (c *Connection) PutMessage(v PriorityMsg) {
 	c.appMessagesMutex.Lock()
-	if c.appMessagesPty > v.Priority {
-		c.appMessagesMutex.Unlock()
-		return false
-	}
 	v.Time = time.Now().Unix()
 	c.appMessages = append(c.appMessages, v)
-	c.appMessagesPty = v.Priority
 	c.appMessagesMutex.Unlock()
-	return true
 }
 
 // Get messages

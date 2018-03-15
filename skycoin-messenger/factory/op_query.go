@@ -79,10 +79,10 @@ func (resp *QueryResp) Run(conn *Connection) (err error) {
 
 // query nodes by attributes
 type queryByAttrs struct {
-	Attrs     []string
-	Seq       uint32
-	Pages     int
-	Limit     int
+	Attrs []string
+	Seq   uint32
+	Pages int
+	Limit int
 }
 
 func newQueryByAttrs(attrs []string) *queryByAttrs {
@@ -95,10 +95,10 @@ func newQueryByAttrs(attrs []string) *queryByAttrs {
 
 func newQueryByAttrsAndPage(pages, limit int, attrs []string) *queryByAttrs {
 	q := &queryByAttrs{
-		Attrs:     attrs,
-		Pages:     pages,
-		Limit:     limit,
-		Seq:       atomic.AddUint32(&querySeq, 1),
+		Attrs: attrs,
+		Pages: pages,
+		Limit: limit,
+		Seq:   atomic.AddUint32(&querySeq, 1),
 	}
 	return q
 }

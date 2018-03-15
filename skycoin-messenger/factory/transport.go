@@ -347,6 +347,13 @@ func (t *Transport) connAck() {
 	t.fieldsMutex.Unlock()
 }
 
+func (t *Transport) isConnAck() (is bool) {
+	t.fieldsMutex.RLock()
+	is = t.connAcked
+	t.fieldsMutex.RUnlock()
+	return
+}
+
 // Connect to node A and server app
 func (t *Transport) serverSiceConnect(address, appAddress string, sc *SeedConfig, iv []byte) (err error) {
 	conn, err := t.factory.connectUDPWithConfig(address, &ConnConfig{})

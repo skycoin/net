@@ -298,8 +298,8 @@ func (f *MessengerFactory) ConnectWithConfig(address string, config *ConnConfig)
 		tcpFactory := factory.NewTCPFactory()
 		f.factory = tcpFactory
 	}
-	f.fieldsMutex.Unlock()
 	c, err := f.factory.Connect(address)
+	f.fieldsMutex.Unlock()
 	if err != nil {
 		if config != nil && config.Reconnect {
 			go func() {
@@ -518,7 +518,7 @@ func (f *MessengerFactory) discoveryUnregister(conn *Connection) {
 		f.ForEachConn(func(connection *Connection) {
 			connection.UpdateServices(nodeServices)
 		})
-	}else {
+	} else {
 		f.serviceDiscovery.unDiscoveryregister(conn)
 	}
 }
