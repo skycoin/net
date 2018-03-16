@@ -50,35 +50,38 @@ export class UpdateCardComponent implements OnInit {
         clearInterval(this.progressTask);
       }
     }, 5000);
-    this.api.runNodeupdate(this.nodeUrl).subscribe(r => {
-      if (r) {
-        this.checkProgressTask = setInterval(() => {
-          this.api.getNodeupdateProcess(this.nodeUrl).subscribe(result => {
-            if (result) {
-              this.progressValue = 100;
-              clearInterval(this.checkProgressTask);
-              clearInterval(this.progressTask);
-              this.dialog.closeAll();
-              this.alert.success('Please restart the program to complete the update.');
-            } else {
-              if (this.updateTimeout >= 600) {
-                this.progressValue = 0;
-                this.dialog.closeAll();
-                this.alert.error('Update timeout, restart the program and try again.');
-                clearInterval(this.checkProgressTask);
-                clearInterval(this.progressTask);
-              }
-              this.updateTimeout += 1;
-            }
-          });
-        }, 500);
+    setInterval(() => {
+      if (this.updateTimeout >= 600) {
+        this.progressValue = 0;
+        this.dialog.closeAll();
+        this.alert.error('Update timeout, restart the program and try again.');
+        this.closeAllTask();
+      }
+      this.updateTimeout += 1;
+    }, 1000);
+    this.api.runNodeupdate(this.nodeUrl).subscribe((result) => {
+      if (result) {
+        this.progressValue = 100;
+        this.closeAllTask();
+        this.dialog.closeAll();
+        this.alert.success('Please restart the program to complete the update.');
+      } else {
+        this.alert.error('Update failed, check the network connection and restart the program and try again.');
+        this.progressValue = 0;
+        this.closeAllTask();
+        this.dialog.closeAll();
       }
     }, err => {
       this.alert.error('Update the timeout, check the network connection and restart the program and try again.');
       this.progressValue = 0;
-      clearInterval(this.progressTask);
+      this.closeAllTask();
       this.dialog.closeAll();
     });
+
+  }
+  closeAllTask() {
+    clearInterval(this.checkProgressTask);
+    clearInterval(this.progressTask);
   }
   getUpgradeStatus() {
     return false;

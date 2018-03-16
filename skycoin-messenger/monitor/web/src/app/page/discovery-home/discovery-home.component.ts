@@ -49,9 +49,9 @@ export class DiscoveryHomeComponent implements OnInit, OnDestroy {
   }
   ngOnInit() {
     this.init();
-    this.task = setInterval(() => {
-      this.init();
-    }, 1000);
+    // this.task = setInterval(() => {
+    //   this.init();
+    // }, 1000);
   }
   ngOnDestroy() {
     clearInterval(this.task);
