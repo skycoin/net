@@ -127,7 +127,7 @@ export class SearchServiceComponent implements OnInit, OnDestroy {
     this.search();
   }
   getResult() {
-    this.resultTask = Observable.interval(500).take(this.timeOut + 2).subscribe(() => {
+    this.resultTask = Observable.interval(500).take(this.timeOut + 3).subscribe(() => {
       this.api.getServicesResult(this.nodeAddr).subscribe(result => {
         this.result.next(result);
         this.status = 1;
