@@ -118,7 +118,7 @@ import { AppRoutingModule } from './route/app-routing.module';
     MatSlideToggleModule,
     MatSelectModule,
     MatCheckboxModule,
-    MatRadioModule
+    MatRadioModule,
   ],
   providers: [ApiService, UserService, AlertService],
   bootstrap: [AppComponent]
