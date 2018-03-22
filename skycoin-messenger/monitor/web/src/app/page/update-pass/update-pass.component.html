@@ -20,6 +20,6 @@
       </mat-error>
     </mat-form-field>
     <button mat-raised-button color="primary" class="field-full-width" (click)="update($event)" [disabled]="!updateForm.valid">Update</button>
-    <p style="color: red" class="text-center" *ngIf="status === 1">Please confirm that the original password is correct and then try to update again.</p>
+    <p style="color: red" class="text-center" *ngIf="status === 1">{{serverHint}}</p>
   </form>
 </div>

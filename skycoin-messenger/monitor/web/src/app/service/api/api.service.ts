@@ -183,6 +183,10 @@ export class ApiService {
       this.dialog.closeAll();
       this.router.navigate([{ outlets: { user: ['login'] } }]);
       return Observable.empty();
+    } else if (err.status === 307) {
+      console.log('Forced change password');
+      this.dialog.closeAll();
+      this.router.navigate(['updatePass']);
     }
     return Observable.throw(err.error.text);
   }
@@ -192,6 +196,10 @@ export class ApiService {
       this.dialog.closeAll();
       this.router.navigate([{ outlets: { user: ['login'] } }]);
       return Observable.empty();
+    } else if (err.status === 307) {
+      console.log('Forced change password');
+      this.dialog.closeAll();
+      this.router.navigate(['updatePass']);
     }
     return Observable.throw(err);
   }

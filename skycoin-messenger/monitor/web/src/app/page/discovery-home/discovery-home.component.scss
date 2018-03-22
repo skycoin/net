@@ -1,8 +1,8 @@
 app-discovery-home {
-  width: 100%;
-  height: 100%;
+  @at-root .root {
+    min-width: 600px !important;
+  }
   .banner {
-    width: 100%;
     height: 300px;
     display: flex;
     justify-content: center;
@@ -14,45 +14,66 @@ app-discovery-home {
       vertical-align: middle;
     }
     .text {
-      font-size: 4rem;
+      font-size: 4em;
     }
   }
   .content {
+    display: flex;
+    justify-content: center;
+    flex-direction: column;
     font-size: 1.2rem;
-    .label {
-      color: #999;
-      user-select: none;
-    }
-    .address {
-      margin-bottom: 2rem;
-      padding-left: 20%;
-    }
-    .table {
-      width: 60%;
+    .content-box {
+      width: 80%;
       margin: 0 auto;
-      border-collapse: collapse;
-      .no-found {
-        text-align: center !important;
+      .label {
+        color: #999;
+        user-select: none;
       }
-      td,
-      th {
-        padding: 15px 5px;
-        display: table-cell;
-        text-align: left;
-        vertical-align: middle;
-        border-radius: 2px;
+      .address {
+        margin-bottom: 2rem;
+        word-break: break-all;
       }
-      thead {
-        border-bottom: 1px solid #d0d0d0;
-      }
-      tbody {
-        tr {
+      .table {
+        font-size: 1em;
+        width: 90%;
+        border-collapse: collapse;
+        .no-found {
+          text-align: center !important;
+        }
+        td,
+        th {
+          padding: 15px 5px;
+          display: table-cell;
+          text-align: left;
+          vertical-align: middle;
+          border-radius: 2px;
+        }
+        thead {
           border-bottom: 1px solid #d0d0d0;
         }
-        .key {
-          font-size: xx-small;
+        tbody {
+          tr {
+            border-bottom: 1px solid #d0d0d0;
+          }
         }
       }
+    }
+  }
+  @media (max-width: 980px) {
+    .banner {
+      flex-direction: column;
+      img {
+        display: block;
+        margin: 0 auto;
+      }
+      .text {
+        font-size: 2.5em;
+      }
+      .table {
+        width: auto;
+      }
+    }
+    .content {
     }
   }
 }
