@@ -178,28 +178,30 @@ export class ApiService {
     return this.httpClient.post(url, data, opts).catch(err => this.handleNodeError(err));
   }
   handleNodeError(err: HttpErrorResponse) {
-    if (err.status === 302) {
-      console.log('open url');
-      this.dialog.closeAll();
-      this.router.navigate([{ outlets: { user: ['login'] } }]);
-      return Observable.empty();
-    } else if (err.status === 307) {
-      console.log('Forced change password');
-      this.dialog.closeAll();
-      this.router.navigate(['updatePass']);
+    this.dialog.closeAll();
+    switch (err.status) {
+      case 302:
+        this.router.navigate([{ outlets: { user: ['login'] } }]);
+        break;
+      case 307:
+        this.router.navigate(['updatePass']);
+        break;
+      default:
+        break;
     }
     return Observable.throw(err.error.text);
   }
   handleError(err: HttpErrorResponse) {
-    if (err.status === 302) {
-      console.log('open url');
-      this.dialog.closeAll();
-      this.router.navigate([{ outlets: { user: ['login'] } }]);
-      return Observable.empty();
-    } else if (err.status === 307) {
-      console.log('Forced change password');
-      this.dialog.closeAll();
-      this.router.navigate(['updatePass']);
+    this.dialog.closeAll();
+    switch (err.status) {
+      case 302:
+        this.router.navigate([{ outlets: { user: ['login'] } }]);
+        break;
+      case 307:
+        this.router.navigate(['updatePass']);
+        break;
+      default:
+        break;
     }
     return Observable.throw(err);
   }
