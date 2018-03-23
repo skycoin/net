@@ -36,7 +36,7 @@ export class UpdatePassComponent implements OnInit {
     data.append('oldPass', this.updateForm.get('oldpass').value);
     data.append('newPass', this.updateForm.get('newpass').value);
     this.api.updatePass(data).subscribe(result => {
-      if (result === 'true') {
+      if (result) {
         swal({
           title: 'Warning',
           text: 'The password has been changed. Click the button to jump to the login page.',
