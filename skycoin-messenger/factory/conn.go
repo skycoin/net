@@ -618,6 +618,7 @@ func (c *Connection) IsSkipFactoryReg() (skip bool) {
 func (c *Connection) ForEachTransport(fn func(t *Transport)) {
 	filter := make(map[*Transport]struct{})
 	c.appTransportsMutex.RLock()
+	defer c.appTransportsMutex.RUnlock()
 	for _, tr := range c.appTransports {
 		_, ok := filter[tr]
 		if ok {
@@ -626,7 +627,6 @@ func (c *Connection) ForEachTransport(fn func(t *Transport)) {
 		filter[tr] = struct{}{}
 		fn(tr)
 	}
-	c.appTransportsMutex.RUnlock()
 }
 
 func (c *Connection) StoreContext(key, value interface{}) {
