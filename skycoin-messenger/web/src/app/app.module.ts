@@ -18,7 +18,6 @@ import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { SocketService, UserService, EmojiService, ModalService, ModalWindow } from '../providers';
 import { ToolService } from '../providers/tool/tool.service';
 import {
-  MdCheckboxModule,
   MdMenuModule,
   MdIconModule,
   MdDialogModule,
@@ -57,7 +56,6 @@ const PERFECT_SCROLLBAR_CONFIG: PerfectScrollbarConfigInterface = {
     BrowserModule,
     FlexLayoutModule,
     BrowserAnimationsModule,
-    MdCheckboxModule,
     MdMenuModule,
     MdIconModule,
     MdDialogModule,

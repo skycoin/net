@@ -14,9 +14,6 @@
       <small class="time"><i class="fa fa-clock-o"></i>{{chat.Timestamp | date:'shortTime'}}</small>
     </div>
   </div>
-  <!-- <div class="action-box" fxFlex="10" fxLayoutAlign="center center">
-    <md-checkbox></md-checkbox>
-  </div> -->
 </div>
 <div class="other-message" *ngIf="chat.From !== selfId && !chat.IsTime">
   <div class="content">
@@ -28,9 +25,6 @@
       <small class="time"><i class="fa fa-clock-o"></i>{{chat.Timestamp | date:'shortTime'}}</small>
     </div>
   </div>
-  <!-- <div class="action-box" fxFlex="10" fxLayoutAlign="center center">
-    <md-checkbox></md-checkbox>
-  </div> -->
 </div>
 <md-menu #contextMenu="mdMenu">
   <button md-menu-item>
