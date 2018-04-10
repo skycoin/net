@@ -13,14 +13,14 @@ import 'rxjs/add/operator/take'
 import 'rxjs/add/observable/fromEvent'
 import 'rxjs/add/observable/timer'
 import { EmojiService } from '../emoji/emoji.service'
-export enum OP { REG, SEND, ACK };
-export enum PUSH { ACK, REG, MSG };
+export enum OP { ACCOUNT, REG, LOGIN, SEND, ACK };
+export enum PUSH { ACCOUNT, REG, LOGIN, MSG, ACK };
 
 @Injectable()
 export class SocketService {
   private ws: WebSocket = null;
   private url = 'ws://localhost:8082/ws';
-  // private url = 'ws://192.168.33.104:8082/ws';
+  // private url = 'ws://messenger.skycoin.net:8082/ws';
   // private ackDict = new Dictionary<number, any>();
   key = ''
   chattingUser = '';
@@ -34,6 +34,7 @@ export class SocketService {
   userInfo = new Map<string, UserInfo>();
   chatHistorys = this.historySubject.asObservable();
   constructor(private user: UserService, private emoji: EmojiService) {
+
     if (environment.server) {
       this.url = 'ws://messenger.skycoin.net:8082/ws';
     }
@@ -42,7 +43,14 @@ export class SocketService {
       this.updateHistorySubject.next(this.histories);
     })
     this.socket = this.fromWebSocket(this.url, {
-      next: () => { this.send(OP.REG, JSON.stringify({ Address: 'localhost:8080' })) },
+      next: () => {
+        const key = this.getKey()
+        // if (key) {
+        // this.login(key)
+        // } else {
+        this.send(OP.REG, JSON.stringify({ Address: 'localhost:8080' }))
+        // }
+      },
       error: err => { console.error('Connection Failed:', err) },
       complete: () => { if (!environment.production) { console.log('----connection succeeded----') } }
     }
@@ -63,6 +71,12 @@ export class SocketService {
       }, err => {
         console.log('-----------err------------', err);
       })
+  }
+  getKey() {
+    return localStorage.getItem('key')
+  }
+  setKey(key: string) {
+    localStorage.setItem('key', key)
   }
   getRencentListIndex(key: string) {
     return this.recent_list.findIndex(v => v.name === key);
@@ -128,9 +142,22 @@ export class SocketService {
     this.send(OP.SEND, JSON.stringify({ PublicKey: chattingKey, Msg: message }));
   }
 
+  private login(key: string) {
+    console.log('start login...')
+    this.send(OP.LOGIN, JSON.stringify({ Address: 'localhost:8080', PublicKey: key }))
+  }
+
+  getRequest() {
+    const url = location.search;
+    if (url.indexOf('?') !== -1) {
+      const str = url.substr(1);
+      const strs = str.split('=');
+      return strs[1];
+    }
+  }
+
   private handle(data: ArrayBuffer) {
     const buf = new Uint8Array(data);
-    // console.log('orgin data:', this.toHexString(buf));
     const op = buf[0]
     const metaData = this.utf8ArrayToStr(buf.slice(5));
     let json = null;
@@ -138,13 +165,18 @@ export class SocketService {
       json = JSON.parse(metaData);
     }
     switch (op) {
-      case PUSH.ACK:
+      case PUSH.REG:
+        this.key = json
+        this.login(this.key);
+        break;
+      case PUSH.ACCOUNT:
+        break;
+      case PUSH.LOGIN:
+        this.setKey(json.PublicKey)
         this.ack(op, this.getSeq(buf));
         break;
-      case PUSH.REG:
-        this.key = json.PublicKey;
-        // console.log('reg key:', this.key);
-        // this.userInfo.set(this.key, { Icon: this.user.getRandomMatch() });
+      case PUSH.ACK:
+        this.ack(op, this.getSeq(buf));
         break;
       case PUSH.MSG:
         const now = new Date().getTime();
@@ -208,7 +240,6 @@ export class SocketService {
   }
 
   ack(op: any, seq: number) {
-    // console.log('op:%s seq:%d', op, seq);
     this.sendWithSeq(OP.ACK, seq);
   }
 

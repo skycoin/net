@@ -80,3 +80,18 @@ func AddKey() (result map[string]*factory.SeedConfig, err error) {
 	}
 	return GetData()
 }
+
+func AddKeyToReg() (sc *factory.SeedConfig, err error) {
+	if len(keysPath) < 1 {
+		err = errors.New("keysPath can not be empty")
+	}
+	sc = factory.NewSeedConfig()
+	err = factory.WriteSeedConfig(sc, filepath.Join(keysPath, sc.PublicKey))
+	if err != nil {
+		return
+	}
+	keysMutex.Lock()
+	keys[sc.PublicKey] = sc
+	keysMutex.Unlock()
+	return
+}

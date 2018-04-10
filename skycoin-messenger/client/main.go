@@ -27,7 +27,7 @@ var (
 func parseFlags() {
 	flag.StringVar(&webDir, "web-dir", "../web/dist", "directory of web files")
 	flag.StringVar(&webSocketAddress, "websocket-address", "localhost:8082", "websocket address to listen on")
-	flag.BoolVar(&openBrowser, "open-browser", true, "whether to open browser")
+	flag.BoolVar(&openBrowser, "open-browser", false, "whether to open browser")
 	flag.StringVar(&seedPath, "seed-path", filepath.Join(file.UserHome(), ".skyim", "account"), "dir path to save seeds info")
 	flag.Parse()
 }
