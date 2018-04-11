@@ -163,15 +163,15 @@
             <mat-icon aria-label="more">more_vert</mat-icon>
           </button>
           <mat-menu #sshServermenu="matMenu">
-            <button mat-menu-item (click)="openSettings($event,sshSettings,'SSH')" [class.unread]="isUnread(SshServer) > 0">
+            <button mat-menu-item (click)="openSettings($event,sshSettings,'SSH')">
               <mat-icon>receipt</mat-icon>
               <span>White List</span>
             </button>
-            <button mat-menu-item (click)="openAppsSetting($event,'ssh')" [class.unread]="isUnread(SshServer) > 0">
+            <button mat-menu-item (click)="openAppsSetting($event,'ssh')">
               <mat-icon>settings</mat-icon>
               <span>Startup</span>
             </button>
-            <button mat-menu-item (click)="openLog(SshServer,logDialog)">
+            <button mat-menu-item (click)="openLog(SshServer,logDialog)" [class.unread]="isUnread(SshServer) > 0">
               <mat-icon>description</mat-icon>
               <span>Messages</span>
             </button>

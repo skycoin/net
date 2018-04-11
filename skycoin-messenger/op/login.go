@@ -33,10 +33,11 @@ func (r *Login) Execute(c msg.OPer) (err error) {
 	}
 	sc, ok := keys[r.PublicKey]
 	if !ok {
-		return errors.New("public key not found")
+		return errors.New("public key not found",)
 	}
 	f := factory.NewMessengerFactory()
-	_, err = f.ConnectWithConfig(r.Address, &factory.ConnConfig{
+	f.SetLoggerLevel(factory.DebugLevel)
+	err = f.ConnectWithConfig(r.Address, &factory.ConnConfig{
 		SeedConfig:    sc,
 		Reconnect:     true,
 		ReconnectWait: 2 * time.Second,
