@@ -1,0 +1,88 @@
+sudo: required
+dist: trusty
+language: go
+go:
+  - "1.9.x"
+  - "1.10.x"
+
+matrix:
+  include:
+    - os: linux
+    - os: osx
+      # Do not start osx build for PR
+      if: type != pull_request
+
+env:
+  global:
+    - ELECTRON_CACHE: $HOME/.cache/electron
+    - ELECTRON_BUILDER_CACHE: $HOME/.cache/electron-builder
+    - BUILD_DIR: build
+    - BUILDLIB_DIR: $BUILD_DIR/libskycoin
+    - LIB_DIR: lib
+
+cache:
+  yarn: true
+  directories:
+  - electron/node_modules
+  - electron/src/node_modules
+  - $HOME/.cache/electron
+  - $HOME/.cache/electron-builder
+  - $HOME/.npm/_prebuilds
+  - src/gui/static/node_modules
+
+install:
+  # Install gox
+  - go get github.com/gz-c/gox
+  # Install dependences for building wallet
+  - if [[ "$TRAVIS_OS_NAME" == "linux" && "$TRAVIS_PULL_REQUEST" == false ]]; then sudo apt-get install --no-install-recommends -y icnsutils graphicsmagick xz-utils && nvm install 8; fi
+  - go get -t ./...
+  - make install-linters
+  - make install-deps-libc
+  - make install-deps-ui
+
+before_script:
+  - if [[ "$TRAVIS_OS_NAME" == "osx" && "$TRAVIS_PULL_REQUEST" == false ]]; then ./ci-scripts/add-key.sh && npm install -g yarn ;fi
+
+script:
+  - make lint
+  - make test-386
+  - make test-amd64
+  # Stable integration tests
+  - make integration-test-stable
+  # Disable wallet api test
+  - make integration-test-disable-wallet-api
+  # Disable seed api test
+  - make integration-test-disable-seed-api
+  # libskycoin tests
+  - make test-libc
+  # TODO: test pyskycoin
+  # - make test-libpy
+  # TODO: test ui
+  # - make test-ui
+  - make lint-ui
+  # Build wallets
+  - if [[ "$TRAVIS_PULL_REQUEST" == false ]]; then ./ci-scripts/build-wallet.sh; fi
+  # Check that the UI can build. this is done after the wallet build step, because make build-ui
+  # will change the dist/ folder.
+  # If make test-ui can verify that the wallet compiles, we can remove this step after we enable make test-ui
+  - make build-ui
+
+notifications:
+  email:
+    - travis@skycoin.net
+  # https://github.com/kvld/travisci-telegram TravisCI Telegram Bot integration
+  webhooks: https://fathomless-fjord-24024.herokuapp.com/notify
+
+deploy:
+  provider: s3
+  access_key_id: $AWS_ACCESS_KEY_ID
+  secret_access_key: $AWS_SECRET_ACCESS_KEY
+  bucket: $AWS_BUCKET
+  skip_cleanup: true
+  local_dir: electron/release
+  upload-dir: wallet
+  acl: public_read
+  region: $AWS_REGION
+  on:
+    repo: skycoin/skycoin
+    branch: master

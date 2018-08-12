@@ -1,0 +1,16 @@
+<div class="sky-container sky-container-grey">
+  <app-header title="Blockchain"></app-header>
+
+  <mat-card class="skycoin-details">
+    <div class="skycoin-detail-keys">
+      Number of blocks: <br>
+      Time since last block: <br>
+      Hash of last block: <br>
+    </div>
+    <div class="skycoin-detail-values" *ngIf="block && block.header">
+      {{ block.header.seq }} <br>
+      {{ block.header.timestamp | dateFromNow }} <br>
+      {{ block.header.block_hash }}
+    </div>
+  </mat-card>
+</div>

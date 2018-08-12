@@ -40,14 +40,10 @@ type Reg struct {
 }
 
 func (r *Reg) Execute(c msg.OPer) (err error) {
-	sc, err := data.AddKey()
+	sc, err := data.AddKeyToReg()
 	if err != nil {
 		return
 	}
-	keys := make([]string, 0, len(sc))
-	for k := range sc {
-		keys = append(keys, k)
-	}
-	c.Push(msg.OP_ACCOUNT, keys)
+	c.Push(msg.OP_REG, sc.PublicKey)
 	return
 }
