@@ -1,9 +1,6 @@
 package factory
 
 import (
-	"testing"
-
-	"github.com/skycoin/skycoin/src/cipher"
 	"sync"
 )
 
@@ -13,7 +10,7 @@ func newTestConnection() *Connection {
 	return connection
 }
 
-func TestRegisterAndFind(t *testing.T) {
+/*func TestRegisterAndFind(t *testing.T) {
 	conn1 := newTestConnection()
 	connkey1 := cipher.PubKey([33]byte{0x01})
 	key1 := cipher.PubKey([33]byte{0xf1})
@@ -98,4 +95,4 @@ func TestRegisterAndFind(t *testing.T) {
 	if len(service.key2Attributes) != 0 {
 		t.Fatal(service.key2Attributes)
 	}
-}
+}*/
