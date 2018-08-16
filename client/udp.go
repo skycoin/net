@@ -10,10 +10,13 @@ import (
 	"github.com/skycoin/net/msg"
 )
 
+// ClientUDPConn is a wrapper over skycoin UDPConn
 type ClientUDPConn struct {
 	*conn.UDPConn
 }
 
+// NewClientUDPConn gets a UDP connection and an UDP address and
+// returns own wrapper struct over UDPConn
 func NewClientUDPConn(c *net.UDPConn, addr *net.UDPAddr) *ClientUDPConn {
 	uc := conn.NewUDPConn(c, addr)
 	uc.SendPing = true
@@ -21,6 +24,8 @@ func NewClientUDPConn(c *net.UDPConn, addr *net.UDPAddr) *ClientUDPConn {
 	return &ClientUDPConn{UDPConn: uc}
 }
 
+// ReadLoop keeps reading for the different message types and will exit on error or
+// on TYPE_FIN message.
 func (c *ClientUDPConn) ReadLoop() (err error) {
 	defer func() {
 		if !conn.DEV {
