@@ -1,0 +1,2394 @@
+<!--
+	Copyright 2009 The Go Authors. All rights reserved.
+	Use of this source code is governed by a BSD-style
+	license that can be found in the LICENSE file.
+-->
+<!--
+	Note: Static (i.e., not template-generated) href and id
+	attributes start with "pkg-" to make it impossible for
+	them to conflict with generated attributes (some of which
+	correspond to Go identifiers).
+-->
+
+	<script type='text/javascript'>
+	document.ANALYSIS_DATA = ;
+	document.CALLGRAPH = ;
+	</script>
+
+	
+		
+		<div id="short-nav">
+			<dl>
+			<dd><code>import "."</code></dd>
+			</dl>
+			<dl>
+			<dd><a href="#pkg-overview" class="overviewLink">Overview</a></dd>
+			<dd><a href="#pkg-index" class="indexLink">Index</a></dd>
+			
+				<dd><a href="#pkg-examples" class="examplesLink">Examples</a></dd>
+			
+			
+			</dl>
+		</div>
+		<!-- The package's Name is printed as title by the top-level template -->
+		<div id="pkg-overview" class="toggleVisible">
+			<div class="collapsed">
+				<h2 class="toggleButton" title="Click to show Overview section">Overview ▹</h2>
+			</div>
+			<div class="expanded">
+				<h2 class="toggleButton" title="Click to hide Overview section">Overview ▾</h2>
+				
+				<div id="example_" class="toggle">
+	<div class="collapsed">
+		<p class="exampleHeading toggleButton">▹ <span class="text">Example</span></p>
+	</div>
+	<div class="expanded">
+		<p class="exampleHeading toggleButton">▾ <span class="text">Example</span></p>
+		<p>This example shows how to send ping pong messages through two clients
+</p>
+		
+		
+			<p>Code:</p>
+			<pre class="code">package factory_test
+
+import (
+    &#34;github.com/skycoin/net/skycoin-messenger/factory&#34;
+    &#34;fmt&#34;
+    &#34;github.com/skycoin/skycoin/src/cipher&#34;
+)
+
+var client1pk cipher.PubKey
+
+<span class="comment">// This example shows how to send ping pong messages through two clients</span>
+func Example() {
+    go startServer()
+    go startClient1()
+    startClient2()
+}
+
+func startServer() {
+    f := factory.NewMessengerFactory()
+    f.Listen(&#34;:8000&#34;)
+}
+
+func startClient1() {
+    f := factory.NewMessengerFactory()
+
+    err := f.Connect(&#34;localhost:8080&#34;)
+    if err != nil {
+        panic(err)
+    }
+
+    f.ForEachConn(processConn)
+}
+
+func processConn(conn *factory.Connection) {
+    fmt.Println(&#34;connection&#34;)
+    client1pk = conn.GetKey()
+    for {
+        select {
+        case m, ok := &lt;-conn.GetChanIn():
+            if !ok {
+                fmt.Println(&#34;got message: %s&#34;, string(m))
+                panic(&#34;something is not ok...&#34;)
+                return
+            }
+            fmt.Println(&#34;sending pong&#34;)
+            conn.Write(factory.GenSendMsg(conn.GetKey(), conn.GetTargetKey(), []byte(&#34;pong&#34;)))
+        }
+    }
+}
+
+func startClient2() {
+    f := factory.NewMessengerFactory()
+
+    err := f.Connect(&#34;localhost:8080&#34;)
+    if err != nil {
+        panic(err)
+    }
+
+    f.ForEachConn(processConn2)
+}
+
+func processConn2(conn *factory.Connection) {
+    conn.GetChanIn()
+    factory.GenSendMsg(client1pk, conn.GetKey(), []byte(&#34;ping&#34;))
+
+}
+</pre>
+			
+		
+	</div>
+</div>
+
+			</div>
+		</div>
+
+		<div id="pkg-index" class="toggleVisible">
+		<div class="collapsed">
+			<h2 class="toggleButton" title="Click to show Index section">Index ▹</h2>
+		</div>
+		<div class="expanded">
+			<h2 class="toggleButton" title="Click to hide Index section">Index ▾</h2>
+
+		<!-- Table of contents for API; must be named manual-nav to turn off auto nav. -->
+			<div id="manual-nav">
+			<dl>
+			
+				<dd><a href="#pkg-constants">Constants</a></dd>
+			
+			
+				<dd><a href="#pkg-variables">Variables</a></dd>
+			
+			
+				
+				<dd><a href="#GenRegMsg">func GenRegMsg() []byte</a></dd>
+			
+				
+				<dd><a href="#GenSendMsg">func GenSendMsg(from, to cipher.PubKey, msg []byte) []byte</a></dd>
+			
+				
+				<dd><a href="#WriteSeedConfig">func WriteSeedConfig(sc *SeedConfig, path string) (err error)</a></dd>
+			
+			
+				
+				<dd><a href="#AppConnResp">type AppConnResp</a></dd>
+				
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#AppConnResp.Run">func (req *AppConnResp) Run(conn *Connection) (err error)</a></dd>
+				
+			
+				
+				<dd><a href="#AppFeedback">type AppFeedback</a></dd>
+				
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#AppFeedback.Execute">func (req *AppFeedback) Execute(f *MessengerFactory, conn *Connection) (r resp, err error)</a></dd>
+				
+			
+				
+				<dd><a href="#AttrAppInfo">type AttrAppInfo</a></dd>
+				
+				
+			
+				
+				<dd><a href="#AttrNodeInfo">type AttrNodeInfo</a></dd>
+				
+				
+			
+				
+				<dd><a href="#AttrNodesInfo">type AttrNodesInfo</a></dd>
+				
+				
+			
+				
+				<dd><a href="#ConnConfig">type ConnConfig</a></dd>
+				
+				
+			
+				
+				<dd><a href="#Connection">type Connection</a></dd>
+				
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Connection.BuildAppConnection">func (c *Connection) BuildAppConnection(node, app, discovery cipher.PubKey) error</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Connection.CheckMessages">func (c *Connection) CheckMessages() (result int)</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Connection.Close">func (c *Connection) Close()</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Connection.EnableSkipFactoryReg">func (c *Connection) EnableSkipFactoryReg()</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Connection.FindServiceNodesByAttributes">func (c *Connection) FindServiceNodesByAttributes(attrs ...string) error</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Connection.FindServiceNodesByKeys">func (c *Connection) FindServiceNodesByKeys(keys []cipher.PubKey) error</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Connection.FindServiceNodesWithSeqByAttributes">func (c *Connection) FindServiceNodesWithSeqByAttributes(attrs ...string) (seq uint32, err error)</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Connection.FindServiceNodesWithSeqByAttributesAndPaging">func (c *Connection) FindServiceNodesWithSeqByAttributesAndPaging(pages, limit int, attrs ...string) (seq uint32, err error)</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Connection.ForEachTransport">func (c *Connection) ForEachTransport(fn func(t *Transport))</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Connection.GetAppFeedback">func (c *Connection) GetAppFeedback() (v *AppFeedback)</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Connection.GetChanIn">func (c *Connection) GetChanIn() &lt;-chan []byte</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Connection.GetConnectTime">func (c *Connection) GetConnectTime() int64</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Connection.GetKey">func (c *Connection) GetKey() cipher.PubKey</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Connection.GetMessages">func (c *Connection) GetMessages() (result []PriorityMsg)</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Connection.GetSecKey">func (c *Connection) GetSecKey() (key cipher.SecKey)</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Connection.GetServices">func (c *Connection) GetServices() *NodeServices</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Connection.GetTargetKey">func (c *Connection) GetTargetKey() (key cipher.PubKey)</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Connection.GetTransportPair">func (c *Connection) GetTransportPair() (pair *transportPair)</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Connection.IsKeySet">func (c *Connection) IsKeySet() (b bool)</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Connection.IsSkipFactoryReg">func (c *Connection) IsSkipFactoryReg() (skip bool)</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Connection.LoadContext">func (c *Connection) LoadContext(key interface{}) (value interface{}, ok bool)</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Connection.OfferPrivateServiceWithAddress">func (c *Connection) OfferPrivateServiceWithAddress(address, version string, allowNodes []string, attrs ...string) error</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Connection.OfferService">func (c *Connection) OfferService(attrs ...string) error</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Connection.OfferServiceWithAddress">func (c *Connection) OfferServiceWithAddress(address, version string, attrs ...string) error</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Connection.PutMessage">func (c *Connection) PutMessage(v PriorityMsg)</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Connection.Reg">func (c *Connection) Reg() error</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Connection.RegWithKey">func (c *Connection) RegWithKey(key cipher.PubKey, context map[string]string) error</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Connection.RegWithKeys">func (c *Connection) RegWithKeys(key, target cipher.PubKey, context map[string]string) error</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Connection.Send">func (c *Connection) Send(to cipher.PubKey, msg []byte) error</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Connection.SendCustom">func (c *Connection) SendCustom(msg []byte) error</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Connection.SetAppFeedback">func (c *Connection) SetAppFeedback(fb *AppFeedback)</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Connection.SetCrypto">func (c *Connection) SetCrypto(pk cipher.PubKey, sk cipher.SecKey, target cipher.PubKey, iv []byte) (err error)</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Connection.SetKey">func (c *Connection) SetKey(key cipher.PubKey)</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Connection.SetSecKey">func (c *Connection) SetSecKey(key cipher.SecKey)</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Connection.SetTargetKey">func (c *Connection) SetTargetKey(key cipher.PubKey)</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Connection.SetTransportPair">func (c *Connection) SetTransportPair(pair *transportPair)</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Connection.StoreContext">func (c *Connection) StoreContext(key, value interface{})</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Connection.UpdateConnectTime">func (c *Connection) UpdateConnectTime()</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Connection.UpdateServices">func (c *Connection) UpdateServices(ns *NodeServices) (err error)</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Connection.WaitForKey">func (c *Connection) WaitForKey() (err error)</a></dd>
+				
+			
+				
+				<dd><a href="#Custom">type Custom</a></dd>
+				
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Custom.RawExecute">func (custom *Custom) RawExecute(f *MessengerFactory, conn *Connection, m []byte) (rb []byte, err error)</a></dd>
+				
+			
+				
+				<dd><a href="#Level">type Level</a></dd>
+				
+				
+			
+				
+				<dd><a href="#MessengerFactory">type MessengerFactory</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#NewMessengerFactory">func NewMessengerFactory() *MessengerFactory</a></dd>
+				
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#MessengerFactory.Close">func (f *MessengerFactory) Close() (err error)</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#MessengerFactory.Connect">func (f *MessengerFactory) Connect(address string) (err error)</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#MessengerFactory.ConnectWithConfig">func (f *MessengerFactory) ConnectWithConfig(address string, config *ConnConfig) (err error)</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#MessengerFactory.DisableLogger">func (f *MessengerFactory) DisableLogger()</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#MessengerFactory.ForEachAcceptedConnection">func (f *MessengerFactory) ForEachAcceptedConnection(fn func(key cipher.PubKey, conn *Connection))</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#MessengerFactory.ForEachConn">func (f *MessengerFactory) ForEachConn(fn func(connection *Connection))</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#MessengerFactory.GetAppVersion">func (f *MessengerFactory) GetAppVersion() (v string)</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#MessengerFactory.GetConnection">func (f *MessengerFactory) GetConnection(key cipher.PubKey) (c *Connection, ok bool)</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#MessengerFactory.GetDefaultSeedConfig">func (f *MessengerFactory) GetDefaultSeedConfig() (sc *SeedConfig)</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#MessengerFactory.Listen">func (f *MessengerFactory) Listen(address string) (err error)</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#MessengerFactory.ResyncToDiscovery">func (f *MessengerFactory) ResyncToDiscovery(connection *Connection) (err error)</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#MessengerFactory.SetAppVersion">func (f *MessengerFactory) SetAppVersion(v string)</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#MessengerFactory.SetDefaultSeedConfig">func (f *MessengerFactory) SetDefaultSeedConfig(sc *SeedConfig) error</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#MessengerFactory.SetDefaultSeedConfigPath">func (f *MessengerFactory) SetDefaultSeedConfigPath(path string) error</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#MessengerFactory.SetLoggerLevel">func (f *MessengerFactory) SetLoggerLevel(level Level)</a></dd>
+				
+			
+				
+				<dd><a href="#MsgType">type MsgType</a></dd>
+				
+				
+			
+				
+				<dd><a href="#NodeInfo">type NodeInfo</a></dd>
+				
+				
+			
+				
+				<dd><a href="#NodeServices">type NodeServices</a></dd>
+				
+				
+			
+				
+				<dd><a href="#Priority">type Priority</a></dd>
+				
+				
+			
+				
+				<dd><a href="#PriorityMsg">type PriorityMsg</a></dd>
+				
+				
+			
+				
+				<dd><a href="#QueryByAttrsResp">type QueryByAttrsResp</a></dd>
+				
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#QueryByAttrsResp.Run">func (resp *QueryByAttrsResp) Run(conn *Connection) (err error)</a></dd>
+				
+			
+				
+				<dd><a href="#QueryResp">type QueryResp</a></dd>
+				
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#QueryResp.Run">func (resp *QueryResp) Run(conn *Connection) (err error)</a></dd>
+				
+			
+				
+				<dd><a href="#RegVersion">type RegVersion</a></dd>
+				
+				
+			
+				
+				<dd><a href="#SeedConfig">type SeedConfig</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#NewSeedConfig">func NewSeedConfig() *SeedConfig</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#ReadOrCreateSeedConfig">func ReadOrCreateSeedConfig(path string) (sc *SeedConfig, err error)</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#ReadSeedConfig">func ReadSeedConfig(path string) (sc *SeedConfig, err error)</a></dd>
+				
+				
+			
+				
+				<dd><a href="#Service">type Service</a></dd>
+				
+				
+			
+				
+				<dd><a href="#ServiceInfo">type ServiceInfo</a></dd>
+				
+				
+			
+				
+				<dd><a href="#Transport">type Transport</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#NewTransport">func NewTransport(creator *MessengerFactory, appConn *Connection, fromNode, toNode, fromApp, toApp cipher.PubKey) *Transport</a></dd>
+				
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Transport.Close">func (t *Transport) Close()</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Transport.GetDownloadBandwidth">func (t *Transport) GetDownloadBandwidth() uint</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Transport.GetDownloadTotal">func (t *Transport) GetDownloadTotal() uint</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Transport.GetServingPort">func (t *Transport) GetServingPort() int</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Transport.GetUploadBandwidth">func (t *Transport) GetUploadBandwidth() uint</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Transport.GetUploadTotal">func (t *Transport) GetUploadTotal() uint</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Transport.IsClientSide">func (t *Transport) IsClientSide() bool</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Transport.ListenAndConnect">func (t *Transport) ListenAndConnect(address string, key cipher.PubKey) (conn *Connection, err error)</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Transport.ListenForApp">func (t *Transport) ListenForApp(fn func(port int)) (err error)</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Transport.SetOnAcceptedUDPCallback">func (t *Transport) SetOnAcceptedUDPCallback(fn func(connection *Connection))</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Transport.SetupTimeout">func (t *Transport) SetupTimeout()</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Transport.StopTimeout">func (t *Transport) StopTimeout()</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Transport.String">func (t *Transport) String() string</a></dd>
+				
+			
+			
+			</dl>
+			</div><!-- #manual-nav -->
+
+		
+		<div id="pkg-examples">
+			<h3>Examples</h3>
+			<div class="js-expandAll expandAll collapsed">(Expand All)</div>
+			<dl>
+			
+			<dd><a class="exampleLink" href="#example_">Package</a></dd>
+			
+			</dl>
+		</div>
+		
+
+		
+			<h3>Package files</h3>
+			<p>
+			<span style="font-size:90%">
+			
+				<a href="/src/target/conn.go">conn.go</a>
+			
+				<a href="/src/target/conn_config.go">conn_config.go</a>
+			
+				<a href="/src/target/const.go">const.go</a>
+			
+				<a href="/src/target/factory.go">factory.go</a>
+			
+				<a href="/src/target/msg.go">msg.go</a>
+			
+				<a href="/src/target/op.go">op.go</a>
+			
+				<a href="/src/target/op_build.go">op_build.go</a>
+			
+				<a href="/src/target/op_custom.go">op_custom.go</a>
+			
+				<a href="/src/target/op_offer.go">op_offer.go</a>
+			
+				<a href="/src/target/op_pow.go">op_pow.go</a>
+			
+				<a href="/src/target/op_query.go">op_query.go</a>
+			
+				<a href="/src/target/op_reg.go">op_reg.go</a>
+			
+				<a href="/src/target/op_send.go">op_send.go</a>
+			
+				<a href="/src/target/service.go">service.go</a>
+			
+				<a href="/src/target/transport.go">transport.go</a>
+			
+			</span>
+			</p>
+		
+		</div><!-- .expanded -->
+		</div><!-- #pkg-index -->
+
+		<div id="pkg-callgraph" class="toggle" style="display: none">
+		<div class="collapsed">
+			<h2 class="toggleButton" title="Click to show Internal Call Graph section">Internal call graph ▹</h2>
+		</div> <!-- .expanded -->
+		<div class="expanded">
+			<h2 class="toggleButton" title="Click to hide Internal Call Graph section">Internal call graph ▾</h2>
+			<p>
+			  In the call graph viewer below, each node
+			  is a function belonging to this package
+			  and its children are the functions it
+			  calls&mdash;perhaps dynamically.
+			</p>
+			<p>
+			  The root nodes are the entry points of the
+			  package: functions that may be called from
+			  outside the package.
+			  There may be non-exported or anonymous
+			  functions among them if they are called
+			  dynamically from another package.
+			</p>
+			<p>
+			  Click a node to visit that function's source code.
+			  From there you can visit its callers by
+			  clicking its declaring <code>func</code>
+			  token.
+			</p>
+			<p>
+			  Functions may be omitted if they were
+			  determined to be unreachable in the
+			  particular programs or tests that were
+			  analyzed.
+			</p>
+			<!-- Zero means show all package entry points. -->
+			<ul style="margin-left: 0.5in" id="callgraph-0" class="treeview"></ul>
+		</div>
+		</div> <!-- #pkg-callgraph -->
+
+		
+			<h2 id="pkg-constants">Constants</h2>
+			
+				
+				<pre>const (
+    <span id="MSG_OP_SIZE">MSG_OP_SIZE</span>         = 1
+    <span id="MSG_PUBLIC_KEY_SIZE">MSG_PUBLIC_KEY_SIZE</span> = 33
+)</pre>
+			
+				
+				<pre>const (
+    <span id="MSG_HEADER_BEGIN">MSG_HEADER_BEGIN</span> = 0
+    <span id="MSG_OP_BEGIN">MSG_OP_BEGIN</span>
+    <span id="MSG_OP_END">MSG_OP_END</span> = <a href="#MSG_OP_BEGIN">MSG_OP_BEGIN</a> + <a href="#MSG_OP_SIZE">MSG_OP_SIZE</a>
+    <span id="MSG_HEADER_END">MSG_HEADER_END</span>
+)</pre>
+			
+				
+				<pre>const (
+    <span id="SEND_MSG_META_BEGIN">SEND_MSG_META_BEGIN</span> = <a href="#MSG_HEADER_END">MSG_HEADER_END</a>
+
+    <span id="SEND_MSG_PUBLIC_KEY_BEGIN">SEND_MSG_PUBLIC_KEY_BEGIN</span>
+    <span id="SEND_MSG_PUBLIC_KEY_END">SEND_MSG_PUBLIC_KEY_END</span> = <a href="#SEND_MSG_PUBLIC_KEY_BEGIN">SEND_MSG_PUBLIC_KEY_BEGIN</a> + <a href="#MSG_PUBLIC_KEY_SIZE">MSG_PUBLIC_KEY_SIZE</a>
+
+    <span id="SEND_MSG_TO_PUBLIC_KEY_BEGIN">SEND_MSG_TO_PUBLIC_KEY_BEGIN</span>
+    <span id="SEND_MSG_TO_PUBLIC_KEY_END">SEND_MSG_TO_PUBLIC_KEY_END</span> = <a href="#SEND_MSG_TO_PUBLIC_KEY_BEGIN">SEND_MSG_TO_PUBLIC_KEY_BEGIN</a> + <a href="#MSG_PUBLIC_KEY_SIZE">MSG_PUBLIC_KEY_SIZE</a>
+
+    <span id="SEND_MSG_META_END">SEND_MSG_META_END</span>
+)</pre>
+			
+				
+				<pre>const (
+    <span class="comment">// request public key for the connection</span>
+    <span id="OP_REG">OP_REG</span> = <a href="/pkg/builtin/#iota">iota</a>
+    <span class="comment">// im messages</span>
+    <span id="OP_SEND">OP_SEND</span>
+    <span class="comment">// app custom messages</span>
+    <span id="OP_CUSTOM">OP_CUSTOM</span>
+    <span class="comment">// discovery register</span>
+    <span id="OP_OFFER_SERVICE">OP_OFFER_SERVICE</span>
+    <span class="comment">// find services by public key (cxo)</span>
+    <span id="OP_QUERY_SERVICE_NODES">OP_QUERY_SERVICE_NODES</span>
+    <span class="comment">// find services by attributes (vpn, socks etc)</span>
+    <span id="OP_QUERY_BY_ATTRS">OP_QUERY_BY_ATTRS</span>
+
+    <span class="comment">// build udp p2p connections</span>
+    <span id="OP_BUILD_APP_CONN">OP_BUILD_APP_CONN</span>
+    <span id="OP_FORWARD_NODE_CONN">OP_FORWARD_NODE_CONN</span>
+    <span id="OP_BUILD_NODE_CONN">OP_BUILD_NODE_CONN</span>
+    <span id="OP_FORWARD_NODE_CONN_RESP">OP_FORWARD_NODE_CONN_RESP</span>
+    <span id="OP_BUILD_APP_CONN_OK">OP_BUILD_APP_CONN_OK</span>
+    <span id="OP_APP_CONN_ACK">OP_APP_CONN_ACK</span>
+    <span id="OP_APP_FEEDBACK">OP_APP_FEEDBACK</span>
+
+    <span class="comment">// reg with key steps</span>
+    <span id="OP_REG_KEY">OP_REG_KEY</span>
+    <span id="OP_REG_SIG">OP_REG_SIG</span>
+
+    <span class="comment">// POW</span>
+    <span id="OP_POW">OP_POW</span>
+
+    <span id="OP_SIZE">OP_SIZE</span>
+)</pre>
+			
+				
+				<pre>const (
+    <span id="PKG_HEADER_ID_SIZE">PKG_HEADER_ID_SIZE</span> = 4
+    <span id="PKG_HEADER_OP_SIZE">PKG_HEADER_OP_SIZE</span> = 1
+
+    <span id="PKG_HEADER_BEGIN">PKG_HEADER_BEGIN</span> = 0
+    <span id="PKG_HEADER_OP_BEGIN">PKG_HEADER_OP_BEGIN</span>
+    <span id="PKG_HEADER_OP_END">PKG_HEADER_OP_END</span> = <a href="#PKG_HEADER_OP_BEGIN">PKG_HEADER_OP_BEGIN</a> + <a href="#PKG_HEADER_OP_SIZE">PKG_HEADER_OP_SIZE</a>
+    <span id="PKG_HEADER_ID_BEGIN">PKG_HEADER_ID_BEGIN</span>
+    <span id="PKG_HEADER_ID_END">PKG_HEADER_ID_END</span> = <a href="#PKG_HEADER_ID_BEGIN">PKG_HEADER_ID_BEGIN</a> + <a href="#PKG_HEADER_ID_SIZE">PKG_HEADER_ID_SIZE</a>
+    <span id="PKG_HEADER_END">PKG_HEADER_END</span>
+)</pre>
+			
+				
+				<pre>const (
+    <span id="OP_TRANSPORT">OP_TRANSPORT</span> = <a href="/pkg/builtin/#iota">iota</a>
+    <span id="OP_CLOSE">OP_CLOSE</span>
+    <span id="OP_SHUTDOWN">OP_SHUTDOWN</span>
+)</pre>
+			
+				
+				<pre>const <span id="RESP_PREFIX">RESP_PREFIX</span> = 0x80</pre>
+			
+				
+				<pre>const <span id="VERSION">VERSION</span> = &#34;0.1.0&#34;</pre>
+			
+		
+		
+			<h2 id="pkg-variables">Variables</h2>
+			
+				
+				<pre>var <span id="EMPATY_PUBLIC_KEY">EMPATY_PUBLIC_KEY</span> = <a href="/pkg/github.com/skycoin/skycoin/src/cipher/">cipher</a>.<a href="/pkg/github.com/skycoin/skycoin/src/cipher/#PubKey">PubKey</a>{}</pre>
+			
+				
+				<pre>var (
+    <span id="ErrDetach">ErrDetach</span> = <a href="/pkg/errors/">errors</a>.<a href="/pkg/errors/#New">New</a>(&#34;detach from accept callback&#34;)
+)</pre>
+			
+		
+		
+			
+			
+			<h2 id="GenRegMsg">func <a href="/src/target/msg.go?s=70:93#L1">GenRegMsg</a>
+				<a class="permalink" href="#GenRegMsg">&#xb6;</a>
+				
+				
+			</h2>
+			<pre>func GenRegMsg() []<a href="/pkg/builtin/#byte">byte</a></pre>
+			
+			
+			
+
+		
+			
+			
+			<h2 id="GenSendMsg">func <a href="/src/target/msg.go?s=185:243#L3">GenSendMsg</a>
+				<a class="permalink" href="#GenSendMsg">&#xb6;</a>
+				
+				
+			</h2>
+			<pre>func GenSendMsg(from, to <a href="/pkg/github.com/skycoin/skycoin/src/cipher/">cipher</a>.<a href="/pkg/github.com/skycoin/skycoin/src/cipher/#PubKey">PubKey</a>, msg []<a href="/pkg/builtin/#byte">byte</a>) []<a href="/pkg/builtin/#byte">byte</a></pre>
+			
+			
+			
+
+		
+			
+			
+			<h2 id="WriteSeedConfig">func <a href="/src/target/conn_config.go?s=2519:2580#L122">WriteSeedConfig</a>
+				<a class="permalink" href="#WriteSeedConfig">&#xb6;</a>
+				
+				
+			</h2>
+			<pre>func WriteSeedConfig(sc *<a href="#SeedConfig">SeedConfig</a>, path <a href="/pkg/builtin/#string">string</a>) (err <a href="/pkg/builtin/#error">error</a>)</pre>
+			
+			
+			
+
+		
+		
+			
+			
+			<h2 id="AppConnResp">type <a href="/src/target/op_build.go?s=3388:3557#L145">AppConnResp</a>
+				<a class="permalink" href="#AppConnResp">&#xb6;</a>
+				
+				
+			</h2>
+			
+			<pre>type AppConnResp struct {
+<span id="AppConnResp.Discovery"></span>    Discovery <a href="/pkg/github.com/skycoin/skycoin/src/cipher/">cipher</a>.<a href="/pkg/github.com/skycoin/skycoin/src/cipher/#PubKey">PubKey</a>
+<span id="AppConnResp.App"></span>    App       <a href="/pkg/github.com/skycoin/skycoin/src/cipher/">cipher</a>.<a href="/pkg/github.com/skycoin/skycoin/src/cipher/#PubKey">PubKey</a>
+<span id="AppConnResp.Host"></span>    Host      <a href="/pkg/builtin/#string">string</a> `json:&#34;,omitempty&#34;`
+<span id="AppConnResp.Port"></span>    Port      <a href="/pkg/builtin/#int">int</a>
+<span id="AppConnResp.Failed"></span>    Failed    <a href="/pkg/builtin/#bool">bool</a>
+<span id="AppConnResp.Msg"></span>    Msg       <a href="#PriorityMsg">PriorityMsg</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+				
+				<h3 id="AppConnResp.Run">func (*AppConnResp) <a href="/src/target/op_build.go?s=3573:3630#L155">Run</a>
+					<a class="permalink" href="#AppConnResp.Run">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (req *<a href="#AppConnResp">AppConnResp</a>) Run(conn *<a href="#Connection">Connection</a>) (err <a href="/pkg/builtin/#error">error</a>)</pre>
+				<p>
+run on app
+</p>
+
+				
+				
+				
+			
+		
+			
+			
+			<h2 id="AppFeedback">type <a href="/src/target/op_build.go?s=4012:4200#L172">AppFeedback</a>
+				<a class="permalink" href="#AppFeedback">&#xb6;</a>
+				
+				
+			</h2>
+			
+			<pre>type AppFeedback struct {
+<span id="AppFeedback.Discovery"></span>    Discovery <a href="/pkg/github.com/skycoin/skycoin/src/cipher/">cipher</a>.<a href="/pkg/github.com/skycoin/skycoin/src/cipher/#PubKey">PubKey</a>
+    <span class="comment">// to app</span>
+<span id="AppFeedback.App"></span>    App    <a href="/pkg/github.com/skycoin/skycoin/src/cipher/">cipher</a>.<a href="/pkg/github.com/skycoin/skycoin/src/cipher/#PubKey">PubKey</a>
+<span id="AppFeedback.Port"></span>    Port   <a href="/pkg/builtin/#int">int</a>         `json:&#34;port&#34;`
+<span id="AppFeedback.Failed"></span>    Failed <a href="/pkg/builtin/#bool">bool</a>        `json:&#34;failed&#34;`
+<span id="AppFeedback.Msg"></span>    Msg    <a href="#PriorityMsg">PriorityMsg</a> `json:&#34;msg&#34;`
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+				
+				<h3 id="AppFeedback.Execute">func (*AppFeedback) <a href="/src/target/op_build.go?s=4202:4292#L181">Execute</a>
+					<a class="permalink" href="#AppFeedback.Execute">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (req *<a href="#AppFeedback">AppFeedback</a>) Execute(f *<a href="#MessengerFactory">MessengerFactory</a>, conn *<a href="#Connection">Connection</a>) (r resp, err <a href="/pkg/builtin/#error">error</a>)</pre>
+				
+				
+				
+				
+			
+		
+			
+			
+			<h2 id="AttrAppInfo">type <a href="/src/target/service.go?s=4489:4555#L168">AttrAppInfo</a>
+				<a class="permalink" href="#AttrAppInfo">&#xb6;</a>
+				
+				
+			</h2>
+			
+			<pre>type AttrAppInfo struct {
+<span id="AttrAppInfo.Key"></span>    Key     <a href="/pkg/github.com/skycoin/skycoin/src/cipher/">cipher</a>.<a href="/pkg/github.com/skycoin/skycoin/src/cipher/#PubKey">PubKey</a>
+<span id="AttrAppInfo.Version"></span>    Version <a href="/pkg/builtin/#string">string</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="AttrNodeInfo">type <a href="/src/target/service.go?s=4348:4487#L160">AttrNodeInfo</a>
+				<a class="permalink" href="#AttrNodeInfo">&#xb6;</a>
+				
+				
+			</h2>
+			
+			<pre>type AttrNodeInfo struct {
+<span id="AttrNodeInfo.Node"></span>    Node     <a href="/pkg/github.com/skycoin/skycoin/src/cipher/">cipher</a>.<a href="/pkg/github.com/skycoin/skycoin/src/cipher/#PubKey">PubKey</a>
+<span id="AttrNodeInfo.Apps"></span>    Apps     []<a href="/pkg/github.com/skycoin/skycoin/src/cipher/">cipher</a>.<a href="/pkg/github.com/skycoin/skycoin/src/cipher/#PubKey">PubKey</a>
+<span id="AttrNodeInfo.Location"></span>    Location <a href="/pkg/builtin/#string">string</a>
+<span id="AttrNodeInfo.Version"></span>    Version  []<a href="/pkg/builtin/#string">string</a>
+<span id="AttrNodeInfo.AppInfos"></span>    AppInfos []*<a href="#AttrAppInfo">AttrAppInfo</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="AttrNodesInfo">type <a href="/src/target/service.go?s=4281:4346#L155">AttrNodesInfo</a>
+				<a class="permalink" href="#AttrNodesInfo">&#xb6;</a>
+				
+				
+			</h2>
+			
+			<pre>type AttrNodesInfo struct {
+<span id="AttrNodesInfo.Nodes"></span>    Nodes []*<a href="#AttrNodeInfo">AttrNodeInfo</a>
+<span id="AttrNodesInfo.Count"></span>    Count <a href="/pkg/builtin/#int64">int64</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="ConnConfig">type <a href="/src/target/conn_config.go?s=197:885#L6">ConnConfig</a>
+				<a class="permalink" href="#ConnConfig">&#xb6;</a>
+				
+				
+			</h2>
+			
+			<pre>type ConnConfig struct {
+<span id="ConnConfig.Reconnect"></span>    Reconnect     <a href="/pkg/builtin/#bool">bool</a>
+<span id="ConnConfig.ReconnectWait"></span>    ReconnectWait <a href="/pkg/time/">time</a>.<a href="/pkg/time/#Duration">Duration</a>
+
+    <span class="comment">// generate seed, private key and public key for the connection</span>
+    <span class="comment">// seed config file path</span>
+<span id="ConnConfig.SeedConfigPath"></span>    SeedConfigPath <a href="/pkg/builtin/#string">string</a>
+<span id="ConnConfig.SeedConfig"></span>    SeedConfig     *<a href="#SeedConfig">SeedConfig</a>
+
+    <span class="comment">// context</span>
+<span id="ConnConfig.Context"></span>    Context map[<a href="/pkg/builtin/#string">string</a>]<a href="/pkg/builtin/#string">string</a>
+
+<span id="ConnConfig.UseCrypto"></span>    UseCrypto <a href="#RegVersion">RegVersion</a>
+
+<span id="ConnConfig.TargetKey"></span>    TargetKey <a href="/pkg/github.com/skycoin/skycoin/src/cipher/">cipher</a>.<a href="/pkg/github.com/skycoin/skycoin/src/cipher/#PubKey">PubKey</a>
+
+<span id="ConnConfig.SkipBeforeCallbacks"></span>    SkipBeforeCallbacks <a href="/pkg/builtin/#bool">bool</a>
+
+<span id="ConnConfig.FindServiceNodesByKeysCallback"></span>    FindServiceNodesByKeysCallback func(resp *<a href="#QueryResp">QueryResp</a>)
+
+<span id="ConnConfig.FindServiceNodesByAttributesCallback"></span>    FindServiceNodesByAttributesCallback func(resp *<a href="#QueryByAttrsResp">QueryByAttrsResp</a>)
+
+<span id="ConnConfig.AppConnectionInitCallback"></span>    AppConnectionInitCallback func(resp *<a href="#AppConnResp">AppConnResp</a>) *<a href="#AppFeedback">AppFeedback</a>
+
+    <span class="comment">// call after connected to server</span>
+<span id="ConnConfig.OnConnected"></span>    OnConnected func(connection *<a href="#Connection">Connection</a>)
+    <span class="comment">// call after disconnected</span>
+<span id="ConnConfig.OnDisconnected"></span>    OnDisconnected func(connection *<a href="#Connection">Connection</a>)
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="Connection">type <a href="/src/target/conn.go?s=248:1478#L9">Connection</a>
+				<a class="permalink" href="#Connection">&#xb6;</a>
+				
+				
+			</h2>
+			
+			<pre>type Connection struct {
+    *<a href="/pkg/github.com/skycoin/net/factory/">factory</a>.<a href="/pkg/github.com/skycoin/net/factory/#Connection">Connection</a>
+
+<span id="Connection.CreatedByTransport"></span>    CreatedByTransport *<a href="#Transport">Transport</a>
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+				
+				<h3 id="Connection.BuildAppConnection">func (*Connection) <a href="/src/target/conn.go?s=9158:9239#L383">BuildAppConnection</a>
+					<a class="permalink" href="#Connection.BuildAppConnection">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (c *<a href="#Connection">Connection</a>) BuildAppConnection(node, app, discovery <a href="/pkg/github.com/skycoin/skycoin/src/cipher/">cipher</a>.<a href="/pkg/github.com/skycoin/skycoin/src/cipher/#PubKey">PubKey</a>) <a href="/pkg/builtin/#error">error</a></pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="Connection.CheckMessages">func (*Connection) <a href="/src/target/conn.go?s=14801:14850#L647">CheckMessages</a>
+					<a class="permalink" href="#Connection.CheckMessages">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (c *<a href="#Connection">Connection</a>) CheckMessages() (result <a href="/pkg/builtin/#int">int</a>)</pre>
+				<p>
+Return unread messages count
+</p>
+
+				
+				
+				
+			
+				
+				<h3 id="Connection.Close">func (*Connection) <a href="/src/target/conn.go?s=10891:10919#L468">Close</a>
+					<a class="permalink" href="#Connection.Close">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (c *<a href="#Connection">Connection</a>) Close()</pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="Connection.EnableSkipFactoryReg">func (*Connection) <a href="/src/target/conn.go?s=13620:13663#L595">EnableSkipFactoryReg</a>
+					<a class="permalink" href="#Connection.EnableSkipFactoryReg">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (c *<a href="#Connection">Connection</a>) EnableSkipFactoryReg()</pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="Connection.FindServiceNodesByAttributes">func (*Connection) <a href="/src/target/conn.go?s=8344:8416#L358">FindServiceNodesByAttributes</a>
+					<a class="permalink" href="#Connection.FindServiceNodesByAttributes">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (c *<a href="#Connection">Connection</a>) FindServiceNodesByAttributes(attrs ...<a href="/pkg/builtin/#string">string</a>) <a href="/pkg/builtin/#error">error</a></pre>
+				<p>
+find services by attributes
+</p>
+
+				
+				
+				
+			
+				
+				<h3 id="Connection.FindServiceNodesByKeys">func (*Connection) <a href="/src/target/conn.go?s=9023:9094#L379">FindServiceNodesByKeys</a>
+					<a class="permalink" href="#Connection.FindServiceNodesByKeys">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (c *<a href="#Connection">Connection</a>) FindServiceNodesByKeys(keys []<a href="/pkg/github.com/skycoin/skycoin/src/cipher/">cipher</a>.<a href="/pkg/github.com/skycoin/skycoin/src/cipher/#PubKey">PubKey</a>) <a href="/pkg/builtin/#error">error</a></pre>
+				<p>
+find services nodes by service public keys
+</p>
+
+				
+				
+				
+			
+				
+				<h3 id="Connection.FindServiceNodesWithSeqByAttributes">func (*Connection) <a href="/src/target/conn.go?s=8514:8611#L363">FindServiceNodesWithSeqByAttributes</a>
+					<a class="permalink" href="#Connection.FindServiceNodesWithSeqByAttributes">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (c *<a href="#Connection">Connection</a>) FindServiceNodesWithSeqByAttributes(attrs ...<a href="/pkg/builtin/#string">string</a>) (seq <a href="/pkg/builtin/#uint32">uint32</a>, err <a href="/pkg/builtin/#error">error</a>)</pre>
+				<p>
+find services by attributes
+</p>
+
+				
+				
+				
+			
+				
+				<h3 id="Connection.FindServiceNodesWithSeqByAttributesAndPaging">func (*Connection) <a href="/src/target/conn.go?s=8737:8861#L371">FindServiceNodesWithSeqByAttributesAndPaging</a>
+					<a class="permalink" href="#Connection.FindServiceNodesWithSeqByAttributesAndPaging">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (c *<a href="#Connection">Connection</a>) FindServiceNodesWithSeqByAttributesAndPaging(pages, limit <a href="/pkg/builtin/#int">int</a>, attrs ...<a href="/pkg/builtin/#string">string</a>) (seq <a href="/pkg/builtin/#uint32">uint32</a>, err <a href="/pkg/builtin/#error">error</a>)</pre>
+				<p>
+find services by attributes
+</p>
+
+				
+				
+				
+			
+				
+				<h3 id="Connection.ForEachTransport">func (*Connection) <a href="/src/target/conn.go?s=13878:13938#L608">ForEachTransport</a>
+					<a class="permalink" href="#Connection.ForEachTransport">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (c *<a href="#Connection">Connection</a>) ForEachTransport(fn func(t *<a href="#Transport">Transport</a>))</pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="Connection.GetAppFeedback">func (*Connection) <a href="/src/target/conn.go?s=15189:15243#L662">GetAppFeedback</a>
+					<a class="permalink" href="#Connection.GetAppFeedback">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (c *<a href="#Connection">Connection</a>) GetAppFeedback() (v *<a href="#AppFeedback">AppFeedback</a>)</pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="Connection.GetChanIn">func (*Connection) <a href="/src/target/conn.go?s=10771:10817#L461">GetChanIn</a>
+					<a class="permalink" href="#Connection.GetChanIn">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (c *<a href="#Connection">Connection</a>) GetChanIn() &lt;-chan []<a href="/pkg/builtin/#byte">byte</a></pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="Connection.GetConnectTime">func (*Connection) <a href="/src/target/conn.go?s=13530:13573#L591">GetConnectTime</a>
+					<a class="permalink" href="#Connection.GetConnectTime">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (c *<a href="#Connection">Connection</a>) GetConnectTime() <a href="/pkg/builtin/#int64">int64</a></pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="Connection.GetKey">func (*Connection) <a href="/src/target/conn.go?s=3873:3916#L150">GetKey</a>
+					<a class="permalink" href="#Connection.GetKey">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (c *<a href="#Connection">Connection</a>) GetKey() <a href="/pkg/github.com/skycoin/skycoin/src/cipher/">cipher</a>.<a href="/pkg/github.com/skycoin/skycoin/src/cipher/#PubKey">PubKey</a></pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="Connection.GetMessages">func (*Connection) <a href="/src/target/conn.go?s=14575:14632#L638">GetMessages</a>
+					<a class="permalink" href="#Connection.GetMessages">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (c *<a href="#Connection">Connection</a>) GetMessages() (result []<a href="#PriorityMsg">PriorityMsg</a>)</pre>
+				<p>
+Get messages
+</p>
+
+				
+				
+				
+			
+				
+				<h3 id="Connection.GetSecKey">func (*Connection) <a href="/src/target/conn.go?s=4148:4200#L165">GetSecKey</a>
+					<a class="permalink" href="#Connection.GetSecKey">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (c *<a href="#Connection">Connection</a>) GetSecKey() (key <a href="/pkg/github.com/skycoin/skycoin/src/cipher/">cipher</a>.<a href="/pkg/github.com/skycoin/skycoin/src/cipher/#SecKey">SecKey</a>)</pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="Connection.GetServices">func (*Connection) <a href="/src/target/conn.go?s=5056:5104#L210">GetServices</a>
+					<a class="permalink" href="#Connection.GetServices">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (c *<a href="#Connection">Connection</a>) GetServices() *<a href="#NodeServices">NodeServices</a></pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="Connection.GetTargetKey">func (*Connection) <a href="/src/target/conn.go?s=4401:4456#L178">GetTargetKey</a>
+					<a class="permalink" href="#Connection.GetTargetKey">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (c *<a href="#Connection">Connection</a>) GetTargetKey() (key <a href="/pkg/github.com/skycoin/skycoin/src/cipher/">cipher</a>.<a href="/pkg/github.com/skycoin/skycoin/src/cipher/#PubKey">PubKey</a>)</pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="Connection.GetTransportPair">func (*Connection) <a href="/src/target/conn.go?s=15915:15976#L696">GetTransportPair</a>
+					<a class="permalink" href="#Connection.GetTransportPair">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (c *<a href="#Connection">Connection</a>) GetTransportPair() (pair *transportPair)</pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="Connection.IsKeySet">func (*Connection) <a href="/src/target/conn.go?s=3757:3797#L143">IsKeySet</a>
+					<a class="permalink" href="#Connection.IsKeySet">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (c *<a href="#Connection">Connection</a>) IsKeySet() (b <a href="/pkg/builtin/#bool">bool</a>)</pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="Connection.IsSkipFactoryReg">func (*Connection) <a href="/src/target/conn.go?s=13740:13791#L601">IsSkipFactoryReg</a>
+					<a class="permalink" href="#Connection.IsSkipFactoryReg">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (c *<a href="#Connection">Connection</a>) IsSkipFactoryReg() (skip <a href="/pkg/builtin/#bool">bool</a>)</pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="Connection.LoadContext">func (*Connection) <a href="/src/target/conn.go?s=14269:14347#L626">LoadContext</a>
+					<a class="permalink" href="#Connection.LoadContext">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (c *<a href="#Connection">Connection</a>) LoadContext(key interface{}) (value interface{}, ok <a href="/pkg/builtin/#bool">bool</a>)</pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="Connection.OfferPrivateServiceWithAddress">func (*Connection) <a href="/src/target/conn.go?s=7928:8048#L345">OfferPrivateServiceWithAddress</a>
+					<a class="permalink" href="#Connection.OfferPrivateServiceWithAddress">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (c *<a href="#Connection">Connection</a>) OfferPrivateServiceWithAddress(address, version <a href="/pkg/builtin/#string">string</a>, allowNodes []<a href="/pkg/builtin/#string">string</a>, attrs ...<a href="/pkg/builtin/#string">string</a>) <a href="/pkg/builtin/#error">error</a></pre>
+				<p>
+register a service to discovery
+</p>
+
+				
+				
+				
+			
+				
+				<h3 id="Connection.OfferService">func (*Connection) <a href="/src/target/conn.go?s=7440:7496#L330">OfferService</a>
+					<a class="permalink" href="#Connection.OfferService">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (c *<a href="#Connection">Connection</a>) OfferService(attrs ...<a href="/pkg/builtin/#string">string</a>) <a href="/pkg/builtin/#error">error</a></pre>
+				<p>
+register a service to discovery
+</p>
+
+				
+				
+				
+			
+				
+				<h3 id="Connection.OfferServiceWithAddress">func (*Connection) <a href="/src/target/conn.go?s=7637:7729#L335">OfferServiceWithAddress</a>
+					<a class="permalink" href="#Connection.OfferServiceWithAddress">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (c *<a href="#Connection">Connection</a>) OfferServiceWithAddress(address, version <a href="/pkg/builtin/#string">string</a>, attrs ...<a href="/pkg/builtin/#string">string</a>) <a href="/pkg/builtin/#error">error</a></pre>
+				<p>
+register a service to discovery
+</p>
+
+				
+				
+				
+			
+				
+				<h3 id="Connection.PutMessage">func (*Connection) <a href="/src/target/conn.go?s=14381:14427#L630">PutMessage</a>
+					<a class="permalink" href="#Connection.PutMessage">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (c *<a href="#Connection">Connection</a>) PutMessage(v <a href="#PriorityMsg">PriorityMsg</a>)</pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="Connection.Reg">func (*Connection) <a href="/src/target/conn.go?s=5183:5215#L216">Reg</a>
+					<a class="permalink" href="#Connection.Reg">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (c *<a href="#Connection">Connection</a>) Reg() <a href="/pkg/builtin/#error">error</a></pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="Connection.RegWithKey">func (*Connection) <a href="/src/target/conn.go?s=5250:5333#L220">RegWithKey</a>
+					<a class="permalink" href="#Connection.RegWithKey">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (c *<a href="#Connection">Connection</a>) RegWithKey(key <a href="/pkg/github.com/skycoin/skycoin/src/cipher/">cipher</a>.<a href="/pkg/github.com/skycoin/skycoin/src/cipher/#PubKey">PubKey</a>, context map[<a href="/pkg/builtin/#string">string</a>]<a href="/pkg/builtin/#string">string</a>) <a href="/pkg/builtin/#error">error</a></pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="Connection.RegWithKeys">func (*Connection) <a href="/src/target/conn.go?s=5492:5584#L225">RegWithKeys</a>
+					<a class="permalink" href="#Connection.RegWithKeys">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (c *<a href="#Connection">Connection</a>) RegWithKeys(key, target <a href="/pkg/github.com/skycoin/skycoin/src/cipher/">cipher</a>.<a href="/pkg/github.com/skycoin/skycoin/src/cipher/#PubKey">PubKey</a>, context map[<a href="/pkg/builtin/#string">string</a>]<a href="/pkg/builtin/#string">string</a>) <a href="/pkg/builtin/#error">error</a></pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="Connection.Send">func (*Connection) <a href="/src/target/conn.go?s=9336:9397#L387">Send</a>
+					<a class="permalink" href="#Connection.Send">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (c *<a href="#Connection">Connection</a>) Send(to <a href="/pkg/github.com/skycoin/skycoin/src/cipher/">cipher</a>.<a href="/pkg/github.com/skycoin/skycoin/src/cipher/#PubKey">PubKey</a>, msg []<a href="/pkg/builtin/#byte">byte</a>) <a href="/pkg/builtin/#error">error</a></pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="Connection.SendCustom">func (*Connection) <a href="/src/target/conn.go?s=9452:9501#L391">SendCustom</a>
+					<a class="permalink" href="#Connection.SendCustom">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (c *<a href="#Connection">Connection</a>) SendCustom(msg []<a href="/pkg/builtin/#byte">byte</a>) <a href="/pkg/builtin/#error">error</a></pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="Connection.SetAppFeedback">func (*Connection) <a href="/src/target/conn.go?s=14981:15033#L654">SetAppFeedback</a>
+					<a class="permalink" href="#Connection.SetAppFeedback">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (c *<a href="#Connection">Connection</a>) SetAppFeedback(fb *<a href="#AppFeedback">AppFeedback</a>)</pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="Connection.SetCrypto">func (*Connection) <a href="/src/target/conn.go?s=15334:15445#L669">SetCrypto</a>
+					<a class="permalink" href="#Connection.SetCrypto">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (c *<a href="#Connection">Connection</a>) SetCrypto(pk <a href="/pkg/github.com/skycoin/skycoin/src/cipher/">cipher</a>.<a href="/pkg/github.com/skycoin/skycoin/src/cipher/#PubKey">PubKey</a>, sk <a href="/pkg/github.com/skycoin/skycoin/src/cipher/">cipher</a>.<a href="/pkg/github.com/skycoin/skycoin/src/cipher/#SecKey">SecKey</a>, target <a href="/pkg/github.com/skycoin/skycoin/src/cipher/">cipher</a>.<a href="/pkg/github.com/skycoin/skycoin/src/cipher/#PubKey">PubKey</a>, iv []<a href="/pkg/builtin/#byte">byte</a>) (err <a href="/pkg/builtin/#error">error</a>)</pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="Connection.SetKey">func (*Connection) <a href="/src/target/conn.go?s=3554:3600#L132">SetKey</a>
+					<a class="permalink" href="#Connection.SetKey">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (c *<a href="#Connection">Connection</a>) SetKey(key <a href="/pkg/github.com/skycoin/skycoin/src/cipher/">cipher</a>.<a href="/pkg/github.com/skycoin/skycoin/src/cipher/#PubKey">PubKey</a>)</pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="Connection.SetSecKey">func (*Connection) <a href="/src/target/conn.go?s=4031:4080#L159">SetSecKey</a>
+					<a class="permalink" href="#Connection.SetSecKey">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (c *<a href="#Connection">Connection</a>) SetSecKey(key <a href="/pkg/github.com/skycoin/skycoin/src/cipher/">cipher</a>.<a href="/pkg/github.com/skycoin/skycoin/src/cipher/#SecKey">SecKey</a>)</pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="Connection.SetTargetKey">func (*Connection) <a href="/src/target/conn.go?s=4278:4330#L172">SetTargetKey</a>
+					<a class="permalink" href="#Connection.SetTargetKey">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (c *<a href="#Connection">Connection</a>) SetTargetKey(key <a href="/pkg/github.com/skycoin/skycoin/src/cipher/">cipher</a>.<a href="/pkg/github.com/skycoin/skycoin/src/cipher/#PubKey">PubKey</a>)</pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="Connection.SetTransportPair">func (*Connection) <a href="/src/target/conn.go?s=15781:15839#L690">SetTransportPair</a>
+					<a class="permalink" href="#Connection.SetTransportPair">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (c *<a href="#Connection">Connection</a>) SetTransportPair(pair *transportPair)</pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="Connection.StoreContext">func (*Connection) <a href="/src/target/conn.go?s=14177:14234#L622">StoreContext</a>
+					<a class="permalink" href="#Connection.StoreContext">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (c *<a href="#Connection">Connection</a>) StoreContext(key, value interface{})</pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="Connection.UpdateConnectTime">func (*Connection) <a href="/src/target/conn.go?s=13430:13470#L587">UpdateConnectTime</a>
+					<a class="permalink" href="#Connection.UpdateConnectTime">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (c *<a href="#Connection">Connection</a>) UpdateConnectTime()</pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="Connection.UpdateServices">func (*Connection) <a href="/src/target/conn.go?s=5801:5866#L232">UpdateServices</a>
+					<a class="permalink" href="#Connection.UpdateServices">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (c *<a href="#Connection">Connection</a>) UpdateServices(ns *<a href="#NodeServices">NodeServices</a>) (err <a href="/pkg/builtin/#error">error</a>)</pre>
+				<p>
+register services to discovery
+</p>
+
+				
+				
+				
+			
+				
+				<h3 id="Connection.WaitForKey">func (*Connection) <a href="/src/target/conn.go?s=11518:11563#L507">WaitForKey</a>
+					<a class="permalink" href="#Connection.WaitForKey">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (c *<a href="#Connection">Connection</a>) WaitForKey() (err <a href="/pkg/builtin/#error">error</a>)</pre>
+				
+				
+				
+				
+			
+		
+			
+			
+			<h2 id="Custom">type <a href="/src/target/op_custom.go?s=142:164#L5">Custom</a>
+				<a class="permalink" href="#Custom">&#xb6;</a>
+				
+				
+			</h2>
+			
+			<pre>type Custom struct {
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+				
+				<h3 id="Custom.RawExecute">func (*Custom) <a href="/src/target/op_custom.go?s=166:270#L8">RawExecute</a>
+					<a class="permalink" href="#Custom.RawExecute">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (custom *<a href="#Custom">Custom</a>) RawExecute(f *<a href="#MessengerFactory">MessengerFactory</a>, conn *<a href="#Connection">Connection</a>, m []<a href="/pkg/builtin/#byte">byte</a>) (rb []<a href="/pkg/builtin/#byte">byte</a>, err <a href="/pkg/builtin/#error">error</a>)</pre>
+				
+				
+				
+				
+			
+		
+			
+			
+			<h2 id="Level">type <a href="/src/target/factory.go?s=13505:13525#L541">Level</a>
+				<a class="permalink" href="#Level">&#xb6;</a>
+				
+				
+			</h2>
+			
+			<pre>type Level <a href="/pkg/github.com/sirupsen/logrus/">log</a>.<a href="/pkg/github.com/sirupsen/logrus/#Level">Level</a></pre>
+
+			
+				<p>
+These are the different logging levels. You can set the logging level to log
+on your instance of logger, obtained with `logrus.New()`.
+</p>
+
+				<pre>const (
+    <span class="comment">// PanicLevel level, highest level of severity. Logs and then calls panic with the</span>
+    <span class="comment">// message passed to Debug, Info, ...</span>
+    <span id="PanicLevel">PanicLevel</span> <a href="#Level">Level</a> = <a href="/pkg/builtin/#iota">iota</a>
+    <span class="comment">// FatalLevel level. Logs and then calls `os.Exit(1)`. It will exit even if the</span>
+    <span class="comment">// logging level is set to Panic.</span>
+    <span id="FatalLevel">FatalLevel</span>
+    <span class="comment">// ErrorLevel level. Logs. Used for errors that should definitely be noted.</span>
+    <span class="comment">// Commonly used for hooks to send errors to an error tracking service.</span>
+    <span id="ErrorLevel">ErrorLevel</span>
+    <span class="comment">// WarnLevel level. Non-critical entries that deserve eyes.</span>
+    <span id="WarnLevel">WarnLevel</span>
+    <span class="comment">// InfoLevel level. General operational entries about what&#39;s going on inside the</span>
+    <span class="comment">// application.</span>
+    <span id="InfoLevel">InfoLevel</span>
+    <span class="comment">// DebugLevel level. Usually only enabled when debugging. Very verbose logging.</span>
+    <span id="DebugLevel">DebugLevel</span>
+)</pre>
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="MessengerFactory">type <a href="/src/target/factory.go?s=262:911#L7">MessengerFactory</a>
+				<a class="permalink" href="#MessengerFactory">&#xb6;</a>
+				
+				
+			</h2>
+			
+			<pre>type MessengerFactory struct {
+
+    <span class="comment">// will deliver the services data to server if true</span>
+<span id="MessengerFactory.Proxy"></span>    Proxy <a href="/pkg/builtin/#bool">bool</a>
+
+<span id="MessengerFactory.Parent"></span>    Parent *<a href="#MessengerFactory">MessengerFactory</a>
+
+    <span class="comment">// custom msg callback</span>
+<span id="MessengerFactory.CustomMsgHandler"></span>    CustomMsgHandler func(*<a href="#Connection">Connection</a>, []<a href="/pkg/builtin/#byte">byte</a>)
+
+    <span class="comment">// on accepted callback</span>
+<span id="MessengerFactory.OnAcceptedUDPCallback"></span>    OnAcceptedUDPCallback func(connection *<a href="#Connection">Connection</a>)
+
+<span id="MessengerFactory.BeforeReadOnConn"></span>    BeforeReadOnConn func(m *<a href="/pkg/github.com/skycoin/net/msg/">msg</a>.<a href="/pkg/github.com/skycoin/net/msg/#UDPMessage">UDPMessage</a>)
+<span id="MessengerFactory.BeforeSendOnConn"></span>    BeforeSendOnConn func(m *<a href="/pkg/github.com/skycoin/net/msg/">msg</a>.<a href="/pkg/github.com/skycoin/net/msg/#UDPMessage">UDPMessage</a>)
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+				
+				<h3 id="NewMessengerFactory">func <a href="/src/target/factory.go?s=913:957#L36">NewMessengerFactory</a>
+					<a class="permalink" href="#NewMessengerFactory">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func NewMessengerFactory() *<a href="#MessengerFactory">MessengerFactory</a></pre>
+				
+				
+				
+			
+
+			
+				
+				<h3 id="MessengerFactory.Close">func (*MessengerFactory) <a href="/src/target/factory.go?s=10783:10829#L436">Close</a>
+					<a class="permalink" href="#MessengerFactory.Close">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (f *<a href="#MessengerFactory">MessengerFactory</a>) Close() (err <a href="/pkg/builtin/#error">error</a>)</pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="MessengerFactory.Connect">func (*MessengerFactory) <a href="/src/target/factory.go?s=5533:5595#L227">Connect</a>
+					<a class="permalink" href="#MessengerFactory.Connect">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (f *<a href="#MessengerFactory">MessengerFactory</a>) Connect(address <a href="/pkg/builtin/#string">string</a>) (err <a href="/pkg/builtin/#error">error</a>)</pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="MessengerFactory.ConnectWithConfig">func (*MessengerFactory) <a href="/src/target/factory.go?s=6722:6814#L279">ConnectWithConfig</a>
+					<a class="permalink" href="#MessengerFactory.ConnectWithConfig">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (f *<a href="#MessengerFactory">MessengerFactory</a>) ConnectWithConfig(address <a href="/pkg/builtin/#string">string</a>, config *<a href="#ConnConfig">ConnConfig</a>) (err <a href="/pkg/builtin/#error">error</a>)</pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="MessengerFactory.DisableLogger">func (*MessengerFactory) <a href="/src/target/factory.go?s=12561:12603#L516">DisableLogger</a>
+					<a class="permalink" href="#MessengerFactory.DisableLogger">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (f *<a href="#MessengerFactory">MessengerFactory</a>) DisableLogger()</pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="MessengerFactory.ForEachAcceptedConnection">func (*MessengerFactory) <a href="/src/target/factory.go?s=4863:4961#L202">ForEachAcceptedConnection</a>
+					<a class="permalink" href="#MessengerFactory.ForEachAcceptedConnection">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (f *<a href="#MessengerFactory">MessengerFactory</a>) ForEachAcceptedConnection(fn func(key <a href="/pkg/github.com/skycoin/skycoin/src/cipher/">cipher</a>.<a href="/pkg/github.com/skycoin/skycoin/src/cipher/#PubKey">PubKey</a>, conn *<a href="#Connection">Connection</a>))</pre>
+				<p>
+Execute fn for each accepted connection
+</p>
+
+				
+				
+				
+			
+				
+				<h3 id="MessengerFactory.ForEachConn">func (*MessengerFactory) <a href="/src/target/factory.go?s=11081:11152#L452">ForEachConn</a>
+					<a class="permalink" href="#MessengerFactory.ForEachConn">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (f *<a href="#MessengerFactory">MessengerFactory</a>) ForEachConn(fn func(connection *<a href="#Connection">Connection</a>))</pre>
+				<p>
+Execute fn for each connection that connected to server
+</p>
+
+				
+				
+				
+			
+				
+				<h3 id="MessengerFactory.GetAppVersion">func (*MessengerFactory) <a href="/src/target/factory.go?s=13739:13792#L553">GetAppVersion</a>
+					<a class="permalink" href="#MessengerFactory.GetAppVersion">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (f *<a href="#MessengerFactory">MessengerFactory</a>) GetAppVersion() (v <a href="/pkg/builtin/#string">string</a>)</pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="MessengerFactory.GetConnection">func (*MessengerFactory) <a href="/src/target/factory.go?s=4627:4711#L194">GetConnection</a>
+					<a class="permalink" href="#MessengerFactory.GetConnection">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (f *<a href="#MessengerFactory">MessengerFactory</a>) GetConnection(key <a href="/pkg/github.com/skycoin/skycoin/src/cipher/">cipher</a>.<a href="/pkg/github.com/skycoin/skycoin/src/cipher/#PubKey">PubKey</a>) (c *<a href="#Connection">Connection</a>, ok <a href="/pkg/builtin/#bool">bool</a>)</pre>
+				<p>
+Get accepted connection by key
+</p>
+
+				
+				
+				
+			
+				
+				<h3 id="MessengerFactory.GetDefaultSeedConfig">func (*MessengerFactory) <a href="/src/target/factory.go?s=6568:6634#L272">GetDefaultSeedConfig</a>
+					<a class="permalink" href="#MessengerFactory.GetDefaultSeedConfig">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (f *<a href="#MessengerFactory">MessengerFactory</a>) GetDefaultSeedConfig() (sc *<a href="#SeedConfig">SeedConfig</a>)</pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="MessengerFactory.Listen">func (*MessengerFactory) <a href="/src/target/factory.go?s=1083:1144#L40">Listen</a>
+					<a class="permalink" href="#MessengerFactory.Listen">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (f *<a href="#MessengerFactory">MessengerFactory</a>) Listen(address <a href="/pkg/builtin/#string">string</a>) (err <a href="/pkg/builtin/#error">error</a>)</pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="MessengerFactory.ResyncToDiscovery">func (*MessengerFactory) <a href="/src/target/factory.go?s=11933:12013#L489">ResyncToDiscovery</a>
+					<a class="permalink" href="#MessengerFactory.ResyncToDiscovery">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (f *<a href="#MessengerFactory">MessengerFactory</a>) ResyncToDiscovery(connection *<a href="#Connection">Connection</a>) (err <a href="/pkg/builtin/#error">error</a>)</pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="MessengerFactory.SetAppVersion">func (*MessengerFactory) <a href="/src/target/factory.go?s=13619:13669#L547">SetAppVersion</a>
+					<a class="permalink" href="#MessengerFactory.SetAppVersion">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (f *<a href="#MessengerFactory">MessengerFactory</a>) SetAppVersion(v <a href="/pkg/builtin/#string">string</a>)</pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="MessengerFactory.SetDefaultSeedConfig">func (*MessengerFactory) <a href="/src/target/factory.go?s=6409:6478#L265">SetDefaultSeedConfig</a>
+					<a class="permalink" href="#MessengerFactory.SetDefaultSeedConfig">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (f *<a href="#MessengerFactory">MessengerFactory</a>) SetDefaultSeedConfig(sc *<a href="#SeedConfig">SeedConfig</a>) <a href="/pkg/builtin/#error">error</a></pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="MessengerFactory.SetDefaultSeedConfigPath">func (*MessengerFactory) <a href="/src/target/factory.go?s=6175:6245#L254">SetDefaultSeedConfigPath</a>
+					<a class="permalink" href="#MessengerFactory.SetDefaultSeedConfigPath">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (f *<a href="#MessengerFactory">MessengerFactory</a>) SetDefaultSeedConfigPath(path <a href="/pkg/builtin/#string">string</a>) <a href="/pkg/builtin/#error">error</a></pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="MessengerFactory.SetLoggerLevel">func (*MessengerFactory) <a href="/src/target/factory.go?s=13527:13581#L543">SetLoggerLevel</a>
+					<a class="permalink" href="#MessengerFactory.SetLoggerLevel">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (f *<a href="#MessengerFactory">MessengerFactory</a>) SetLoggerLevel(level <a href="#Level">Level</a>)</pre>
+				
+				
+				
+				
+			
+		
+			
+			
+			<h2 id="MsgType">type <a href="/src/target/op_build.go?s=3064:3080#L121">MsgType</a>
+				<a class="permalink" href="#MsgType">&#xb6;</a>
+				
+				
+			</h2>
+			
+			<pre>type MsgType <a href="/pkg/builtin/#int">int</a></pre>
+
+			
+				
+				<pre>const (
+    <span id="Success">Success</span> <a href="#MsgType">MsgType</a> = <a href="/pkg/builtin/#iota">iota</a>
+    <span id="Failed">Failed</span>
+)</pre>
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="NodeInfo">type <a href="/src/target/service.go?s=3719:3811#L130">NodeInfo</a>
+				<a class="permalink" href="#NodeInfo">&#xb6;</a>
+				
+				
+			</h2>
+			<p>
+pubkey and address info of the node
+</p>
+
+			<pre>type NodeInfo struct {
+    <span class="comment">// node key</span>
+<span id="NodeInfo.PubKey"></span>    PubKey <a href="/pkg/github.com/skycoin/skycoin/src/cipher/">cipher</a>.<a href="/pkg/github.com/skycoin/skycoin/src/cipher/#PubKey">PubKey</a>
+    <span class="comment">// node address</span>
+<span id="NodeInfo.Address"></span>    Address <a href="/pkg/builtin/#string">string</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="NodeServices">type <a href="/src/target/service.go?s=376:662#L7">NodeServices</a>
+				<a class="permalink" href="#NodeServices">&#xb6;</a>
+				
+				
+			</h2>
+			
+			<pre>type NodeServices struct {
+<span id="NodeServices.Services"></span>    <span class="comment">// Services that node provides</span>
+    Services []*<a href="#Service">Service</a>
+    <span class="comment">// Used for node extra service listen address</span>
+<span id="NodeServices.ServiceAddress"></span>    ServiceAddress <a href="/pkg/builtin/#string">string</a> `json:&#34;,omitempty&#34;`
+    <span class="comment">// Node location</span>
+<span id="NodeServices.Location"></span>    Location <a href="/pkg/builtin/#string">string</a> `json:&#34;,omitempty&#34;`
+    <span class="comment">// Node version info</span>
+<span id="NodeServices.Version"></span>    Version []<a href="/pkg/builtin/#string">string</a> `json:&#34;,omitempty&#34;`
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="Priority">type <a href="/src/target/op_build.go?s=3046:3063#L120">Priority</a>
+				<a class="permalink" href="#Priority">&#xb6;</a>
+				
+				
+			</h2>
+			
+			<pre>type Priority <a href="/pkg/builtin/#int">int</a></pre>
+
+			
+				
+				<pre>const (
+    <span id="Building">Building</span> <a href="#Priority">Priority</a>
+    <span id="NotFound">NotFound</span>
+    <span id="NotAllowed">NotAllowed</span>
+    <span id="Connected">Connected</span>
+    <span id="Timeout">Timeout</span>
+    <span id="TransportClosed">TransportClosed</span>
+)</pre>
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="PriorityMsg">type <a href="/src/target/op_build.go?s=3224:3386#L138">PriorityMsg</a>
+				<a class="permalink" href="#PriorityMsg">&#xb6;</a>
+				
+				
+			</h2>
+			
+			<pre>type PriorityMsg struct {
+<span id="PriorityMsg.Priority"></span>    Priority <a href="#Priority">Priority</a> `json:&#34;priority&#34;`
+<span id="PriorityMsg.Msg"></span>    Msg      <a href="/pkg/builtin/#string">string</a>   `json:&#34;msg&#34;`
+<span id="PriorityMsg.Type"></span>    Type     <a href="#MsgType">MsgType</a>  `json:&#34;type&#34;`
+<span id="PriorityMsg.Time"></span>    Time     <a href="/pkg/builtin/#int64">int64</a>    `json:&#34;time&#34;`
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="QueryByAttrsResp">type <a href="/src/target/op_query.go?s=2393:2463#L112">QueryByAttrsResp</a>
+				<a class="permalink" href="#QueryByAttrsResp">&#xb6;</a>
+				
+				
+			</h2>
+			
+			<pre>type QueryByAttrsResp struct {
+<span id="QueryByAttrsResp.Result"></span>    Result *<a href="#AttrNodesInfo">AttrNodesInfo</a>
+<span id="QueryByAttrsResp.Seq"></span>    Seq    <a href="/pkg/builtin/#uint32">uint32</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+				
+				<h3 id="QueryByAttrsResp.Run">func (*QueryByAttrsResp) <a href="/src/target/op_query.go?s=2465:2528#L117">Run</a>
+					<a class="permalink" href="#QueryByAttrsResp.Run">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (resp *<a href="#QueryByAttrsResp">QueryByAttrsResp</a>) Run(conn *<a href="#Connection">Connection</a>) (err <a href="/pkg/builtin/#error">error</a>)</pre>
+				
+				
+				
+				
+			
+		
+			
+			
+			<h2 id="QueryResp">type <a href="/src/target/op_query.go?s=1118:1181#L55">QueryResp</a>
+				<a class="permalink" href="#QueryResp">&#xb6;</a>
+				
+				
+			</h2>
+			
+			<pre>type QueryResp struct {
+<span id="QueryResp.Seq"></span>    Seq    <a href="/pkg/builtin/#uint32">uint32</a>
+<span id="QueryResp.Result"></span>    Result []*<a href="#ServiceInfo">ServiceInfo</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+				
+				<h3 id="QueryResp.Run">func (*QueryResp) <a href="/src/target/op_query.go?s=1183:1239#L60">Run</a>
+					<a class="permalink" href="#QueryResp.Run">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (resp *<a href="#QueryResp">QueryResp</a>) Run(conn *<a href="#Connection">Connection</a>) (err <a href="/pkg/builtin/#error">error</a>)</pre>
+				
+				
+				
+				
+			
+		
+			
+			
+			<h2 id="RegVersion">type <a href="/src/target/op_reg.go?s=1361:1380#L69">RegVersion</a>
+				<a class="permalink" href="#RegVersion">&#xb6;</a>
+				
+				
+			</h2>
+			
+			<pre>type RegVersion <a href="/pkg/builtin/#int">int</a></pre>
+
+			
+				
+				<pre>const (
+    <span id="RegWithKeyAndEncryptionVersion">RegWithKeyAndEncryptionVersion</span> <a href="#RegVersion">RegVersion</a>
+)</pre>
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="SeedConfig">type <a href="/src/target/conn_config.go?s=887:1017#L38">SeedConfig</a>
+				<a class="permalink" href="#SeedConfig">&#xb6;</a>
+				
+				
+			</h2>
+			
+			<pre>type SeedConfig struct {
+<span id="SeedConfig.Seed"></span>    Seed      <a href="/pkg/builtin/#string">string</a>
+<span id="SeedConfig.SecKey"></span>    SecKey    <a href="/pkg/builtin/#string">string</a>
+<span id="SeedConfig.PublicKey"></span>    PublicKey <a href="/pkg/builtin/#string">string</a>
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+				
+				<h3 id="NewSeedConfig">func <a href="/src/target/conn_config.go?s=1423:1455#L67">NewSeedConfig</a>
+					<a class="permalink" href="#NewSeedConfig">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func NewSeedConfig() *<a href="#SeedConfig">SeedConfig</a></pre>
+				
+				
+				
+			
+				
+				<h3 id="ReadOrCreateSeedConfig">func <a href="/src/target/conn_config.go?s=2061:2129#L102">ReadOrCreateSeedConfig</a>
+					<a class="permalink" href="#ReadOrCreateSeedConfig">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func ReadOrCreateSeedConfig(path <a href="/pkg/builtin/#string">string</a>) (sc *<a href="#SeedConfig">SeedConfig</a>, err <a href="/pkg/builtin/#error">error</a>)</pre>
+				
+				
+				
+			
+				
+				<h3 id="ReadSeedConfig">func <a href="/src/target/conn_config.go?s=1801:1861#L87">ReadSeedConfig</a>
+					<a class="permalink" href="#ReadSeedConfig">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func ReadSeedConfig(path <a href="/pkg/builtin/#string">string</a>) (sc *<a href="#SeedConfig">SeedConfig</a>, err <a href="/pkg/builtin/#error">error</a>)</pre>
+				
+				
+				
+			
+
+			
+		
+			
+			
+			<h2 id="Service">type <a href="/src/target/service.go?s=78:374#L1">Service</a>
+				<a class="permalink" href="#Service">&#xb6;</a>
+				
+				
+			</h2>
+			
+			<pre>type Service struct {
+<span id="Service.Key"></span>    Key               <a href="/pkg/github.com/skycoin/skycoin/src/cipher/">cipher</a>.<a href="/pkg/github.com/skycoin/skycoin/src/cipher/#PubKey">PubKey</a>
+<span id="Service.Attributes"></span>    Attributes        []<a href="/pkg/builtin/#string">string</a> `json:&#34;,omitempty&#34;`
+<span id="Service.Address"></span>    Address           <a href="/pkg/builtin/#string">string</a>   `json:&#34;,omitempty&#34;`
+<span id="Service.HideFromDiscovery"></span>    HideFromDiscovery <a href="/pkg/builtin/#bool">bool</a>     `json:&#34;,omitempty&#34;`
+<span id="Service.AllowNodes"></span>    AllowNodes        []<a href="/pkg/builtin/#string">string</a> `json:&#34;,omitempty&#34;`
+<span id="Service.Version"></span>    Version           <a href="/pkg/builtin/#string">string</a>   `json:&#34;,omitempty&#34;`
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="ServiceInfo">type <a href="/src/target/service.go?s=3850:3964#L138">ServiceInfo</a>
+				<a class="permalink" href="#ServiceInfo">&#xb6;</a>
+				
+				
+			</h2>
+			<p>
+info of nodes for the service key
+</p>
+
+			<pre>type ServiceInfo struct {
+    <span class="comment">// service key</span>
+<span id="ServiceInfo.PubKey"></span>    PubKey <a href="/pkg/github.com/skycoin/skycoin/src/cipher/">cipher</a>.<a href="/pkg/github.com/skycoin/skycoin/src/cipher/#PubKey">PubKey</a>
+    <span class="comment">// nodes for the service key</span>
+<span id="ServiceInfo.Nodes"></span>    Nodes []*<a href="#NodeInfo">NodeInfo</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="Transport">type <a href="/src/target/transport.go?s=307:927#L12">Transport</a>
+				<a class="permalink" href="#Transport">&#xb6;</a>
+				
+				
+			</h2>
+			
+			<pre>type Transport struct {
+<span id="Transport.FromNode"></span>    FromNode, ToNode <a href="/pkg/github.com/skycoin/skycoin/src/cipher/">cipher</a>.<a href="/pkg/github.com/skycoin/skycoin/src/cipher/#PubKey">PubKey</a>
+<span id="Transport.FromApp"></span>    FromApp, ToApp   <a href="/pkg/github.com/skycoin/skycoin/src/cipher/">cipher</a>.<a href="/pkg/github.com/skycoin/skycoin/src/cipher/#PubKey">PubKey</a>
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+				
+				<h3 id="NewTransport">func <a href="/src/target/transport.go?s=5178:5302#L225">NewTransport</a>
+					<a class="permalink" href="#NewTransport">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func NewTransport(creator *<a href="#MessengerFactory">MessengerFactory</a>, appConn *<a href="#Connection">Connection</a>, fromNode, toNode, fromApp, toApp <a href="/pkg/github.com/skycoin/skycoin/src/cipher/">cipher</a>.<a href="/pkg/github.com/skycoin/skycoin/src/cipher/#PubKey">PubKey</a>) *<a href="#Transport">Transport</a></pre>
+				
+				
+				
+			
+
+			
+				
+				<h3 id="Transport.Close">func (*Transport) <a href="/src/target/transport.go?s=14323:14350#L627">Close</a>
+					<a class="permalink" href="#Transport.Close">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (t *<a href="#Transport">Transport</a>) Close()</pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="Transport.GetDownloadBandwidth">func (*Transport) <a href="/src/target/transport.go?s=16981:17028#L780">GetDownloadBandwidth</a>
+					<a class="permalink" href="#Transport.GetDownloadBandwidth">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (t *<a href="#Transport">Transport</a>) GetDownloadBandwidth() <a href="/pkg/builtin/#uint">uint</a></pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="Transport.GetDownloadTotal">func (*Transport) <a href="/src/target/transport.go?s=17138:17181#L788">GetDownloadTotal</a>
+					<a class="permalink" href="#Transport.GetDownloadTotal">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (t *<a href="#Transport">Transport</a>) GetDownloadTotal() <a href="/pkg/builtin/#uint">uint</a></pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="Transport.GetServingPort">func (*Transport) <a href="/src/target/transport.go?s=15642:15682#L700">GetServingPort</a>
+					<a class="permalink" href="#Transport.GetServingPort">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (t *<a href="#Transport">Transport</a>) GetServingPort() <a href="/pkg/builtin/#int">int</a></pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="Transport.GetUploadBandwidth">func (*Transport) <a href="/src/target/transport.go?s=16905:16950#L776">GetUploadBandwidth</a>
+					<a class="permalink" href="#Transport.GetUploadBandwidth">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (t *<a href="#Transport">Transport</a>) GetUploadBandwidth() <a href="/pkg/builtin/#uint">uint</a></pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="Transport.GetUploadTotal">func (*Transport) <a href="/src/target/transport.go?s=17061:17102#L784">GetUploadTotal</a>
+					<a class="permalink" href="#Transport.GetUploadTotal">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (t *<a href="#Transport">Transport</a>) GetUploadTotal() <a href="/pkg/builtin/#uint">uint</a></pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="Transport.IsClientSide">func (*Transport) <a href="/src/target/transport.go?s=15353:15392#L682">IsClientSide</a>
+					<a class="permalink" href="#Transport.IsClientSide">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (t *<a href="#Transport">Transport</a>) IsClientSide() <a href="/pkg/builtin/#bool">bool</a></pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="Transport.ListenAndConnect">func (*Transport) <a href="/src/target/transport.go?s=7452:7553#L310">ListenAndConnect</a>
+					<a class="permalink" href="#Transport.ListenAndConnect">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (t *<a href="#Transport">Transport</a>) ListenAndConnect(address <a href="/pkg/builtin/#string">string</a>, key <a href="/pkg/github.com/skycoin/skycoin/src/cipher/">cipher</a>.<a href="/pkg/github.com/skycoin/skycoin/src/cipher/#PubKey">PubKey</a>) (conn *<a href="#Connection">Connection</a>, err <a href="/pkg/builtin/#error">error</a>)</pre>
+				<p>
+Listen and connect to node manager
+</p>
+
+				
+				
+				
+			
+				
+				<h3 id="Transport.ListenForApp">func (*Transport) <a href="/src/target/transport.go?s=12873:12936#L547">ListenForApp</a>
+					<a class="permalink" href="#Transport.ListenForApp">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (t *<a href="#Transport">Transport</a>) ListenForApp(fn func(port <a href="/pkg/builtin/#int">int</a>)) (err <a href="/pkg/builtin/#error">error</a>)</pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="Transport.SetOnAcceptedUDPCallback">func (*Transport) <a href="/src/target/transport.go?s=7117:7194#L300">SetOnAcceptedUDPCallback</a>
+					<a class="permalink" href="#Transport.SetOnAcceptedUDPCallback">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (t *<a href="#Transport">Transport</a>) SetOnAcceptedUDPCallback(fn func(connection *<a href="#Connection">Connection</a>))</pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="Transport.SetupTimeout">func (*Transport) <a href="/src/target/transport.go?s=15772:15806#L707">SetupTimeout</a>
+					<a class="permalink" href="#Transport.SetupTimeout">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (t *<a href="#Transport">Transport</a>) SetupTimeout()</pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="Transport.StopTimeout">func (*Transport) <a href="/src/target/transport.go?s=16101:16134#L723">StopTimeout</a>
+					<a class="permalink" href="#Transport.StopTimeout">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (t *<a href="#Transport">Transport</a>) StopTimeout()</pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="Transport.String">func (*Transport) <a href="/src/target/transport.go?s=7238:7273#L304">String</a>
+					<a class="permalink" href="#Transport.String">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (t *<a href="#Transport">Transport</a>) String() <a href="/pkg/builtin/#string">string</a></pre>
+				
+				
+				
+				
+			
+		
+	
+
+	
+
+
+
+
+
