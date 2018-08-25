@@ -1,5 +1,7 @@
 # Skycoin Networking Framework
 
+[![Build Status](https://travis-ci.org/skycoin/net.svg?branch=master)](https://travis-ci.org/skycoin/net)
+
 Skycoin Networking Framework is a simplified TCP and UDP networking framework. 
 
 [Skycoin Messenger](https://github.com/skycoin/net/tree/master/skycoin-messenger) is based on this infrastructure.
