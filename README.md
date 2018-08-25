@@ -1,3 +1,5 @@
+**This repo is deprecated, the code has been moved to https://github.com/skycoin/skywire/ in the `pkg/net/` folder**
+
 # Skycoin Networking Framework
 
 [![Build Status](https://travis-ci.com/skycoin/net.svg?branch=master)](https://travis-ci.com/skycoin/net)
