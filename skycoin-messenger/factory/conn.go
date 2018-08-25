@@ -6,14 +6,15 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/skycoin/net/conn"
-	"github.com/skycoin/net/factory"
-	"github.com/skycoin/skycoin/src/cipher"
 	"net"
 	"strconv"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/skycoin/net/conn"
+	"github.com/skycoin/net/factory"
+	"github.com/skycoin/skycoin/src/cipher"
 )
 
 type Connection struct {
