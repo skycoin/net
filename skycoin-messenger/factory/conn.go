@@ -323,7 +323,7 @@ func checkNodeServices(ns *NodeServices) (valid bool) {
 				return
 			}
 		}
-		if s.Key == EMPATY_PUBLIC_KEY {
+		if s.Key == EMPTY_PUBLIC_KEY {
 			return false
 		}
 		for _, k := range s.AllowNodes {
