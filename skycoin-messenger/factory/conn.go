@@ -17,6 +17,8 @@ import (
 	"github.com/skycoin/skycoin/src/cipher"
 )
 
+const keyWaitTimeout time.Duration = 10 * time.Second
+
 type Connection struct {
 	*factory.Connection
 	factory *MessengerFactory
@@ -522,7 +524,7 @@ func (c *Connection) WaitForKey() (err error) {
 		close(ok)
 	}()
 	select {
-	case <-time.After(10 * time.Second):
+	case <-time.After(keyWaitTimeout):
 		err = errors.New("reg timeout")
 		c.SetStatusToError(err)
 		c.Close()
