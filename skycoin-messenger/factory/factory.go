@@ -193,16 +193,26 @@ func (f *MessengerFactory) register(key cipher.PubKey, connection *Connection) {
 	if ok {
 		if c == connection {
 			f.regConnectionsMutex.Unlock()
-			log.Debugf("reg %s %p already", key.Hex(), connection)
+			log.WithFields(log.Fields{
+				"pubkey": key.Hex(),
+				"conn":   connection,
+			}).Debugf("reg already")
 			return
 		}
-		log.Debugf("reg close %s %p for %p", key.Hex(), c, connection)
+		log.WithFields(log.Fields{
+			"pubkey":   key.Hex(),
+			"conn":     connection,
+			"new_conn": c,
+		}).Debugf("reg close conn for new_conn")
 		go c.Close()
 	}
 	connection.UpdateConnectTime()
 	f.regConnections[key] = connection
 	f.regConnectionsMutex.Unlock()
-	log.Debugf("reg %s %p", key.Hex(), connection)
+	log.WithFields(log.Fields{
+		"pubkey": key.Hex(),
+		"conn":   connection,
+	}).Debugf("reg")
 }
 
 // Get accepted connection by key
@@ -229,10 +239,17 @@ func (f *MessengerFactory) unregister(key cipher.PubKey, connection *Connection)
 		if c == connection {
 			delete(f.regConnections, key)
 			f.regConnectionsMutex.Unlock()
-			log.Debugf("unreg %s %p", key.Hex(), c)
+			log.WithFields(log.Fields{
+				"pubkey": key.Hex(),
+				"conn":   c,
+			}).Debugf("unreg")
 		} else {
 			f.regConnectionsMutex.Unlock()
-			log.Debugf("unreg %s %p != new %p", key.Hex(), connection, c)
+			log.WithFields(log.Fields{
+				"pubkey":   key.Hex(),
+				"conn":     connection,
+				"new_conn": c,
+			}).Debugf("unreg connection mismatch")
 		}
 	} else {
 		f.regConnectionsMutex.Unlock()

@@ -50,7 +50,7 @@ type reg struct {
 
 func (reg *reg) Execute(f *MessengerFactory, conn *Connection) (r resp, err error) {
 	if conn.IsKeySet() {
-		conn.GetContextLogger().Infof("reg %s already", conn.key.Hex())
+		conn.GetContextLogger().WithField("pubkey", conn.key.Hex()).Infof("reg already")
 		return
 	}
 	key, _ := cipher.GenerateKeyPair()
@@ -91,7 +91,7 @@ type regWithKey struct {
 
 func (reg *regWithKey) Execute(f *MessengerFactory, conn *Connection) (r resp, err error) {
 	if conn.IsKeySet() {
-		conn.GetContextLogger().Infof("reg %s already", conn.key.Hex())
+		conn.GetContextLogger().WithField("pubkey", conn.key.Hex()).Infof("reg already")
 		return
 	}
 	for k, v := range reg.Context {
@@ -181,7 +181,7 @@ type regCheckSig struct {
 
 func (reg *regCheckSig) Execute(f *MessengerFactory, conn *Connection) (r resp, err error) {
 	if conn.IsKeySet() {
-		conn.GetContextLogger().Infof("reg %s already", conn.key.Hex())
+		conn.GetContextLogger().WithField("pubkey", conn.key.Hex()).Infof("reg already")
 		return
 	}
 	k, ok := conn.context.Load(publicKey)
